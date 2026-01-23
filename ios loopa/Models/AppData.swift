@@ -12,21 +12,57 @@ class AppData {
     static let shared = AppData()
     
     let users: [User] = [
-        User(id: 1, name: "Emily", distance: "1 mi", flag: "🇺🇸", image: "https://i.pravatar.cc/150?u=emily", online: true, lng: -73.5700, lat: 45.5030, lifestyle: "backpacking"),
+        User(id: 1, name: "Emily", distance: "1 mi", flag: "🇺🇸", image: "IMG_9073", online: true, lng: -73.5700, lat: 45.5030, lifestyle: "backpacking"),
         User(id: 2, name: "Alissa Ma...", distance: "1 mi", flag: "🇬🇧", image: "https://i.pravatar.cc/150?u=alissa", online: true, lng: -73.5600, lat: 45.5000, lifestyle: "digital nomad"),
         User(id: 3, name: "Beatrice", distance: "14 mi", flag: "🇨🇦", image: "https://i.pravatar.cc/150?u=beatrice", online: true, lng: -73.5800, lat: 45.5100, lifestyle: "studying abroad"),
         User(id: 4, name: "John", distance: "0.5 mi", flag: "🇦🇺", image: "https://i.pravatar.cc/150?u=john", online: true, lng: -73.5650, lat: 45.5020, lifestyle: "gap year"),
         User(id: 5, name: "Sarah", distance: "2 mi", flag: "🇩🇪", image: "https://i.pravatar.cc/150?u=sarah", online: true, lng: -73.5550, lat: 45.4950, lifestyle: "living abroad")
     ]
     
-    let groups: [Group] = [
-        Group(id: 1, title: "Cafés, gym, billiard", attendees: 2, image: "https://images.unsplash.com/photo-1570554886111-e80fcca9402d?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80", avatars: ["https://i.pravatar.cc/150?u=a", "https://i.pravatar.cc/150?u=b"], lng: -73.5620, lat: 45.5050),
-        Group(id: 2, title: "Weekly hangout, ( art, food, ro...", attendees: 7, image: "https://images.unsplash.com/photo-1511632765486-a01980e01a18?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80", avatars: ["https://i.pravatar.cc/150?u=c", "https://i.pravatar.cc/150?u=d", "https://i.pravatar.cc/150?u=e"], lng: -73.5750, lat: 45.4980)
+    let groups: [Explore] = [
+        Explore(id: 1, title: "Cafés, gym, billiard", attendees: 2, image: "https://images.unsplash.com/photo-1570554886111-e80fcca9402d?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80", avatars: ["https://i.pravatar.cc/150?u=a", "https://i.pravatar.cc/150?u=b"], lng: -73.5620, lat: 45.5050),
+        Explore(id: 2, title: "Weekly hangout, ( art, food, ro...", attendees: 7, image: "https://images.unsplash.com/photo-1511632765486-a01980e01a18?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80", avatars: ["https://i.pravatar.cc/150?u=c", "https://i.pravatar.cc/150?u=d", "https://i.pravatar.cc/150?u=e"], lng: -73.5750, lat: 45.4980)
     ]
     
     let housingSpots: [HousingSpot] = [
-        HousingSpot(id: 1, title: "Sunny Studio in Plateau", price: 1200, currency: "$", period: "mo", image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", rating: 4.8, recommender: "Sarah", recommenderImg: "https://i.pravatar.cc/150?u=sarah", lat: 45.5200, lng: -73.5800, type: "Entire place"),
-        HousingSpot(id: 2, title: "Room in Student Residence", price: 850, currency: "$", period: "mo", image: "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", rating: 4.2, recommender: "John", recommenderImg: "https://i.pravatar.cc/150?u=john", lat: 45.5050, lng: -73.5650, type: "Private room")
+        HousingSpot(
+            id: 1,
+            title: "Sunny Studio in Plateau",
+            description: "Bright studio with large windows, fully furnished, close to cafes and metro.",
+            price: 1200,
+            currency: "$",
+            period: "mo",
+            image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+            photos: [
+                "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+            ],
+            badges: ["Furnished", "Near metro", "Quiet"],
+            rating: 4.8,
+            recommender: "Sarah",
+            recommenderImg: "https://i.pravatar.cc/150?u=sarah",
+            lat: 45.5200,
+            lng: -73.5800,
+            type: "Entire place"
+        ),
+        HousingSpot(
+            id: 2,
+            title: "Room in Student Residence",
+            description: "Private room in a shared student residence, utilities included.",
+            price: 850,
+            currency: "$",
+            period: "mo",
+            image: "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+            photos: [
+                "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+            ],
+            badges: ["Student", "Utilities included"],
+            rating: 4.2,
+            recommender: "John",
+            recommenderImg: "https://i.pravatar.cc/150?u=john",
+            lat: 45.5050,
+            lng: -73.5650,
+            type: "Private room"
+        )
     ]
     
     let roommates: [Roommate] = [
@@ -41,7 +77,7 @@ class AppData {
     
     let chats: [Chat] = [
         Chat(id: 1, title: "Travel group", image: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80", message: "Anyone in Montreal hosting an igloofest aft...", time: "3:05 PM", unread: true, type: .group),
-        Chat(id: 2, title: "Emily", image: "https://i.pravatar.cc/150?u=emily", message: "Hey! Are we still meeting at the cafe?", time: "2:15 PM", unread: false, type: .dm),
+        Chat(id: 2, title: "Emily", image: "IMG_9073", message: "Hey! Are we still meeting at the cafe?", time: "2:15 PM", unread: false, type: .dm),
         Chat(id: 3, title: "John", image: "https://i.pravatar.cc/150?u=john", message: "Sent you the itinerary for the weekend.", time: "Yesterday", unread: true, type: .dm),
         Chat(id: 4, title: "Bali 2026", image: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80", message: "Sarah joined the group!", time: "Yesterday", unread: false, type: .group)
     ]
@@ -60,7 +96,7 @@ class AppData {
             ChatMessage(id: 1, sender: "Alex", senderAvatar: "https://i.pravatar.cc/150?u=alex", text: "Anyone in Montreal hosting an igloofest afterparty?", time: "3:05 PM", color: "blue", isMe: false)
         ],
         2: [
-            ChatMessage(id: 1, sender: "Emily", senderAvatar: "https://i.pravatar.cc/150?u=emily", text: "Hey! Are we still meeting at the cafe?", time: "2:15 PM", color: nil, isMe: false)
+            ChatMessage(id: 1, sender: "Emily", senderAvatar: "IMG_9073", text: "Hey! Are we still meeting at the cafe?", time: "2:15 PM", color: nil, isMe: false)
         ],
         3: [
             ChatMessage(id: 1, sender: "John", senderAvatar: "https://i.pravatar.cc/150?u=john", text: "Sent you the itinerary for the weekend.", time: "Yesterday", color: nil, isMe: false)

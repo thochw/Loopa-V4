@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 enum ChatFilter: String, CaseIterable {
     case all = "All"
@@ -127,23 +128,12 @@ struct ChatsListView: View {
     
     private func chatRow(chat: Chat) -> some View {
         HStack(spacing: 16) {
-            // Enhanced Avatar
-            AsyncImage(url: URL(string: chat.image)) { phase in
-                if let image = phase.image {
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } else if phase.error != nil {
-                    Image(systemName: chat.type == .group ? "person.3.fill" : "person.circle.fill")
-                        .foregroundStyle(.secondary)
-                        .background(.ultraThinMaterial)
-                        .clipShape(Circle())
-                } else {
-                    ProgressView()
-                        .tint(.secondary)
-                }
-            }
-            .frame(width: 60, height: 60)
+        // Enhanced Avatar
+        chatAvatarView(
+            image: chat.image,
+            placeholderSystemName: chat.type == .group ? "person.3.fill" : "person.circle.fill"
+        )
+        .frame(width: 60, height: 60)
             .clipShape(Circle())
             .overlay(
                 Circle()
@@ -184,5 +174,35 @@ struct ChatsListView: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
         .contentShape(Rectangle())
+    }
+
+    @ViewBuilder
+    private func chatAvatarView(image: String, placeholderSystemName: String) -> some View {
+        if let url = URL(string: image), url.scheme != nil {
+            AsyncImage(url: url) { phase in
+                if let image = phase.image {
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } else if phase.error != nil {
+                    Image(systemName: placeholderSystemName)
+                        .foregroundStyle(.secondary)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Circle())
+                } else {
+                    ProgressView()
+                        .tint(.secondary)
+                }
+            }
+        } else if let uiImage = UIImage(named: image) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+        } else {
+            Image(systemName: placeholderSystemName)
+                .foregroundStyle(.secondary)
+                .background(.ultraThinMaterial)
+                .clipShape(Circle())
+        }
     }
 }

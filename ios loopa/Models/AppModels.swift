@@ -33,8 +33,8 @@ struct User: Identifiable, Codable {
     }
 }
 
-// MARK: - Group Model
-struct Group: Identifiable, Codable {
+// MARK: - Explore Model
+struct Explore: Identifiable, Codable {
     let id: Int
     let title: String
     let attendees: Int
@@ -52,10 +52,13 @@ struct Group: Identifiable, Codable {
 struct HousingSpot: Identifiable, Codable {
     let id: Int
     let title: String
+    let description: String
     let price: Int
     let currency: String
     let period: String
     let image: String
+    let photos: [String]
+    let badges: [String]
     let rating: Double
     let recommender: String
     let recommenderImg: String

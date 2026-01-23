@@ -41,20 +41,27 @@ struct MainTabView: View {
     @State private var selectedChat: Chat?
     @State private var showCelebration = false
     @State private var preselectedCreateType: CreateGroupEventView.CreationType? = nil
+    private let data = AppData.shared
     
     var body: some View {
         ZStack {
             // Main Content with smooth transitions
             if selectedUser != nil {
-                ProfileView(user: selectedUser!) {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                ProfileView(user: selectedUser!, onBack: {
+                    withAnimation(.interactiveSpring(response: 0.45, dampingFraction: 0.9, blendDuration: 0.15)) {
                         selectedUser = nil
                     }
-                }
+                }, onMessage: { user in
+                    let chat = chatForUser(user)
+                    withAnimation(.interactiveSpring(response: 0.45, dampingFraction: 0.9, blendDuration: 0.15)) {
+                        selectedUser = nil
+                        selectedChat = chat
+                    }
+                })
                 .transition(.move(edge: .trailing).combined(with: .opacity))
             } else if selectedChat != nil {
                 ChatDetailView(chat: selectedChat!) {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    withAnimation(.interactiveSpring(response: 0.45, dampingFraction: 0.9, blendDuration: 0.15)) {
                         selectedChat = nil
                     }
                 }
@@ -62,7 +69,6 @@ struct MainTabView: View {
             } else {
                 contentView(for: selectedTab)
                     .id(selectedTab) // Force view refresh on tab change
-                    .transition(.opacity)
             }
             
             // Bottom Navigation Bar with safe area support
@@ -77,7 +83,6 @@ struct MainTabView: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: selectedTab)
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .sheet(item: $preselectedCreateType) { type in
             CreateGroupEventView(
@@ -87,8 +92,8 @@ struct MainTabView: View {
             .presentationDetents([.fraction(0.65)])
             .presentationDragIndicator(.visible)
             .presentationCornerRadius(28)
-            .safeAreaPadding(.top, -100)
-            .safeAreaPadding(.bottom, 16)
+            .safeAreaPadding(.top, 120)
+            .safeAreaPadding(.bottom, 400) // Space from bottom of iPhone
         }
         .celebrationOverlay(show: $showCelebration)
     }
@@ -106,7 +111,17 @@ struct MainTabView: View {
                 },
                 onAddGroupClick: { createType in
                     if let type = createType {
-                        preselectedCreateType = type == .group ? .group : .event
+                        if type == .group {
+                            preselectedCreateType = .group
+                        }
+                    }
+                },
+                onJoinGroupChat: { group in
+                    let chat = chatForGroup(group)
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        selectedUser = nil
+                        selectedTab = .chats
+                        selectedChat = chat
                     }
                 }
             )
@@ -120,9 +135,12 @@ struct MainTabView: View {
                 },
                 onAddGroupClick: { createType in
                     if let type = createType {
-                        preselectedCreateType = type == .group ? .group : .event
+                        if type == .group {
+                            preselectedCreateType = .group
+                        }
                     }
-                }
+                },
+                onJoinGroupChat: { _ in }
             )
         case .housing:
             HousingView()
@@ -139,9 +157,7 @@ struct MainTabView: View {
         HStack(spacing: 0) {
             ForEach(AppTab.allCases, id: \.self) { tab in
                 Button(action: {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        selectedTab = tab
-                    }
+                    selectedTab = tab
                 }) {
                     VStack(spacing: 4) {
                         ZStack(alignment: .topTrailing) {
@@ -153,13 +169,7 @@ struct MainTabView: View {
                                 )
                                 .scaleEffect(selectedTab == tab ? 1.1 : 1.0)
                             
-                            // Notification badge for map tab
-                            if tab == .map {
-                                Circle()
-                                    .fill(Color.red)
-                                    .frame(width: 8, height: 8)
-                                    .offset(x: 8, y: -4)
-                            }
+                            // Notification badge removed
                         }
                         
                         Text(tabLabel(for: tab))
@@ -181,8 +191,8 @@ struct MainTabView: View {
             .ultraThinMaterial,
             in: Capsule()
         )
-        .glassEffect(.regular, in: Capsule())
-        .shadow(color: .black.opacity(0.1), radius: 10, y: 4)
+        .glassEffect(.regular.interactive(), in: Capsule())
+        .shadow(color: .black.opacity(0.12), radius: 14, y: 6)
     }
     
     private func iconName(for tab: AppTab) -> String {
@@ -201,5 +211,43 @@ struct MainTabView: View {
         case .housing: return "Housing"
         case .chats: return "Messages"
         }
+    }
+
+    private func chatForUser(_ user: User) -> Chat {
+        if let existing = data.chats.first(where: {
+            $0.type == .dm &&
+            ($0.title.caseInsensitiveCompare(user.name) == .orderedSame || $0.image == user.image)
+        }) {
+            return existing
+        }
+
+        return Chat(
+            id: 1000 + user.id,
+            title: user.name,
+            image: user.image,
+            message: "Say hi to \(user.name)",
+            time: "Now",
+            unread: false,
+            type: .dm
+        )
+    }
+
+    private func chatForGroup(_ group: Explore) -> Chat {
+        if let existing = data.chats.first(where: {
+            $0.type == .group &&
+            ($0.title.caseInsensitiveCompare(group.title) == .orderedSame || $0.image == group.image)
+        }) {
+            return existing
+        }
+
+        return Chat(
+            id: 2000 + group.id,
+            title: group.title,
+            image: group.image,
+            message: "Joined \(group.title)",
+            time: "Now",
+            unread: false,
+            type: .group
+        )
     }
 }

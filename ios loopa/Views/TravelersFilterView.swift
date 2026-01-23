@@ -12,19 +12,29 @@ struct TravelersFilterView: View {
     
     // Filter states
     @State private var selectedGenders: Set<String> = []
-    @State private var selectedAgeRange: String = "all ages"
-    @State private var selectedLifestyle: String = "all lifestyles"
+    @State private var selectedAgeRange: String = "All Ages"
+    @State private var selectedLifestyle: String = "All Lifestyles"
+    @State private var selectedNationalities: Set<String> = []
+    @State private var showNationalities = false
     
-    private let genders = ["men", "women"]
-    private let ageRanges = ["all ages", "18-25", "26-35", "36-45", "46-55", "56+"]
+    private let genders = ["Men", "Women"]
+    private let ageRanges = ["All Ages", "18-25", "26-35", "36-45", "46-55", "56+"]
+    private let nationalities: [(name: String, flag: String)] = [
+        ("Canada", "🇨🇦"),
+        ("United States", "🇺🇸"),
+        ("France", "🇫🇷"),
+        ("United Kingdom", "🇬🇧"),
+        ("Australia", "🇦🇺"),
+        ("Germany", "🇩🇪")
+    ]
     private let lifestyles: [(name: String, emoji: String)] = [
-        ("all lifestyles", "⭐️"),
-        ("backpacking", "🎒"),
-        ("digital nomad", "💻"),
-        ("gap year", "👋"),
-        ("studying abroad", "📚"),
-        ("living abroad", "🏠"),
-        ("au pair", "🤹")
+        ("All Lifestyles", "⭐️"),
+        ("Backpacking", "🎒"),
+        ("Digital Nomad", "💻"),
+        ("Gap Year", "👋"),
+        ("Studying Abroad", "📚"),
+        ("Living Abroad", "🏠"),
+        ("Au Pair", "🤹")
     ]
     
     var body: some View {
@@ -38,11 +48,11 @@ struct TravelersFilterView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("filters")
+                                Text("Filters")
                                     .font(.system(size: 34, weight: .bold))
                                     .foregroundStyle(.primary)
                                 
-                                Text("customize what type of travelers you see")
+                                Text("Customize What Type of Travelers You See")
                                     .font(.system(size: 15, weight: .regular))
                                     .foregroundStyle(.secondary)
                             }
@@ -69,7 +79,7 @@ struct TravelersFilterView: View {
                     ScrollView {
                         VStack(spacing: 20) {
                             // Gender Section
-                            filterCard(title: "gender", currentState: getGenderState()) {
+                            filterCard(title: "Gender", currentState: getGenderState()) {
                                 VStack(spacing: 12) {
                                     ForEach(genders, id: \.self) { gender in
                                         genderRow(gender: gender)
@@ -78,7 +88,7 @@ struct TravelersFilterView: View {
                             }
                             
                             // Age Range Section
-                            filterCard(title: "age range", currentState: selectedAgeRange == "all ages" ? "showing all ages" : "showing ages \(selectedAgeRange)") {
+                            filterCard(title: "Age Range", currentState: selectedAgeRange == "All Ages" ? "Showing All Ages" : "Showing Ages \(selectedAgeRange)") {
                                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                                     ForEach(ageRanges, id: \.self) { age in
                                         ageButton(age: age)
@@ -86,8 +96,44 @@ struct TravelersFilterView: View {
                                 }
                             }
                             
+                            // Nationalities Section
+                            filterCard(title: "Nationalities", currentState: getNationalityState()) {
+                                VStack(spacing: 12) {
+                                    Button(action: {
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                            showNationalities.toggle()
+                                        }
+                                    }) {
+                                        HStack {
+                                            Text("Select countries")
+                                                .font(.system(size: 16, weight: .semibold))
+                                                .foregroundStyle(.primary)
+                                            
+                                            Spacer()
+                                            
+                                            Image(systemName: showNationalities ? "chevron.up" : "chevron.down")
+                                                .font(.system(size: 14, weight: .semibold))
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        .padding(.vertical, 12)
+                                        .padding(.horizontal, 16)
+                                        .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                    }
+                                    .buttonStyle(.plain)
+                                    
+                                    if showNationalities {
+                                        VStack(spacing: 10) {
+                                            ForEach(nationalities, id: \.name) { nationality in
+                                                nationalityRow(nationality: nationality.name, flag: nationality.flag)
+                                            }
+                                        }
+                                        .transition(.opacity.combined(with: .move(edge: .top)))
+                                    }
+                                }
+                            }
+                            
                             // Travel Lifestyle Section
-                            filterCard(title: "travel lifestyle", currentState: selectedLifestyle == "all lifestyles" ? "showing all traveler types" : "showing \(selectedLifestyle)") {
+                            filterCard(title: "Travel Lifestyle", currentState: selectedLifestyle == "All Lifestyles" ? "Showing All Traveler Types" : "Showing \(selectedLifestyle)") {
                                 VStack(spacing: 10) {
                                     ForEach(lifestyles, id: \.name) { lifestyle in
                                         lifestyleButton(lifestyle: lifestyle.name, emoji: lifestyle.emoji)
@@ -107,10 +153,11 @@ struct TravelersFilterView: View {
                             Button(action: {
                                 // Reset all filters
                                 selectedGenders.removeAll()
-                                selectedAgeRange = "all ages"
-                                selectedLifestyle = "all lifestyles"
+                                selectedAgeRange = "All Ages"
+                                selectedLifestyle = "All Lifestyles"
+                                selectedNationalities.removeAll()
                             }) {
-                                Text("reset")
+                                Text("Reset")
                                     .font(.system(size: 17, weight: .semibold))
                                     .foregroundStyle(.red)
                                     .frame(maxWidth: .infinity)
@@ -122,12 +169,12 @@ struct TravelersFilterView: View {
                                 // Apply filters and dismiss
                                 dismiss()
                             }) {
-                                Text("apply")
+                                Text("Apply")
                                     .font(.system(size: 17, weight: .semibold))
                                     .foregroundStyle(.white)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 16)
-                                    .background(Color.primary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                    .background(Color.appAccent, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                             }
                             .buttonStyle(.plain)
                         }
@@ -139,6 +186,7 @@ struct TravelersFilterView: View {
             }
             .navigationBarHidden(true)
         }
+        .tint(Color.appAccent)
     }
     
     private func filterCard<Content: View>(title: String, currentState: String, @ViewBuilder content: () -> Content) -> some View {
@@ -170,7 +218,7 @@ struct TravelersFilterView: View {
             }
         }) {
             HStack {
-                Text(gender == "men" ? "🙋‍♂️" : "🙆‍♀️")
+                Text(gender.lowercased() == "men" ? "🙋‍♂️" : "🙆‍♀️")
                     .font(.system(size: 20))
                 
                 Text(gender)
@@ -210,7 +258,7 @@ struct TravelersFilterView: View {
                 .background(
                     selectedAgeRange == age
                         ? LinearGradient(
-                            colors: [Color.blue, Color.blue.opacity(0.8)],
+                            colors: [Color.appAccent, Color.appAccent.opacity(0.85)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -228,6 +276,41 @@ struct TravelersFilterView: View {
                             lineWidth: 1
                         )
                 )
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private func nationalityRow(nationality: String, flag: String) -> some View {
+        Button(action: {
+            if selectedNationalities.contains(nationality) {
+                selectedNationalities.remove(nationality)
+            } else {
+                selectedNationalities.insert(nationality)
+            }
+        }) {
+            HStack {
+                Text(flag)
+                    .font(.system(size: 20))
+                
+                Text(nationality)
+                    .font(.system(size: 17, weight: .regular))
+                    .foregroundStyle(.primary)
+                
+                Spacer()
+                
+                if selectedNationalities.contains(nationality) {
+                    Image(systemName: "checkmark.square.fill")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(.tint)
+                } else {
+                    Image(systemName: "square")
+                        .font(.system(size: 22, weight: .regular))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 16)
+            .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -251,9 +334,9 @@ struct TravelersFilterView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
             .background(
-                selectedLifestyle == lifestyle
+                    selectedLifestyle == lifestyle
                     ? LinearGradient(
-                        colors: [Color.blue, Color.blue.opacity(0.8)],
+                        colors: [Color.appAccent, Color.appAccent.opacity(0.85)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -277,11 +360,21 @@ struct TravelersFilterView: View {
     
     private func getGenderState() -> String {
         if selectedGenders.isEmpty {
-            return "showing everybody"
+            return "Showing Everybody"
         } else if selectedGenders.count == 2 {
-            return "showing everybody"
+            return "Showing Everybody"
         } else {
-            return "showing \(selectedGenders.first ?? "")"
+            return "Showing \(selectedGenders.first ?? "")"
         }
+    }
+    
+    private func getNationalityState() -> String {
+        if selectedNationalities.isEmpty {
+            return "Showing All Nationalities"
+        }
+        if selectedNationalities.count == 1, let nationality = selectedNationalities.first {
+            return "Showing \(nationality)"
+        }
+        return "Showing \(selectedNationalities.count) Nationalities"
     }
 }

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct ChatDetailView: View {
     let chat: Chat
@@ -33,22 +34,11 @@ struct ChatDetailView: View {
                 }
                 .buttonStyle(.plain)
                 
-                // Enhanced Avatar
-                AsyncImage(url: URL(string: chat.image)) { phase in
-                    if let image = phase.image {
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } else if phase.error != nil {
-                        Image(systemName: chat.type == .group ? "person.3.fill" : "person.circle.fill")
-                            .foregroundStyle(.secondary)
-                            .background(.ultraThinMaterial)
-                            .clipShape(Circle())
-                    } else {
-                        ProgressView()
-                            .tint(.secondary)
-                    }
-                }
+            // Enhanced Avatar
+            chatAvatarView(
+                image: chat.image,
+                placeholderSystemName: chat.type == .group ? "person.3.fill" : "person.circle.fill"
+            )
                 .frame(width: 44, height: 44)
                 .clipShape(Circle())
                 .overlay(Circle().strokeBorder(.quaternary, lineWidth: 1))
@@ -208,19 +198,45 @@ struct ChatDetailView: View {
             .clipShape(Capsule())
             .frame(maxWidth: .infinity)
     }
+
+    @ViewBuilder
+    private func chatAvatarView(image: String, placeholderSystemName: String) -> some View {
+        if let url = URL(string: image), url.scheme != nil {
+            AsyncImage(url: url) { phase in
+                if let image = phase.image {
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } else if phase.error != nil {
+                    Image(systemName: placeholderSystemName)
+                        .foregroundStyle(.secondary)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Circle())
+                } else {
+                    ProgressView()
+                        .tint(.secondary)
+                }
+            }
+        } else if let uiImage = UIImage(named: image) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+        } else {
+            Image(systemName: placeholderSystemName)
+                .foregroundStyle(.secondary)
+                .background(.ultraThinMaterial)
+                .clipShape(Circle())
+        }
+    }
     
     @ViewBuilder
     private func messageBubble(message: ChatMessage) -> some View {
         HStack(alignment: .top, spacing: 12) {
             if !message.isMe {
-                AsyncImage(url: URL(string: message.senderAvatar)) { image in
-                    image.resizable()
-                } placeholder: {
-                    Color.gray.opacity(0.3)
-                }
-                .frame(width: 36, height: 36)
-                .clipShape(Circle())
-                .offset(y: 24)
+                chatAvatarView(image: message.senderAvatar, placeholderSystemName: "person.circle.fill")
+                    .frame(width: 36, height: 36)
+                    .clipShape(Circle())
+                    .offset(y: 24)
             }
             
             VStack(alignment: message.isMe ? .trailing : .leading, spacing: 4) {
