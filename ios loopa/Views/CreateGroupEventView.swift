@@ -98,7 +98,7 @@ struct CreateGroupFlowView: View {
                             }
                         }) {
                             Text("Back")
-                                .font(.system(size: 17, weight: .semibold))
+                                .font(.app(size: 17, weight: .semibold))
                                 .foregroundStyle(.primary)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 16)
@@ -115,7 +115,7 @@ struct CreateGroupFlowView: View {
                         }
                     }) {
                         Text(currentStep == .location ? "Create" : "Next")
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.app(size: 17, weight: .semibold))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
@@ -197,16 +197,16 @@ struct CreateGroupFlowView: View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Name this group")
-                    .font(.system(size: 20, weight: .bold))
+                    .font(.app(size: 20, weight: .bold))
                     .foregroundStyle(.primary)
                 
                 Text("Pick a memorable title for this spot")
-                    .font(.system(size: 13, weight: .regular))
+                    .font(.app(size: 13, weight: .regular))
                     .foregroundStyle(.secondary)
             }
             
             TextField("Enter place name", text: $groupName)
-                .font(.system(size: 17, weight: .regular))
+                .font(.app(size: 17, weight: .regular))
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
                     .background(
@@ -220,11 +220,11 @@ struct CreateGroupFlowView: View {
             
             VStack(alignment: .leading, spacing: 6) {
                 Text("Add a photo")
-                    .font(.system(size: 20, weight: .bold))
+                    .font(.app(size: 20, weight: .bold))
                     .foregroundStyle(.primary)
                 
                 Text("Choose a photo that represents this place")
-                    .font(.system(size: 13, weight: .regular))
+                    .font(.app(size: 13, weight: .regular))
                     .foregroundStyle(.secondary)
             }
             
@@ -245,10 +245,10 @@ struct CreateGroupFlowView: View {
                             
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Photo selected")
-                                    .font(.system(size: 15, weight: .semibold))
+                                    .font(.app(size: 15, weight: .semibold))
                                     .foregroundStyle(.primary)
                                 Text("Tap to change")
-                                    .font(.system(size: 13, weight: .regular))
+                                    .font(.app(size: 13, weight: .regular))
                                     .foregroundStyle(.secondary)
                             }
                             
@@ -272,11 +272,11 @@ struct CreateGroupFlowView: View {
                                 .foregroundStyle(Color.appAccent)
                             
                             Text("Tap to add photo")
-                                .font(.system(size: 15, weight: .semibold))
+                                .font(.app(size: 15, weight: .semibold))
                                 .foregroundStyle(Color.appAccent)
                             
                             Text("JPG, PNG or HEIC")
-                                .font(.system(size: 12, weight: .regular))
+                                .font(.app(size: 12, weight: .regular))
                                 .foregroundStyle(.secondary)
                         }
                         .frame(maxWidth: .infinity)
@@ -311,11 +311,11 @@ struct CreateGroupFlowView: View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Choose a category")
-                    .font(.system(size: 20, weight: .bold))
+                    .font(.app(size: 20, weight: .bold))
                     .foregroundStyle(.primary)
                 
                 Text("What's your group about?")
-                    .font(.system(size: 13, weight: .regular))
+                    .font(.app(size: 13, weight: .regular))
                     .foregroundStyle(.secondary)
             }
             
@@ -329,10 +329,10 @@ struct CreateGroupFlowView: View {
                     }) {
                         HStack(spacing: 6) {
                             Text(category.emoji)
-                                .font(.system(size: 16))
+                                .font(.app(size: 16))
                             
                             Text(category.name)
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.app(size: 14, weight: .semibold))
                                 .foregroundStyle(selectedCategory == category.name ? .white : .primary)
                         }
                         .padding(.horizontal, 14)
@@ -361,11 +361,11 @@ struct CreateGroupFlowView: View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Choose a location")
-                    .font(.system(size: 20, weight: .bold))
+                    .font(.app(size: 20, weight: .bold))
                     .foregroundStyle(.primary)
                 
                 Text("Pin your group's location on the map")
-                    .font(.system(size: 13, weight: .regular))
+                    .font(.app(size: 13, weight: .regular))
                     .foregroundStyle(.secondary)
             }
             
@@ -439,7 +439,7 @@ struct LocationPickerMapView: View {
                     selectedLocation = region.center
                 }) {
                     Text("Select This Location")
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.app(size: 17, weight: .semibold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 24)
                         .padding(.vertical, 14)

@@ -70,11 +70,11 @@ struct ProfileEditorView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
                         Text(profileName)
-                            .font(.system(size: 22, weight: .bold))
+                            .font(.app(size: 22, weight: .bold))
                             .foregroundStyle(.primary)
                             .lineLimit(1)
                         Text(profileFlag)
-                            .font(.system(size: 18))
+                            .font(.app(size: 18))
                     }
                     verificationPill
                 }
@@ -84,7 +84,7 @@ struct ProfileEditorView: View {
                 Button(action: {}) {
                     HStack(spacing: 6) {
                         Text("Edit Profile")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.app(size: 14, weight: .semibold))
                         Image(systemName: "chevron.right")
                             .font(.system(size: 12, weight: .semibold))
                     }
@@ -111,7 +111,7 @@ struct ProfileEditorView: View {
         VStack(spacing: 12) {
             HStack {
                 Text("Groups you Joined")
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.app(size: 18, weight: .bold))
                     .foregroundStyle(.primary)
                 Spacer()
                 Button(action: {
@@ -119,7 +119,7 @@ struct ProfileEditorView: View {
                 }) {
                     HStack(spacing: 6) {
                         Text("See all")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.app(size: 14, weight: .semibold))
                         Image(systemName: "chevron.right")
                             .font(.system(size: 12, weight: .semibold))
                     }
@@ -143,7 +143,7 @@ struct ProfileEditorView: View {
         VStack(spacing: 12) {
             HStack {
                 Text("My Friends")
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.app(size: 18, weight: .bold))
                     .foregroundStyle(.primary)
                 Spacer()
                 Button(action: {
@@ -151,7 +151,7 @@ struct ProfileEditorView: View {
                 }) {
                     HStack(spacing: 6) {
                         Text("See all")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.app(size: 14, weight: .semibold))
                         Image(systemName: "chevron.right")
                             .font(.system(size: 12, weight: .semibold))
                     }
@@ -168,10 +168,10 @@ struct ProfileEditorView: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("No Friends Yet")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.app(size: 16, weight: .semibold))
                         .foregroundStyle(.primary)
                     Text("You haven't made any friends")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.app(size: 13, weight: .medium))
                         .foregroundStyle(.secondary)
                 }
 
@@ -189,7 +189,7 @@ struct ProfileEditorView: View {
             Image(systemName: "checkmark.seal.fill")
                 .font(.system(size: 12, weight: .bold))
             Text("Not Verified")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.app(size: 12, weight: .semibold))
                 .lineLimit(1)
                 .minimumScaleFactor(0.9)
         }
@@ -203,10 +203,10 @@ struct ProfileEditorView: View {
     private func statCard(value: String, title: String) -> some View {
         VStack(spacing: 6) {
             Text(value)
-                .font(.system(size: 18, weight: .bold))
+                .font(.app(size: 18, weight: .bold))
                 .foregroundStyle(.primary)
             Text(title)
-                .font(.system(size: 12, weight: .medium))
+                .font(.app(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
@@ -232,10 +232,10 @@ struct ProfileEditorView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(group.title)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.app(size: 16, weight: .semibold))
                     .foregroundStyle(.primary)
                 Text("\(group.attendees) members")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.app(size: 13, weight: .medium))
                     .foregroundStyle(.secondary)
             }
 
@@ -260,16 +260,16 @@ struct ProfileEditorView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(friend.name)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.app(size: 16, weight: .semibold))
                     .foregroundStyle(.primary)
                 Text(friend.flag)
-                    .font(.system(size: 13))
+                    .font(.app(size: 13))
             }
 
             Spacer()
 
             Text(friend.distance)
-                .font(.system(size: 13, weight: .medium))
+                .font(.app(size: 13, weight: .medium))
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, 8)
@@ -293,7 +293,7 @@ struct ProfileEditorView: View {
                     Image(systemName: "checkmark")
                         .font(.system(size: 11, weight: .bold))
                     Text("Joined")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.app(size: 11, weight: .semibold))
                 }
                 .foregroundStyle(.white)
                 .padding(.horizontal, 10)
@@ -303,7 +303,7 @@ struct ProfileEditorView: View {
             }
 
             Text(group.title)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.app(size: 15, weight: .semibold))
                 .foregroundStyle(.primary)
                 .lineLimit(2)
                 .frame(height: 40, alignment: .top)
@@ -313,7 +313,7 @@ struct ProfileEditorView: View {
             HStack(spacing: 8) {
                 Text("🇮🇩")
                 Text("Indonesia")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.app(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
                 Spacer()
                 avatarStack(group.avatars)
@@ -385,10 +385,10 @@ private struct AllGroupsListView: View {
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text(group.title)
-                                .font(.system(size: 16, weight: .semibold))
+                                .font(.app(size: 16, weight: .semibold))
                                 .foregroundStyle(.primary)
                             Text("\(group.attendees) members")
-                                .font(.system(size: 13, weight: .medium))
+                                .font(.app(size: 13, weight: .medium))
                                 .foregroundStyle(.secondary)
                         }
 
@@ -396,7 +396,7 @@ private struct AllGroupsListView: View {
 
                         Button(action: {}) {
                             Text("Open")
-                                .font(.system(size: 13, weight: .semibold))
+                                .font(.app(size: 13, weight: .semibold))
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
@@ -439,17 +439,17 @@ private struct AllFriendsListView: View {
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text(friend.name)
-                                .font(.system(size: 16, weight: .semibold))
+                                .font(.app(size: 16, weight: .semibold))
                                 .foregroundStyle(.primary)
                             Text(friend.flag)
-                                .font(.system(size: 13))
+                                .font(.app(size: 13))
                         }
 
                         Spacer()
 
                         Button(action: {}) {
                             Text("Message")
-                                .font(.system(size: 13, weight: .semibold))
+                                .font(.app(size: 13, weight: .semibold))
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)

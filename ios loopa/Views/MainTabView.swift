@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 extension Color {
     static let appAccent = Color(hex: "fe3c5d")
@@ -187,19 +188,13 @@ struct MainTabView: View {
                 }) {
                     VStack(spacing: 4) {
                         ZStack(alignment: .topTrailing) {
-                            Image(systemName: iconName(for: tab))
-                                .font(.system(size: 22, weight: .bold))
-                                .symbolVariant(selectedTab == tab ? .fill : .none)
-                                .foregroundStyle(
-                                    selectedTab == tab ? Color.appAccent : Color.black
-                                )
-                                .scaleEffect(selectedTab == tab ? 1.1 : 1.0)
+                            tabIcon(for: tab)
                             
                             // Notification badge removed
                         }
                         
                         Text(tabLabel(for: tab))
-                            .font(.system(size: 11, weight: selectedTab == tab ? .semibold : .medium))
+                            .font(.app(size: 11, weight: selectedTab == tab ? .semibold : .medium))
                             .foregroundStyle(
                                 selectedTab == tab ? Color.appAccent : Color.black
                             )
@@ -225,8 +220,8 @@ struct MainTabView: View {
         switch tab {
         case .explore: return "globe.americas"
         case .map: return "person.2"
-        case .housing: return "house"
-        case .chats: return "message"
+        case .housing: return "airplane"
+        case .chats: return "bubble.left.and.bubble.right"
         }
     }
     
@@ -234,8 +229,29 @@ struct MainTabView: View {
         switch tab {
         case .explore: return "Explore"
         case .map: return "Friends"
-        case .housing: return "Housing"
-        case .chats: return "Messages"
+        case .housing: return "Trips"
+        case .chats: return "DMs"
+        }
+    }
+
+    @ViewBuilder
+    private func tabIcon(for tab: AppTab) -> some View {
+        let isSelected = selectedTab == tab
+
+        if tab == .chats, UIImage(named: "DMsIcon") != nil {
+            Image("DMsIcon")
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 22, height: 22)
+                .foregroundStyle(isSelected ? Color.appAccent : Color.black)
+                .scaleEffect(isSelected ? 1.1 : 1.0)
+        } else {
+            Image(systemName: iconName(for: tab))
+                .font(.system(size: 22, weight: .bold))
+                .symbolVariant(isSelected ? .fill : .none)
+                .foregroundStyle(isSelected ? Color.appAccent : Color.black)
+                .scaleEffect(isSelected ? 1.1 : 1.0)
         }
     }
 

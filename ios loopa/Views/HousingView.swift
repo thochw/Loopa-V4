@@ -125,7 +125,7 @@ struct HousingView: View {
     private var myTripHeader: some View {
         HStack {
             Text("My trip")
-                .font(.system(size: 24, weight: .bold))
+                .font(.app(size: 24, weight: .bold))
                 .foregroundStyle(.primary)
 
             Spacer()
@@ -160,7 +160,7 @@ struct HousingView: View {
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(.secondary)
                         Text("Start my search")
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.app(size: 15, weight: .semibold))
                             .foregroundStyle(.secondary)
                         Spacer()
                     }
@@ -250,7 +250,7 @@ struct HousingView: View {
                     Image(systemName: "plus")
                         .font(.system(size: 15, weight: .semibold))
                     Text("Add new recommendation")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.app(size: 15, weight: .semibold))
                 }
                 .foregroundStyle(Color.appAccent)
                 .frame(maxWidth: .infinity)
@@ -279,12 +279,12 @@ struct HousingView: View {
     private func sectionHeader(title: String, actionText: String, action: @escaping () -> Void) -> some View {
         HStack {
             Text(title)
-                .font(.system(size: 18, weight: .bold))
+                .font(.app(size: 18, weight: .bold))
                 .foregroundStyle(.primary)
             Spacer()
             Button(action: action) {
                 Text(actionText)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.app(size: 14, weight: .semibold))
                     .foregroundStyle(Color.appAccent)
             }
             .buttonStyle(.plain)
@@ -321,18 +321,18 @@ struct HousingView: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Text("🌍 \(trip.destination)")
-                        .font(.system(size: 16, weight: .bold))
+                        .font(.app(size: 16, weight: .bold))
                         .foregroundStyle(.white)
                     Spacer()
                     Text(dateLabel.uppercased())
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.app(size: 11, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.9))
                 }
 
                 HStack(spacing: 8) {
                     avatarStack(images: Array(avatarImages))
                     Text(statusText ?? "+\(countdown) days")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.app(size: 12, weight: .semibold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
@@ -365,11 +365,11 @@ struct HousingView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(spot.title)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.app(size: 15, weight: .semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                 Text(spot.type)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.app(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
             }
 
@@ -378,7 +378,7 @@ struct HousingView: View {
             HStack(spacing: -6) {
                 avatarStack(images: Array(data.users.prefix(3).map(\.image)))
                 Text("\(max(20, Int(spot.rating * 50)))+")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.app(size: 11, weight: .semibold))
                     .foregroundStyle(.primary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 6)
@@ -406,10 +406,10 @@ struct HousingView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("\(roommate.name), \(roommate.age)")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.app(size: 15, weight: .semibold))
                     .foregroundStyle(.primary)
                 Text("Move in \(roommate.moveIn)")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.app(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
             }
 
@@ -419,7 +419,7 @@ struct HousingView: View {
                 onMessageRoommate?(roommate)
             }) {
                 Text("Say hello 👋")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.app(size: 12, weight: .semibold))
                     .foregroundStyle(Color.appAccent)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
@@ -502,7 +502,7 @@ struct HousingView: View {
                 VStack(spacing: 16) {
                     HStack {
                         Text("New trip")
-                            .font(.system(size: 24, weight: .bold))
+                            .font(.app(size: 24, weight: .bold))
                             .foregroundStyle(.primary)
                         Spacer()
                         Button(action: onClose) {
@@ -517,7 +517,7 @@ struct HousingView: View {
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Destination")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.app(size: 14, weight: .semibold))
                             .foregroundStyle(.secondary)
                         
                         if let selected = selectedDestination {
@@ -527,7 +527,7 @@ struct HousingView: View {
                                     .font(.system(size: 16))
                                     .foregroundStyle(Color.appAccent)
                                 Text(selected)
-                                    .font(.system(size: 15, weight: .medium))
+                                    .font(.app(size: 15, weight: .medium))
                                     .foregroundStyle(.primary)
                                 Spacer()
                                 Button(action: {
@@ -584,11 +584,11 @@ struct HousingView: View {
                                                     .foregroundStyle(Color.appAccent)
                                                 VStack(alignment: .leading, spacing: 2) {
                                                     Text(result.title)
-                                                        .font(.system(size: 15, weight: .medium))
+                                                        .font(.app(size: 15, weight: .medium))
                                                         .foregroundStyle(.primary)
                                                     if !result.subtitle.isEmpty {
                                                         Text(result.subtitle)
-                                                            .font(.system(size: 13))
+                                                            .font(.app(size: 13))
                                                             .foregroundStyle(.secondary)
                                                     }
                                                 }
@@ -614,7 +614,7 @@ struct HousingView: View {
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Dates")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.app(size: 14, weight: .semibold))
                             .foregroundStyle(.secondary)
                         DatePicker("Start", selection: $startDate, displayedComponents: .date)
                             .datePickerStyle(.compact)
@@ -624,7 +624,7 @@ struct HousingView: View {
 
                     Button(action: createTrip) {
                         Text("Add trip")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.app(size: 16, weight: .semibold))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
@@ -740,11 +740,11 @@ struct HousingView: View {
 
                     VStack(alignment: .leading, spacing: 6) {
                         Text(destinationTitle)
-                            .font(.system(size: 20, weight: .bold))
+                            .font(.app(size: 20, weight: .bold))
                             .foregroundStyle(.white)
 
                         Text(destinationSubtitle)
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.app(size: 14, weight: .medium))
                             .foregroundStyle(.white.opacity(0.9))
                     }
                     .padding(14)
@@ -752,7 +752,7 @@ struct HousingView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
 
                 Text(dateLabel)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.app(size: 12, weight: .semibold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
@@ -775,7 +775,7 @@ struct HousingView: View {
                             onDelete()
                         }) {
                             Label("Delete trip", systemImage: "trash")
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.app(size: 14, weight: .semibold))
                         }
                         .buttonStyle(.plain)
                     }
@@ -952,7 +952,7 @@ struct HousingView: View {
                     Image(systemName: sheetState == .full ? "map.fill" : "list.bullet")
                         .font(.system(size: 14, weight: .semibold))
                     Text(sheetState == .full ? "Map" : "Show list")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.app(size: 14, weight: .semibold))
                 }
                 .foregroundStyle(.white)
                 .padding(.horizontal, 20)
@@ -976,11 +976,11 @@ struct HousingView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Text(tripTitle)
-                            .font(.system(size: 22, weight: .bold))
+                            .font(.app(size: 22, weight: .bold))
                             .foregroundStyle(.primary)
                         Spacer()
                         Text(tripSubtitle)
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.app(size: 14, weight: .semibold))
                             .foregroundStyle(.secondary)
                     }
 
@@ -989,7 +989,7 @@ struct HousingView: View {
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(.secondary)
                         Text(tripDateLabel)
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.app(size: 14, weight: .semibold))
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -1003,7 +1003,7 @@ struct HousingView: View {
                                 Image(systemName: "slider.horizontal.3")
                                     .font(.system(size: 13, weight: .semibold))
                                 Text("Filters")
-                                    .font(.system(size: 13, weight: .semibold))
+                                    .font(.app(size: 13, weight: .semibold))
                             }
                             .foregroundStyle(.primary)
                             .padding(.horizontal, 14)
@@ -1033,7 +1033,7 @@ struct HousingView: View {
                 // List header
                 HStack {
                     Text("Recommended Housing")
-                        .font(.system(size: 17, weight: .bold))
+                        .font(.app(size: 17, weight: .bold))
                         .foregroundStyle(.primary)
                     Spacer()
                     Button(action: {
@@ -1042,7 +1042,7 @@ struct HousingView: View {
                         }
                     }) {
                         Text("See all")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.app(size: 14, weight: .semibold))
                             .foregroundStyle(Color.appAccent)
                     }
                     .buttonStyle(.plain)
@@ -1100,7 +1100,7 @@ struct HousingView: View {
                     Spacer()
 
                     Text(tripTitle)
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.app(size: 18, weight: .bold))
                         .foregroundStyle(.primary)
 
                     Spacer()
@@ -1143,7 +1143,7 @@ struct HousingView: View {
                 // Results count
                 HStack {
                     Text("\(filteredSpots.count) results")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.app(size: 14, weight: .medium))
                         .foregroundStyle(.secondary)
                     Spacer()
                 }
@@ -1178,7 +1178,7 @@ struct HousingView: View {
         private func filterChip(text: String, onRemove: @escaping () -> Void) -> some View {
             HStack(spacing: 6) {
                 Text(text)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.app(size: 13, weight: .semibold))
                 Button(action: onRemove) {
                     Image(systemName: "xmark")
                         .font(.system(size: 10, weight: .bold))
@@ -1201,7 +1201,7 @@ struct HousingView: View {
                                     .font(.system(size: 18, weight: .semibold))
                                     .foregroundStyle(Color.appAccent)
                                 Text("Type of housing")
-                                    .font(.system(size: 18, weight: .bold))
+                                    .font(.app(size: 18, weight: .bold))
                                     .foregroundStyle(.primary)
                             }
 
@@ -1222,7 +1222,7 @@ struct HousingView: View {
                                     }) {
                                         HStack {
                                             Text(option)
-                                                .font(.system(size: 16, weight: .medium))
+                                                .font(.app(size: 16, weight: .medium))
                                                 .foregroundStyle(.primary)
                                             Spacer()
                                             if (option == "All" && selectedTypeFilters.isEmpty) || selectedTypeFilters.contains(option) {
@@ -1268,7 +1268,7 @@ struct HousingView: View {
                                     .font(.system(size: 18, weight: .semibold))
                                     .foregroundStyle(Color.appAccent)
                                 Text("Price range/month")
-                                    .font(.system(size: 18, weight: .bold))
+                                    .font(.app(size: 18, weight: .bold))
                                     .foregroundStyle(.primary)
                             }
 
@@ -1288,7 +1288,7 @@ struct HousingView: View {
                                         }
                                     }) {
                                         Text(option)
-                                            .font(.system(size: 15, weight: .semibold))
+                                            .font(.app(size: 15, weight: .semibold))
                                             .foregroundStyle(
                                                 (option == "All" && selectedPriceFilters.isEmpty) || selectedPriceFilters.contains(option)
                                                     ? .white 
@@ -1318,7 +1318,7 @@ struct HousingView: View {
                                     .font(.system(size: 18, weight: .semibold))
                                     .foregroundStyle(Color.appAccent)
                                 Text("Minimum rating")
-                                    .font(.system(size: 18, weight: .bold))
+                                    .font(.app(size: 18, weight: .bold))
                                     .foregroundStyle(.primary)
                             }
                             
@@ -1330,7 +1330,7 @@ struct HousingView: View {
                                     }
                                 }) {
                                     Text("All")
-                                        .font(.system(size: 14, weight: .semibold))
+                                        .font(.app(size: 14, weight: .semibold))
                                         .foregroundStyle(selectedRatingFilters.isEmpty ? .white : .primary)
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 12)
@@ -1353,7 +1353,7 @@ struct HousingView: View {
                                     }) {
                                         HStack(spacing: 4) {
                                             Text("\(rating)")
-                                                .font(.system(size: 14, weight: .semibold))
+                                                .font(.app(size: 14, weight: .semibold))
                                             Image(systemName: "star.fill")
                                                 .font(.system(size: 12))
                                         }
@@ -1381,11 +1381,11 @@ struct HousingView: View {
                                         .font(.system(size: 18, weight: .semibold))
                                         .foregroundStyle(Color.appAccent)
                                     Text("Availability")
-                                        .font(.system(size: 18, weight: .bold))
+                                        .font(.app(size: 18, weight: .bold))
                                         .foregroundStyle(.primary)
                                 }
                                 Text("When do you plan to arrive?")
-                                    .font(.system(size: 14, weight: .regular))
+                                    .font(.app(size: 14, weight: .regular))
                                     .foregroundStyle(.secondary)
                             }
                             
@@ -1398,7 +1398,7 @@ struct HousingView: View {
                                 }) {
                                     HStack {
                                         Text("Any date")
-                                            .font(.system(size: 16, weight: .medium))
+                                            .font(.app(size: 16, weight: .medium))
                                             .foregroundStyle(.primary)
                                         Spacer()
                                         if selectedArrivalDate == nil {
@@ -1435,7 +1435,7 @@ struct HousingView: View {
                                 VStack(spacing: 0) {
                                     HStack {
                                         Text("Select arrival date")
-                                            .font(.system(size: 16, weight: .medium))
+                                            .font(.app(size: 16, weight: .medium))
                                             .foregroundStyle(.primary)
                                         Spacer()
                                         DatePicker(
@@ -1481,7 +1481,7 @@ struct HousingView: View {
                         Divider()
                         Button(action: { showFilterSheet = false }) {
                             Text("Show \(filteredSpots.count) results")
-                                .font(.system(size: 16, weight: .semibold))
+                                .font(.app(size: 16, weight: .semibold))
                                 .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 16)
@@ -1513,7 +1513,7 @@ struct HousingView: View {
                                 selectedArrivalDate = nil
                             }
                         }
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.app(size: 15, weight: .semibold))
                         .foregroundStyle(Color.appAccent)
                     }
                 }
@@ -1539,11 +1539,11 @@ struct HousingView: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(spot.title)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.app(size: 15, weight: .semibold))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
                     Text(spot.type)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.app(size: 12, weight: .medium))
                         .foregroundStyle(.secondary)
                 }
 
@@ -1552,7 +1552,7 @@ struct HousingView: View {
                 HStack(spacing: -6) {
                     avatarStack(images: avatarImages)
                     Text("\(max(20, Int(spot.rating * 50)))+")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.app(size: 11, weight: .semibold))
                         .foregroundStyle(.primary)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 6)
@@ -1650,7 +1650,7 @@ struct HousingView: View {
         var body: some View {
             VStack(spacing: 6) {
                 Text(text)
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.app(size: 16, weight: .bold))
                     .foregroundStyle(.primary)
                     .background(
                         GeometryReader { proxy in
@@ -1690,7 +1690,7 @@ struct HousingView: View {
                                 .frame(width: 26, height: 26)
                                 .background(Color.appAccent, in: Circle())
                             Text(item.title)
-                                .font(.system(size: 10, weight: .semibold))
+                                .font(.app(size: 10, weight: .semibold))
                                 .foregroundStyle(.primary)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 3)
@@ -1744,7 +1744,7 @@ struct HousingView: View {
                     .font(.system(size: 13, weight: .medium))
             }
             Text(text)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.app(size: 13, weight: .semibold))
                 .foregroundStyle(isSelected ? .white : .primary)
         }
         .padding(.horizontal, 14)
@@ -1873,7 +1873,7 @@ private struct HousingSearchFlowView: View {
                             HousingSearchTabIcon(tab: tab)
                                 .frame(width: 60, height: 60)
                             Text(tabLabel(for: tab))
-                                .font(.system(size: 12, weight: .semibold))
+                                .font(.app(size: 12, weight: .semibold))
                                 .foregroundStyle(.primary)
                             Capsule()
                                 .fill(activeTab == tab ? Color.appAccent : Color.clear)
@@ -1905,7 +1905,7 @@ private struct HousingSearchFlowView: View {
     private var whereStep: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Where?")
-                .font(.system(size: 22, weight: .bold))
+                .font(.app(size: 22, weight: .bold))
                 .foregroundStyle(.primary)
 
             HStack(spacing: 10) {
@@ -1935,7 +1935,7 @@ private struct HousingSearchFlowView: View {
             .shadow(color: .black.opacity(0.08), radius: 10, y: 6)
 
             Text("Popular destinations")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.app(size: 13, weight: .semibold))
                 .foregroundStyle(.secondary)
 
             VStack(spacing: 10) {
@@ -1951,10 +1951,10 @@ private struct HousingSearchFlowView: View {
                                 .foregroundStyle(Color.appAccent)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(city)
-                                    .font(.system(size: 16, weight: .semibold))
+                                    .font(.app(size: 16, weight: .semibold))
                                     .foregroundStyle(.primary)
                                 Text("Popular option")
-                                    .font(.system(size: 12, weight: .medium))
+                                    .font(.app(size: 12, weight: .medium))
                                     .foregroundStyle(.secondary)
                             }
                             Spacer()
@@ -1976,22 +1976,22 @@ private struct HousingSearchFlowView: View {
     private var whatStep: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("What?")
-                .font(.system(size: 22, weight: .bold))
+                .font(.app(size: 22, weight: .bold))
                 .foregroundStyle(.primary)
 
             if activeTab == .roommates {
                 Text("How many roommates?")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.app(size: 14, weight: .semibold))
                     .foregroundStyle(.secondary)
                 chipGrid(options: roommatesRanges, selection: $selectedRoommatesRange, allowsMultiple: true)
 
                 Text("Roommate preference")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.app(size: 14, weight: .semibold))
                     .foregroundStyle(.secondary)
                 chipGrid(options: roommatesGenders, selection: $selectedRoommatesGender, allowsMultiple: true)
             } else {
                 Text("Type of place")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.app(size: 14, weight: .semibold))
                     .foregroundStyle(.secondary)
                 chipGrid(options: housingTypes, selection: $selectedWhat, allowsMultiple: true)
             }
@@ -2001,7 +2001,7 @@ private struct HousingSearchFlowView: View {
     private var budgetStep: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Budget")
-                .font(.system(size: 22, weight: .bold))
+                .font(.app(size: 22, weight: .bold))
                 .foregroundStyle(.primary)
             chipGrid(options: budgetRanges, selection: $selectedBudget, allowsMultiple: true)
         }
@@ -2011,7 +2011,7 @@ private struct HousingSearchFlowView: View {
         HStack {
             Button(action: resetAll) {
                 Text("Clear all")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.app(size: 14, weight: .semibold))
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
@@ -2029,7 +2029,7 @@ private struct HousingSearchFlowView: View {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 14, weight: .semibold))
                     Text(stepIndex < 2 ? "Next" : "Search")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.app(size: 15, weight: .semibold))
                 }
                 .foregroundStyle(stepIndex < 2 || canSearch ? .white : .secondary)
                 .padding(.horizontal, 20)
@@ -2051,7 +2051,7 @@ private struct HousingSearchFlowView: View {
 
     private func stepChip(title: String, isActive: Bool) -> some View {
         Text(title)
-            .font(.system(size: 12, weight: .semibold))
+            .font(.app(size: 12, weight: .semibold))
             .foregroundStyle(isActive ? .primary : .secondary)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
@@ -2078,7 +2078,7 @@ private struct HousingSearchFlowView: View {
                     }
                 }) {
                     Text(option)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.app(size: 14, weight: .semibold))
                         .foregroundStyle(selection.wrappedValue.contains(option) ? .white : .primary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
@@ -2229,11 +2229,11 @@ private struct CreateHousingListingView: View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(selectedTab == .spots ? "New housing recommendation" : "Find roommates")
-                    .font(.system(size: 22, weight: .bold))
+                    .font(.app(size: 22, weight: .bold))
                     .foregroundStyle(.primary)
                 
                 Text(selectedTab == .spots ? "Share a place you recommend for people moving to a new city" : "Post that you're looking for roommates")
-                    .font(.system(size: 14, weight: .regular))
+                    .font(.app(size: 14, weight: .regular))
                     .foregroundStyle(.secondary)
             }
             
@@ -2277,7 +2277,7 @@ private struct CreateHousingListingView: View {
                     .frame(maxWidth: .infinity)
                 
                 Text("per")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.app(size: 14, weight: .medium))
                     .foregroundStyle(.secondary)
                 
                 periodPicker
@@ -2290,7 +2290,7 @@ private struct CreateHousingListingView: View {
             // Rating
             VStack(alignment: .leading, spacing: 8) {
                 Text("Rating")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.app(size: 14, weight: .semibold))
                     .foregroundStyle(.secondary)
                 
                 HStack(spacing: 8) {
@@ -2311,7 +2311,7 @@ private struct CreateHousingListingView: View {
                     
                     if housingRating > 0 {
                         Text(ratingLabel(for: housingRating))
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.app(size: 14, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -2329,7 +2329,7 @@ private struct CreateHousingListingView: View {
             // Availability / When are you leaving
             VStack(alignment: .leading, spacing: 8) {
                 Text("Next availability")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.app(size: 14, weight: .semibold))
                     .foregroundStyle(.secondary)
                 
                 VStack(spacing: 10) {
@@ -2342,7 +2342,7 @@ private struct CreateHousingListingView: View {
                                 }
                             }) {
                                 Text(status)
-                                    .font(.system(size: 13, weight: .medium))
+                                    .font(.app(size: 13, weight: .medium))
                                     .foregroundStyle(housingAvailabilityStatus == status ? .white : .primary)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 8)
@@ -2359,7 +2359,7 @@ private struct CreateHousingListingView: View {
                     if housingAvailabilityStatus == "Currently living here" {
                         HStack {
                             Text("Leaving on")
-                                .font(.system(size: 14, weight: .medium))
+                                .font(.app(size: 14, weight: .medium))
                                 .foregroundStyle(.secondary)
                             
                             Spacer()
@@ -2374,7 +2374,7 @@ private struct CreateHousingListingView: View {
                                 .font(.system(size: 16))
                                 .foregroundStyle(.green)
                             Text("Available now")
-                                .font(.system(size: 14, weight: .medium))
+                                .font(.app(size: 14, weight: .medium))
                                 .foregroundStyle(.green)
                             Spacer()
                         }
@@ -2391,7 +2391,7 @@ private struct CreateHousingListingView: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Description")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.app(size: 14, weight: .semibold))
                     .foregroundStyle(.secondary)
                 ZStack(alignment: .topLeading) {
                     TextEditor(text: $housingDescription)
@@ -2404,7 +2404,7 @@ private struct CreateHousingListingView: View {
                         )
                     if housingDescription.isEmpty {
                         Text("Describe the place, what's included, and what makes it special.")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.app(size: 13, weight: .medium))
                             .foregroundStyle(.secondary.opacity(0.8))
                             .padding(.horizontal, 16)
                             .padding(.vertical, 16)
@@ -2414,7 +2414,7 @@ private struct CreateHousingListingView: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Photos")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.app(size: 14, weight: .semibold))
                     .foregroundStyle(.secondary)
                 
                 PhotosPicker(
@@ -2428,7 +2428,7 @@ private struct CreateHousingListingView: View {
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(Color.appAccent)
                         Text(selectedImages.isEmpty ? "Select photos" : "\(selectedImages.count) photo\(selectedImages.count > 1 ? "s" : "") selected")
-                            .font(.system(size: 15, weight: .medium))
+                            .font(.app(size: 15, weight: .medium))
                             .foregroundStyle(selectedImages.isEmpty ? .secondary : .primary)
                         Spacer()
                         Image(systemName: "chevron.right")
@@ -2488,7 +2488,7 @@ private struct CreateHousingListingView: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Badges")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.app(size: 14, weight: .semibold))
                     .foregroundStyle(.secondary)
                 badgeGrid(options: housingBadgeOptions, selection: $housingBadgesSelected)
                 formTextField("Custom badges (comma separated)", text: $housingBadgesCustom)
@@ -2513,7 +2513,7 @@ private struct CreateHousingListingView: View {
     private var actionBar: some View {
         Button(action: handleCreate) {
             Text("Publish")
-                .font(.system(size: 16, weight: .semibold))
+                .font(.app(size: 16, weight: .semibold))
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
@@ -2681,7 +2681,7 @@ private struct CreateHousingListingView: View {
                     }
                 }) {
                     Text(option)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.app(size: 13, weight: .semibold))
                         .foregroundStyle(selection.wrappedValue.contains(option) ? .white : .primary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
@@ -2729,7 +2729,7 @@ private struct CreateHousingListingView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .overlay(alignment: .topLeading) {
                     Text("Traveler favorite")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.app(size: 12, weight: .semibold))
                         .foregroundStyle(.primary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
@@ -2758,12 +2758,12 @@ private struct CreateHousingListingView: View {
                 HStack(alignment: .top, spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(spot.title)
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.app(size: 17, weight: .semibold))
                             .foregroundStyle(.primary)
                             .lineLimit(1)
 
                         Text(featureLine)
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.app(size: 12, weight: .medium))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
@@ -2775,22 +2775,22 @@ private struct CreateHousingListingView: View {
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(.yellow)
                         Text(String(format: "%.1f", spot.rating))
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.app(size: 12, weight: .semibold))
                             .foregroundStyle(.primary)
                     }
                 }
 
                 Text(spot.description)
-                    .font(.system(size: 13, weight: .regular))
+                    .font(.app(size: 13, weight: .regular))
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
 
                 HStack(spacing: 6) {
                     Text("\(spot.currency)\(spot.price)")
-                        .font(.system(size: 15, weight: .bold))
+                        .font(.app(size: 15, weight: .bold))
                         .foregroundStyle(.primary)
                     Text("/\(spot.period)")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.app(size: 13, weight: .medium))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -2831,7 +2831,7 @@ private struct CreateHousingListingView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .overlay(alignment: .topLeading) {
                     Text("Roommate request")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.app(size: 12, weight: .semibold))
                         .foregroundStyle(.primary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
@@ -2850,7 +2850,7 @@ private struct CreateHousingListingView: View {
                 HStack(alignment: .top, spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("\(roommate.name), \(roommate.age)")
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.app(size: 17, weight: .semibold))
                             .foregroundStyle(.primary)
 
                         HStack(spacing: 6) {
@@ -2858,7 +2858,7 @@ private struct CreateHousingListingView: View {
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(.secondary)
                             Text(roommate.location)
-                                .font(.system(size: 12, weight: .medium))
+                                .font(.app(size: 12, weight: .medium))
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
                         }
@@ -2867,7 +2867,7 @@ private struct CreateHousingListingView: View {
                     Spacer()
 
                     Text("Move in \(roommate.moveIn)")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.app(size: 12, weight: .semibold))
                         .foregroundStyle(.primary)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 6)
@@ -2895,7 +2895,7 @@ private struct CreateHousingListingView: View {
 
     private func cardTag(text: String) -> some View {
         Text(text)
-            .font(.system(size: 11, weight: .semibold))
+            .font(.app(size: 11, weight: .semibold))
             .foregroundStyle(.secondary)
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
@@ -2972,7 +2972,7 @@ private struct HousingDetailSheet: View {
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(.yellow)
                 Text(String(format: "%.1f", spot.rating))
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.app(size: 13, weight: .semibold))
                     .foregroundStyle(.primary)
             }
             .padding(.horizontal, 10)
@@ -2985,7 +2985,7 @@ private struct HousingDetailSheet: View {
     private var housingHeader: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(spot.title)
-                .font(.system(size: 24, weight: .bold))
+                .font(.app(size: 24, weight: .bold))
                 .foregroundStyle(.primary)
 
             HStack(spacing: 6) {
@@ -2993,7 +2993,7 @@ private struct HousingDetailSheet: View {
                     .font(.system(size: 14))
                     .foregroundStyle(.secondary)
                 Text(spot.type)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.app(size: 14, weight: .medium))
                     .foregroundStyle(.secondary)
             }
         }
@@ -3019,10 +3019,10 @@ private struct HousingDetailSheet: View {
     private var housingDescription: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Description")
-                .font(.system(size: 18, weight: .semibold))
+                .font(.app(size: 18, weight: .semibold))
                 .foregroundStyle(.primary)
             Text(spot.description)
-                .font(.system(size: 14, weight: .medium))
+                .font(.app(size: 14, weight: .medium))
                 .foregroundStyle(.secondary)
                 .lineSpacing(4)
         }
@@ -3031,18 +3031,18 @@ private struct HousingDetailSheet: View {
     private var housingBadges: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Features")
-                .font(.system(size: 18, weight: .semibold))
+                .font(.app(size: 18, weight: .semibold))
                 .foregroundStyle(.primary)
 
             if spot.badges.isEmpty {
                 Text("✨ Cozy, well-located, and fully equipped.")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.app(size: 14, weight: .medium))
                     .foregroundStyle(.secondary)
             } else {
                 FlowLayout(spacing: 8) {
                     ForEach(spot.badges, id: \.self) { badge in
                         Text(badge)
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.app(size: 13, weight: .semibold))
                             .foregroundStyle(.primary)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
@@ -3056,7 +3056,7 @@ private struct HousingDetailSheet: View {
     private var housingRecommender: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Recommended by")
-                .font(.system(size: 18, weight: .semibold))
+                .font(.app(size: 18, weight: .semibold))
                 .foregroundStyle(.primary)
 
             HStack(spacing: 12) {
@@ -3075,7 +3075,7 @@ private struct HousingDetailSheet: View {
                 .overlay(Circle().strokeBorder(.quaternary, lineWidth: 1))
 
                 Text(spot.recommender)
-                    .font(.system(size: 16, weight: .semibold))
+                .font(.app(size: 16, weight: .semibold))
                     .foregroundStyle(.primary)
 
                 Spacer()
@@ -3091,7 +3091,7 @@ private struct HousingDetailSheet: View {
             if spot.photos.count > 1 {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Photos")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.app(size: 18, weight: .semibold))
                         .foregroundStyle(.primary)
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 12) {
@@ -3128,17 +3128,17 @@ private struct HousingDetailSheet: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.app(size: 15, weight: .semibold))
                     .foregroundStyle(.primary)
                 Text(subtitle)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.app(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
             }
 
             Spacer()
 
             Text(value)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.app(size: 15, weight: .semibold))
                 .foregroundStyle(.primary)
         }
         .padding(.horizontal, 14)
@@ -3212,14 +3212,14 @@ private struct RoommateDetailSheet: View {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("\(roommate.name), \(roommate.age)")
-                        .font(.system(size: 24, weight: .bold))
+                        .font(.app(size: 24, weight: .bold))
                         .foregroundStyle(.primary)
                     HStack(spacing: 6) {
                         Image(systemName: "mappin.circle.fill")
                             .font(.system(size: 14))
                             .foregroundStyle(.secondary)
                         Text(roommate.location)
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.app(size: 14, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -3251,19 +3251,19 @@ private struct RoommateDetailSheet: View {
     private var roommateTags: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("About")
-                .font(.system(size: 18, weight: .semibold))
+                .font(.app(size: 18, weight: .semibold))
                 .foregroundStyle(.primary)
 
             if roommate.tags.isEmpty {
                 Text("👋🙂 Friendly & respectful\n🏡✨ Looking for a cozy shared place\n🧹🫧 Clean habits and good vibes\n📍🗺️ Open to nearby neighborhoods\n🤝😊 Easy to live with")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.app(size: 14, weight: .medium))
                     .foregroundStyle(.secondary)
                     .lineSpacing(4)
             } else {
                 FlowLayout(spacing: 8) {
                     ForEach(roommate.tags, id: \.self) { tag in
                         Text("\(emojiForRoommateTag(tag)) \(tag)")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.app(size: 13, weight: .semibold))
                             .foregroundStyle(.primary)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
@@ -3277,10 +3277,10 @@ private struct RoommateDetailSheet: View {
     private var roommateDescription: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Description")
-                .font(.system(size: 18, weight: .semibold))
+                .font(.app(size: 18, weight: .semibold))
                 .foregroundStyle(.primary)
             Text("✨ Friendly and easy-going roommate looking for a respectful shared space. 🧹 Clean habits, open communication, and good vibes.")
-                .font(.system(size: 14, weight: .medium))
+                .font(.app(size: 14, weight: .medium))
                 .foregroundStyle(.secondary)
                 .lineSpacing(4)
         }
@@ -3292,7 +3292,7 @@ private struct RoommateDetailSheet: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Color.appAccent)
             Text("Move in \(roommate.moveIn)")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.app(size: 13, weight: .semibold))
                 .foregroundStyle(.primary)
         }
         .padding(.horizontal, 12)
@@ -3313,17 +3313,17 @@ private struct RoommateDetailSheet: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.app(size: 15, weight: .semibold))
                     .foregroundStyle(.primary)
                 Text(subtitle)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.app(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
             }
 
             Spacer()
 
             Text(value)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.app(size: 15, weight: .semibold))
                 .foregroundStyle(.primary)
         }
         .padding(.horizontal, 14)

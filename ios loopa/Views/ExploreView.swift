@@ -323,7 +323,7 @@ struct ExploreView: View {
                                 Image(systemName: "list.bullet")
                                     .font(.system(size: 16, weight: .semibold))
                                 Text("Show Travelers")
-                                    .font(.system(size: 15, weight: .semibold))
+                                    .font(.app(size: 15, weight: .semibold))
                             }
                             .foregroundStyle(.white)
                             .padding(.horizontal, 20)
@@ -426,7 +426,7 @@ struct ExploreView: View {
                         .foregroundStyle(.secondary)
                     
                     TextField("Search for places, cities...", text: $searchText)
-                        .font(.system(size: 15, weight: .medium))
+                        .font(.app(size: 15, weight: .medium))
                         .foregroundStyle(.primary)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
@@ -511,12 +511,12 @@ struct ExploreView: View {
                                         
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(suggestion.name)
-                                                .font(.system(size: 15, weight: .medium))
+                                                .font(.app(size: 15, weight: .medium))
                                                 .foregroundStyle(.primary)
                                             
                                             if let subtitle = suggestion.subtitle {
                                                 Text(subtitle)
-                                                    .font(.system(size: 13, weight: .regular))
+                                                    .font(.app(size: 13, weight: .regular))
                                                     .foregroundStyle(.secondary)
                                             }
                                         }
@@ -599,7 +599,7 @@ struct ExploreView: View {
                         .foregroundStyle(.secondary)
                     
                     TextField("Search for places, cities...", text: $searchText)
-                        .font(.system(size: 15, weight: .medium))
+                        .font(.app(size: 15, weight: .medium))
                         .foregroundStyle(.primary)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
@@ -684,12 +684,12 @@ struct ExploreView: View {
                                         
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(suggestion.name)
-                                                .font(.system(size: 15, weight: .medium))
+                                                .font(.app(size: 15, weight: .medium))
                                                 .foregroundStyle(.primary)
                                             
                                             if let subtitle = suggestion.subtitle {
                                                 Text(subtitle)
-                                                    .font(.system(size: 13, weight: .regular))
+                                                    .font(.app(size: 13, weight: .regular))
                                                     .foregroundStyle(.secondary)
                                             }
                                         }
@@ -792,10 +792,10 @@ struct ExploreView: View {
             }
             if let emoji = emoji {
                 Text(emoji)
-                    .font(.system(size: 16))
+                    .font(.app(size: 16))
             }
             Text(text)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.app(size: 13, weight: .semibold))
                 .foregroundStyle(isSelected ? .white : .primary)
         }
         .padding(.horizontal, 14)
@@ -1073,7 +1073,7 @@ struct ExploreView: View {
     private var groupsView: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Nearby Groups")
-                .font(.system(size: 24, weight: .bold))
+                .font(.app(size: 24, weight: .bold))
                 .foregroundStyle(.primary)
                 .padding(.horizontal, 20)
             
@@ -1125,7 +1125,7 @@ struct ExploreView: View {
                 
                 VStack(alignment: .leading, spacing: 8) {
                     Text(group.title)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.app(size: 16, weight: .semibold))
                         .foregroundStyle(.primary)
                         .lineLimit(2)
                     
@@ -1133,7 +1133,7 @@ struct ExploreView: View {
                         avatarStack(avatars: group.avatars)
                         
                         Text("\(group.attendees) Travelers")
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.app(size: 12, weight: .medium))
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
@@ -1168,7 +1168,7 @@ struct ExploreView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text("\(filteredUsers.count) Nearby Travelers")
-                    .font(.system(size: 22, weight: .bold))
+                    .font(.app(size: 22, weight: .bold))
                 Spacer()
             }
             .padding(.horizontal, 20)
@@ -1186,7 +1186,7 @@ struct ExploreView: View {
                 showAllTravelers = true
             }) {
                 Text("See all 468 Nearby Travelers")
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.app(size: 15, weight: .bold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
@@ -1218,14 +1218,14 @@ struct ExploreView: View {
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(user.flag)
-                        .font(.system(size: 16))
+                        .font(.app(size: 16))
                         .offset(y: -120)
                         .padding(.leading, 8)
                         .padding(.top, 8)
                     
                     HStack(spacing: 6) {
                         Text(user.name)
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.app(size: 13, weight: .bold))
                             .foregroundColor(.white)
                         Circle()
                             .fill(Color.green)
@@ -1234,7 +1234,7 @@ struct ExploreView: View {
                     .offset(y: -8)
                     
                     Text(user.distance)
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.app(size: 11, weight: .semibold))
                         .foregroundColor(.white.opacity(0.9))
                         .offset(y: -8)
                 }
@@ -1310,7 +1310,7 @@ struct ExploreView: View {
             .background(Circle().fill(Color.white).padding(2))
             
             Text(group.title)
-                .font(.system(size: 10, weight: .bold))
+                .font(.app(size: 10, weight: .bold))
                 .foregroundStyle(.black)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
@@ -1373,7 +1373,7 @@ struct ExploreView: View {
 
             if let title = pin.title, !title.isEmpty {
                 Text(title)
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.app(size: 10, weight: .semibold))
                     .foregroundStyle(.primary)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -1466,11 +1466,11 @@ struct ExploreView: View {
 
                     VStack(alignment: .leading, spacing: 6) {
                         Text(group.title)
-                            .font(.system(size: 18, weight: .semibold))
+                            .font(.app(size: 18, weight: .semibold))
                             .foregroundStyle(.primary)
                             .lineLimit(2)
                         Text("\(group.attendees) Travelers")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.app(size: 13, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -1481,7 +1481,7 @@ struct ExploreView: View {
                         onJoinGroupChat(group)
                     }) {
                         Text("Save Place")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.app(size: 16, weight: .semibold))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
@@ -1491,7 +1491,7 @@ struct ExploreView: View {
 
                     Button(action: { selectedJoinItem = nil }) {
                         Text("Close")
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.app(size: 15, weight: .semibold))
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 8)
@@ -1508,7 +1508,7 @@ struct ExploreView: View {
         VStack(spacing: 16) {
             HStack {
                 Text("Nearby Travelers")
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(.app(size: 20, weight: .semibold))
                     .foregroundStyle(.primary)
                 Spacer()
                 Button(action: { showAllTravelers = false }) {
@@ -1550,20 +1550,20 @@ struct ExploreView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text(user.name)
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.app(size: 16, weight: .semibold))
                             .foregroundStyle(.primary)
                         Circle()
                             .fill(user.online ? Color.green : Color.gray.opacity(0.5))
                             .frame(width: 8, height: 8)
                     }
                     Text(user.flag)
-                        .font(.system(size: 14))
+                        .font(.app(size: 14))
                 }
                 
                 Spacer()
                 
                 Text(user.distance)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.app(size: 13, weight: .medium))
                     .foregroundStyle(.secondary)
             }
             .padding(16)
@@ -1894,18 +1894,18 @@ private struct PlaceDetailSheet: View {
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text(mapItem.name ?? "Place")
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(.app(size: 20, weight: .semibold))
                         .foregroundStyle(.primary)
 
                     if let category = categoryLabel {
                         Text(category)
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.app(size: 13, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
 
                     if let address = formattedAddress {
                         Text(address)
-                            .font(.system(size: 13, weight: .regular))
+                            .font(.app(size: 13, weight: .regular))
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -2061,11 +2061,11 @@ private struct PlaceDetailSheet: View {
                 Image(systemName: systemImage)
                     .font(.system(size: 13, weight: .semibold))
                 Text(title)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.app(size: 14, weight: .semibold))
             }
             if let detail, !detail.isEmpty {
                 Text(detail)
-                    .font(.system(size: 11, weight: .regular))
+                    .font(.app(size: 11, weight: .regular))
                     .foregroundStyle(foreground.opacity(foreground == .white ? 0.85 : 0.7))
                     .lineLimit(1)
             }

@@ -190,11 +190,11 @@ struct CreatePlaceView: View {
         VStack(spacing: 20) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Choose Category")
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.app(size: 18, weight: .bold))
                     .foregroundStyle(.primary)
                 
                 Text("Select a category for this place")
-                    .font(.system(size: 15, weight: .regular))
+                    .font(.app(size: 15, weight: .regular))
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -216,10 +216,10 @@ struct CreatePlaceView: View {
             ZStack(alignment: .topTrailing) {
                 VStack(spacing: 12) {
                     Text(category.emoji)
-                        .font(.system(size: 48))
+                        .font(.app(size: 48))
                     
                     Text(category.rawValue)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.app(size: 16, weight: .semibold))
                         .foregroundStyle(.primary)
                 }
                 .frame(maxWidth: .infinity)
@@ -265,7 +265,7 @@ struct CreatePlaceView: View {
             // Search bar
             VStack(alignment: .leading, spacing: 12) {
                 Text("Search for a place or address")
-                    .font(.system(size: 16, weight: .regular))
+                    .font(.app(size: 16, weight: .regular))
                     .foregroundStyle(.secondary)
                 
                 ZStack(alignment: .top) {
@@ -275,7 +275,7 @@ struct CreatePlaceView: View {
                             .foregroundStyle(.secondary)
                         
                         TextField("Enter place name or address", text: $locationSearchText)
-                            .font(.system(size: 15, weight: .medium))
+                            .font(.app(size: 15, weight: .medium))
                             .foregroundStyle(.primary)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
@@ -302,12 +302,12 @@ struct CreatePlaceView: View {
                                             
                                             VStack(alignment: .leading, spacing: 2) {
                                                 Text(suggestion.name)
-                                                    .font(.system(size: 15, weight: .medium))
+                                                    .font(.app(size: 15, weight: .medium))
                                                     .foregroundStyle(.primary)
                                                 
                                                 if let subtitle = suggestion.subtitle {
                                                     Text(subtitle)
-                                                        .font(.system(size: 13, weight: .regular))
+                                                        .font(.app(size: 13, weight: .regular))
                                                         .foregroundStyle(.secondary)
                                                 }
                                             }
@@ -345,7 +345,7 @@ struct CreatePlaceView: View {
                         .foregroundStyle(.white)
                     
                     Text("Use your current location")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.app(size: 15, weight: .semibold))
                         .foregroundStyle(.white)
                     
                     Spacer()
@@ -365,7 +365,7 @@ struct CreatePlaceView: View {
                         .foregroundStyle(.green)
                     
                     Text(locationName)
-                        .font(.system(size: 15, weight: .medium))
+                        .font(.app(size: 15, weight: .medium))
                         .foregroundStyle(.primary)
                     
                     Spacer()
@@ -379,7 +379,7 @@ struct CreatePlaceView: View {
             if isUsingCurrentLocation && !nearbyPOIs.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Nearby Places")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.app(size: 16, weight: .semibold))
                         .foregroundStyle(.primary)
                     
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -410,14 +410,14 @@ struct CreatePlaceView: View {
                 }
                 
                 Text(poi.name ?? "Unknown")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.app(size: 13, weight: .semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
                 
                 if let address = poi.placemark.title {
                     Text(address)
-                        .font(.system(size: 11, weight: .regular))
+                        .font(.app(size: 11, weight: .regular))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -440,7 +440,7 @@ struct CreatePlaceView: View {
             // Status section
             VStack(alignment: .leading, spacing: 8) {
                 Text("Status")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.app(size: 14, weight: .semibold))
                     .foregroundStyle(.primary)
                 
                 VStack(spacing: 8) {
@@ -455,7 +455,7 @@ struct CreatePlaceView: View {
             // Rating section (reduced height)
             VStack(alignment: .leading, spacing: 8) {
                 Text("Rating")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.app(size: 14, weight: .semibold))
                     .foregroundStyle(.primary)
                 
                 HStack(spacing: 8) {
@@ -478,7 +478,7 @@ struct CreatePlaceView: View {
                 
                 if rating > 0 {
                     Text(ratingText)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.app(size: 13, weight: .medium))
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .center)
                         .transition(.opacity.combined(with: .scale))
@@ -490,11 +490,11 @@ struct CreatePlaceView: View {
             // Comments section (moved below rating)
             VStack(alignment: .leading, spacing: 8) {
                 Text("Comment (Optional)")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.app(size: 14, weight: .semibold))
                     .foregroundStyle(.primary)
                 
                 TextEditor(text: $comment)
-                    .font(.system(size: 14, weight: .regular))
+                    .font(.app(size: 14, weight: .regular))
                     .foregroundStyle(.primary)
                     .frame(height: 60)
                     .padding(10)
@@ -511,7 +511,7 @@ struct CreatePlaceView: View {
             // Photos section (moved to last)
             VStack(alignment: .leading, spacing: 8) {
                 Text("Photos")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.app(size: 14, weight: .semibold))
                     .foregroundStyle(.primary)
                 
                 PhotosPicker(
@@ -528,7 +528,7 @@ struct CreatePlaceView: View {
                             .foregroundStyle(.white)
                         
                         Text(loadedImages.isEmpty ? "Add Photos" : "Add More Photos")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.app(size: 14, weight: .semibold))
                             .foregroundStyle(.white)
                         
                         Spacer()
@@ -582,7 +582,7 @@ struct CreatePlaceView: View {
         }) {
             HStack(spacing: 12) {
                 Text(status.rawValue)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.app(size: 16, weight: .semibold))
                     .foregroundStyle(selectedStatus == status ? .white : .primary)
                 
                 Spacer()
@@ -625,7 +625,7 @@ struct CreatePlaceView: View {
         }) {
             HStack(spacing: 16) {
                 Text(status.rawValue)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.app(size: 18, weight: .semibold))
                     .foregroundStyle(selectedStatus == status ? .white : .primary)
                 
                 Spacer()
@@ -686,7 +686,7 @@ struct CreatePlaceView: View {
                 }
             }) {
                 Text(currentStep == .details ? "Save Place" : "Continue")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.app(size: 16, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
@@ -707,7 +707,7 @@ struct CreatePlaceView: View {
                     }
                 }) {
                     Text("Back")
-                        .font(.system(size: 15, weight: .semibold))
+                    .font(.app(size: 15, weight: .semibold))
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)

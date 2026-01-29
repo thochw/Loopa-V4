@@ -44,7 +44,7 @@ struct CitySearchView: View {
                         .foregroundStyle(.secondary)
                     
                     TextField("Search for a city...", text: $searchText)
-                        .font(.system(size: 17, weight: .regular))
+                        .font(.app(size: 17, weight: .regular))
                         .foregroundStyle(.primary)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
@@ -86,7 +86,7 @@ struct CitySearchView: View {
                             // Section Title
                             if searchText.isEmpty {
                                 Text("Trending Destinations")
-                                    .font(.system(size: 22, weight: .bold))
+                                    .font(.app(size: 22, weight: .bold))
                                     .foregroundStyle(.primary)
                                     .padding(.horizontal, 20)
                                     .padding(.bottom, 16)
@@ -150,7 +150,7 @@ struct CitySearchView: View {
             HStack(spacing: 16) {
                 // Flag in square format
                 Text(city.flag)
-                    .font(.system(size: 32))
+                    .font(.app(size: 32))
                     .frame(width: 56, height: 56)
                     .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .overlay(
@@ -162,7 +162,7 @@ struct CitySearchView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
                         Text(getCityName(city))
-                            .font(.system(size: 18, weight: .bold))
+                            .font(.app(size: 18, weight: .bold))
                             .foregroundStyle(.primary)
                         
                         if currentCity == city.name {
@@ -173,7 +173,7 @@ struct CitySearchView: View {
                     }
                     
                     Text(city.name)
-                        .font(.system(size: 15, weight: .regular))
+                        .font(.app(size: 15, weight: .regular))
                         .foregroundStyle(.secondary)
                 }
                 

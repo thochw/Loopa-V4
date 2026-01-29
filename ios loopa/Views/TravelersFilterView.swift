@@ -49,11 +49,11 @@ struct TravelersFilterView: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Filters")
-                                    .font(.system(size: 34, weight: .bold))
+                                    .font(.app(size: 34, weight: .bold))
                                     .foregroundStyle(.primary)
                                 
                                 Text("Customize What Type of Travelers You See")
-                                    .font(.system(size: 15, weight: .regular))
+                                    .font(.app(size: 15, weight: .regular))
                                     .foregroundStyle(.secondary)
                             }
                             
@@ -106,7 +106,7 @@ struct TravelersFilterView: View {
                                     }) {
                                         HStack {
                                             Text("Select countries")
-                                                .font(.system(size: 16, weight: .semibold))
+                                                .font(.app(size: 16, weight: .semibold))
                                                 .foregroundStyle(.primary)
                                             
                                             Spacer()
@@ -158,7 +158,7 @@ struct TravelersFilterView: View {
                                 selectedNationalities.removeAll()
                             }) {
                                 Text("Reset")
-                                    .font(.system(size: 17, weight: .semibold))
+                                    .font(.app(size: 17, weight: .semibold))
                                     .foregroundStyle(.red)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 16)
@@ -170,7 +170,7 @@ struct TravelersFilterView: View {
                                 dismiss()
                             }) {
                                 Text("Apply")
-                                    .font(.system(size: 17, weight: .semibold))
+                                    .font(.app(size: 17, weight: .semibold))
                                     .foregroundStyle(.white)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 16)
@@ -193,11 +193,11 @@ struct TravelersFilterView: View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.system(size: 17, weight: .bold))
+                    .font(.app(size: 17, weight: .bold))
                     .foregroundStyle(.primary)
                 
                 Text(currentState)
-                    .font(.system(size: 14, weight: .regular))
+                    .font(.app(size: 14, weight: .regular))
                     .foregroundStyle(.secondary)
             }
             
@@ -222,7 +222,7 @@ struct TravelersFilterView: View {
                     .font(.system(size: 20))
                 
                 Text(gender)
-                    .font(.system(size: 17, weight: .regular))
+                    .font(.app(size: 17, weight: .regular))
                     .foregroundStyle(.primary)
                 
                 Spacer()
@@ -251,7 +251,7 @@ struct TravelersFilterView: View {
             }
         }) {
             Text(age)
-                .font(.system(size: 15, weight: .medium))
+                .font(.app(size: 15, weight: .medium))
                 .foregroundStyle(selectedAgeRange == age ? .white : .primary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
@@ -293,7 +293,7 @@ struct TravelersFilterView: View {
                     .font(.system(size: 20))
                 
                 Text(nationality)
-                    .font(.system(size: 17, weight: .regular))
+                    .font(.app(size: 17, weight: .regular))
                     .foregroundStyle(.primary)
                 
                 Spacer()
@@ -326,7 +326,7 @@ struct TravelersFilterView: View {
                     .font(.system(size: 20))
                 
                 Text(lifestyle)
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.app(size: 15, weight: .medium))
                     .foregroundStyle(selectedLifestyle == lifestyle ? .white : .primary)
                 
                 Spacer()

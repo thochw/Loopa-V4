@@ -36,7 +36,7 @@ struct ChatsListView: View {
             // Enhanced Header
             HStack {
                 Text("Chats")
-                    .font(.system(size: 34, weight: .bold))
+                    .font(.app(size: 34, weight: .bold))
                     .foregroundStyle(.primary)
                 
                 Spacer()
@@ -45,7 +45,7 @@ struct ChatsListView: View {
                     // Requests Badge
                     Button(action: {}) {
                         Text("0 Requests")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.app(size: 13, weight: .semibold))
                             .foregroundStyle(Color.appAccent)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 8)
@@ -87,7 +87,7 @@ struct ChatsListView: View {
                         }
                     }) {
                         Text(filter.rawValue)
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.app(size: 15, weight: .semibold))
                             .foregroundStyle(selectedFilter == filter ? .white : .secondary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
@@ -144,20 +144,20 @@ struct ChatsListView: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .center, spacing: 8) {
                     Text(chat.title)
-                        .font(.system(size: 17, weight: chat.unread ? .semibold : .regular))
+                        .font(.app(size: 17, weight: chat.unread ? .semibold : .regular))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
                     
                     Spacer()
                     
                     Text(chat.time)
-                        .font(.system(size: 13, weight: .regular))
+                        .font(.app(size: 13, weight: .regular))
                         .foregroundStyle(.tertiary)
                 }
                 
                 HStack(alignment: .center, spacing: 8) {
                     Text(chat.message)
-                        .font(.system(size: 15, weight: chat.unread ? .medium : .regular))
+                        .font(.app(size: 15, weight: chat.unread ? .medium : .regular))
                         .foregroundStyle(chat.unread ? .primary : .secondary)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)

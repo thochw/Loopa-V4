@@ -113,7 +113,7 @@ struct ProfileView: View {
                 VStack(spacing: 6) {
                     HStack(spacing: 8) {
                         Text("\(user.name), \(age)")
-                            .font(.system(size: 32, weight: .bold))
+                            .font(.app(size: 32, weight: .bold))
                             .foregroundColor(.white)
                             .lineLimit(1)
                             .minimumScaleFactor(0.85)
@@ -131,9 +131,9 @@ struct ProfileView: View {
 
                     HStack(spacing: 6) {
                         Text(user.flag)
-                            .font(.system(size: 18))
+                            .font(.app(size: 18))
                         Text(location)
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.app(size: 13, weight: .semibold))
                             .foregroundColor(.white.opacity(0.9))
                     }
 
@@ -156,7 +156,7 @@ struct ProfileView: View {
                 showBlockConfirm = true
             }) {
                 Label("Block User", systemImage: "hand.raised.fill")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.app(size: 15, weight: .semibold))
                     .foregroundStyle(.red)
             }
             .buttonStyle(.plain)
@@ -168,7 +168,7 @@ struct ProfileView: View {
                 showReportConfirm = true
             }) {
                 Label("Report User", systemImage: "exclamationmark.bubble.fill")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.app(size: 15, weight: .semibold))
                     .foregroundStyle(.red)
             }
             .buttonStyle(.plain)
@@ -200,7 +200,7 @@ struct ProfileView: View {
 
                     section(title: "About Me", systemImage: "person.text.rectangle") {
                         Text(aboutText)
-                            .font(.system(size: 15))
+                            .font(.app(size: 15))
                             .foregroundColor(.secondary)
                             .lineSpacing(3)
                     }
@@ -267,7 +267,7 @@ struct ProfileView: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.secondary)
                 Text(title)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.app(size: 16, weight: .semibold))
                     .foregroundColor(.primary)
             }
             content()
@@ -286,7 +286,7 @@ struct ProfileView: View {
             .frame(width: 20, height: 20)
 
             Text(title)
-                .font(.system(size: 14, weight: .semibold))
+                .font(.app(size: 14, weight: .semibold))
                 .foregroundColor(.primary)
         }
         .padding(.horizontal, 12)
@@ -301,7 +301,7 @@ struct ProfileView: View {
     private func tripCard(flag: String, destination: String, dates: String) -> some View {
         HStack(spacing: 12) {
             Text(flag)
-                .font(.system(size: 26))
+                .font(.app(size: 26))
                 .frame(width: 52, height: 52)
                 .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .overlay(
@@ -311,10 +311,10 @@ struct ProfileView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(destination)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.app(size: 16, weight: .semibold))
                     .foregroundColor(.primary)
                 Text(dates)
-                    .font(.system(size: 13))
+                    .font(.app(size: 13))
                     .foregroundColor(.secondary)
             }
 
@@ -331,9 +331,9 @@ struct ProfileView: View {
     private func lifestyleChip(text: String) -> some View {
         HStack(spacing: 8) {
             Text(lifestyleEmoji(for: text))
-                .font(.system(size: 16))
+                .font(.app(size: 16))
             Text(text)
-                .font(.system(size: 14, weight: .semibold))
+                .font(.app(size: 14, weight: .semibold))
                 .foregroundColor(.primary)
         }
         .padding(.horizontal, 12)
@@ -372,7 +372,7 @@ struct ProfileView: View {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(imageColor)
             Text(text)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.app(size: 12, weight: .semibold))
                 .foregroundColor(.white)
                 .lineLimit(1)
         }
@@ -393,7 +393,7 @@ struct ProfileView: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(color)
             Text(text)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.app(size: 13, weight: .semibold))
                 .foregroundColor(.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
@@ -466,7 +466,7 @@ struct CompactPillButton: View {
                 Image(systemName: icon)
                     .font(.system(size: 14, weight: .semibold))
                 Text(text)
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.app(size: 15, weight: .bold))
             }
             .foregroundColor(foreground)
             .padding(.horizontal, 18)

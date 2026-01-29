@@ -63,12 +63,12 @@ struct ChatDetailView: View {
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 6) {
                             Text(chat.title)
-                                .font(.system(size: 17, weight: .semibold))
+                                .font(.app(size: 17, weight: .semibold))
                                 .foregroundStyle(.primary)
                             
                             if chat.type == .group {
                                 Text("🫶🏼")
-                                    .font(.system(size: 16))
+                                    .font(.app(size: 16))
                             }
                         }
                         
@@ -78,7 +78,7 @@ struct ChatDetailView: View {
                                     .fill(Color.secondary.opacity(0.3))
                                     .frame(width: 20, height: 20)
                                 Text("80 members")
-                                    .font(.system(size: 13, weight: .regular))
+                                    .font(.app(size: 13, weight: .regular))
                                     .foregroundStyle(.secondary)
                             }
                         } else {
@@ -87,7 +87,7 @@ struct ChatDetailView: View {
                                     .fill(Color.green)
                                     .frame(width: 8, height: 8)
                                 Text("Online")
-                                    .font(.system(size: 13, weight: .regular))
+                                    .font(.app(size: 13, weight: .regular))
                                     .foregroundStyle(.secondary)
                             }
                         }
@@ -164,7 +164,7 @@ struct ChatDetailView: View {
             // Input Bar
             HStack(spacing: 12) {
                 TextField("Type something...", text: $inputText)
-                    .font(.system(size: 15))
+                    .font(.app(size: 15))
                     .padding(.horizontal, 20)
                     .padding(.vertical, 14)
                     .background(Color.gray.opacity(0.1))
@@ -242,7 +242,7 @@ struct ChatDetailView: View {
     
     private func separatorView(message: ChatMessage) -> some View {
         Text(message.text)
-            .font(.system(size: 11, weight: .medium))
+            .font(.app(size: 11, weight: .medium))
             .foregroundColor(.gray)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
@@ -295,15 +295,15 @@ struct ChatDetailView: View {
                 if !message.isMe {
                     HStack(spacing: 4) {
                         Text(message.sender)
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.app(size: 11, weight: .bold))
                             .foregroundColor(colorFromString(message.color))
                         Text(message.time)
-                            .font(.system(size: 11))
+                            .font(.app(size: 11))
                             .foregroundColor(.gray.opacity(0.5))
                     }
                 } else {
                     Text(message.time)
-                        .font(.system(size: 11))
+                        .font(.app(size: 11))
                         .foregroundColor(.gray.opacity(0.5))
                 }
                 
@@ -311,10 +311,10 @@ struct ChatDetailView: View {
                     if let replyTo = message.replyTo {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(replyTo.sender)
-                                .font(.system(size: 11, weight: .bold))
+                                .font(.app(size: 11, weight: .bold))
                                 .foregroundColor(message.isMe ? .blue.opacity(0.8) : .blue)
                             Text(replyTo.text)
-                                .font(.system(size: 11))
+                                .font(.app(size: 11))
                                 .foregroundColor(message.isMe ? .white.opacity(0.8) : .gray)
                                 .lineLimit(2)
                         }
@@ -331,7 +331,7 @@ struct ChatDetailView: View {
                     }
                     
                     Text(message.text)
-                        .font(.system(size: 15))
+                        .font(.app(size: 15))
                         .foregroundColor(message.isMe ? .white : .black)
                 }
                 .padding(14)
