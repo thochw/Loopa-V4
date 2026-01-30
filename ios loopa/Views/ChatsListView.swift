@@ -87,13 +87,13 @@ struct ChatsListView: View {
                         }
                     }) {
                         Text(filter.rawValue)
-                            .font(.app(size: 15, weight: .semibold))
+                            .font(.app(size: 14, weight: .semibold))
                             .foregroundStyle(selectedFilter == filter ? .white : .secondary)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
+                            .padding(.vertical, 8)
                             .background(
                                 selectedFilter == filter ? Color.appAccent : Color.clear,
-                                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                in: RoundedRectangle(cornerRadius: 9, style: .continuous)
                             )
                             .contentShape(Rectangle())
                     }
@@ -110,14 +110,21 @@ struct ChatsListView: View {
             
             // Enhanced Chat List
             ScrollView {
-                LazyVStack(spacing: 12) {
-                    ForEach(filteredChats) { chat in
-                        chatRow(chat: chat)
-                            .onTapGesture {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                    onChatClick(chat)
+                LazyVStack(spacing: 0) {
+                    ForEach(Array(filteredChats.enumerated()), id: \.element.id) { index, chat in
+                        VStack(spacing: 0) {
+                            chatRow(chat: chat)
+                                .onTapGesture {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                        onChatClick(chat)
+                                    }
                                 }
+
+                            if index < filteredChats.count - 1 {
+                                Divider()
+                                    .padding(.leading, 76)
                             }
+                        }
                     }
                 }
                 .padding(.horizontal, 20)
@@ -168,19 +175,12 @@ struct ChatsListView: View {
                         Circle()
                             .fill(Color.appAccent)
                             .frame(width: 10, height: 10)
-                            .shadow(color: Color.appAccent.opacity(0.4), radius: 4, y: 2)
                     }
                 }
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 4)
         .padding(.vertical, 14)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder(Color.black.opacity(0.04), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.06), radius: 8, y: 4)
         .contentShape(Rectangle())
     }
 

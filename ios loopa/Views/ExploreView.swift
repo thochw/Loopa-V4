@@ -217,9 +217,9 @@ struct ExploreView: View {
                             }
                         }) {
                             Image(systemName: "location.fill")
-                                .font(.system(size: 20, weight: .semibold))
+                                .font(.system(size: 18, weight: .semibold))
                                 .foregroundStyle(.black)
-                                .frame(width: 56, height: 56)
+                                .frame(width: 50, height: 50)
                                 .background(
                                     .regularMaterial,
                                     in: Circle()
@@ -234,9 +234,9 @@ struct ExploreView: View {
                             }
                         }) {
                             Image(systemName: "plus")
-                                .font(.system(size: 24, weight: .bold))
+                                .font(.system(size: 20, weight: .bold))
                                 .foregroundStyle(.white)
-                                .frame(width: 56, height: 56)
+                                .frame(width: 50, height: 50)
                                 .background(
                                     Color.appAccent,
                                     in: Circle()
@@ -267,9 +267,9 @@ struct ExploreView: View {
                                 }
                             }) {
                                 Image(systemName: "location.fill")
-                                    .font(.system(size: 20, weight: .semibold))
+                                    .font(.system(size: 18, weight: .semibold))
                                     .foregroundStyle(.black)
-                                    .frame(width: 56, height: 56)
+                                    .frame(width: 50, height: 50)
                                     .background(
                                         .regularMaterial,
                                         in: Circle()
@@ -283,9 +283,9 @@ struct ExploreView: View {
                                 }
                             }) {
                                 Image(systemName: "plus")
-                                    .font(.system(size: 24, weight: .bold))
+                                    .font(.system(size: 20, weight: .bold))
                                     .foregroundStyle(.white)
-                                    .frame(width: 56, height: 56)
+                                    .frame(width: 50, height: 50)
                                     .background(
                                         Color.appAccent,
                                         in: Circle()
@@ -425,7 +425,7 @@ struct ExploreView: View {
                         .font(.system(size: 16, weight: .medium))
                         .foregroundStyle(.secondary)
                     
-                    TextField("Search for places, cities...", text: $searchText)
+                    TextField("Search a place to save...", text: $searchText)
                         .font(.app(size: 15, weight: .medium))
                         .foregroundStyle(.primary)
                         .textInputAutocapitalization(.never)
@@ -598,7 +598,7 @@ struct ExploreView: View {
                         .font(.system(size: 16, weight: .medium))
                         .foregroundStyle(.secondary)
                     
-                    TextField("Search for places, cities...", text: $searchText)
+                    TextField(currentCity, text: $searchText)
                         .font(.app(size: 15, weight: .medium))
                         .foregroundStyle(.primary)
                         .textInputAutocapitalization(.never)

@@ -66,7 +66,9 @@ struct HousingView: View {
                         .padding(.horizontal, 20)
                         .padding(.top, 18)
                         .padding(.bottom, 120)
+                        .background(Color.white)
                     }
+                    .background(Color.white)
                     .id(activeTab)
                     .transition(.opacity.combined(with: .move(edge: .leading)))
                 }
@@ -74,7 +76,7 @@ struct HousingView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .animation(.easeInOut(duration: 0.25), value: showMapView)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.white)
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: activeTab)
         .sheet(isPresented: $showSearchFlow) {
             HousingSearchFlowView(activeTab: $activeTab) {
@@ -125,7 +127,7 @@ struct HousingView: View {
 
     private var myTripHeader: some View {
         HStack {
-            Text("My trip")
+            Text("My trips")
                 .font(.app(size: 26, weight: .bold))
                 .foregroundStyle(.primary)
 
@@ -300,56 +302,79 @@ struct HousingView: View {
         let dateLabel = "\(shortDate(trip.startDate)) - \(shortDate(trip.endDate))"
         let statusText = tripStatusText(start: trip.startDate, end: trip.endDate)
 
-        return ZStack(alignment: .bottomLeading) {
-            AsyncImage(url: URL(string: trip.imageUrl)) { phase in
-                if let image = phase.image {
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } else {
-                    Color(.systemGray5)
+        return VStack(spacing: 0) {
+            ZStack {
+                AsyncImage(url: URL(string: trip.imageUrl)) { phase in
+                    if let image = phase.image {
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } else {
+                        Color.white
+                    }
                 }
-            }
-            .frame(width: 300, height: 190)
-            .clipped()
+                .frame(width: 300, height: 190)
+                .clipped()
 
-            LinearGradient(
-                colors: [.black.opacity(0.35), .clear],
-                startPoint: .bottom,
-                endPoint: .top
-            )
-            .frame(height: 100)
-            .frame(maxWidth: .infinity, alignment: .bottom)
+                LinearGradient(
+                    colors: [.black.opacity(0.35), .clear],
+                    startPoint: .bottom,
+                    endPoint: .top
+                )
+                .frame(height: 100)
+                .frame(maxWidth: .infinity, alignment: .bottom)
 
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("🌍 \(trip.destination)")
-                        .font(.app(size: 17, weight: .bold))
-                        .foregroundStyle(.white)
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text("🌍 \(trip.destination)")
+                            .font(.app(size: 17, weight: .bold))
+                            .foregroundStyle(.white)
+                        Spacer()
+                        Text(dateLabel.uppercased())
+                            .font(.app(size: 12, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.9))
+                    }
+
                     Spacer()
-                    Text(dateLabel.uppercased())
-                        .font(.app(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.9))
-                }
 
-                HStack(spacing: 8) {
-                    avatarStack(images: Array(avatarImages))
-                    Text(statusText ?? "+\(countdown) days")
-                        .font(.app(size: 13, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Color.white.opacity(0.18), in: Capsule())
+                    HStack(spacing: 8) {
+                        avatarStack(images: Array(avatarImages))
+                        if statusText == nil {
+                            Text("+\(countdown) days")
+                                .font(.app(size: 13, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color.white.opacity(0.18), in: Capsule())
+                        }
+                    }
                 }
+                .padding(14)
             }
-            .padding(14)
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .shadow(color: .black.opacity(0.1), radius: 12, y: 6)
+            .overlay(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(Color.black.opacity(0.05), lineWidth: 1)
+            )
+
+            if let statusText {
+                Text(statusText)
+                    .font(.app(size: 12, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.white, in: Capsule())
+                    .overlay(
+                        Capsule()
+                            .strokeBorder(Color.black.opacity(0.08), lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(0.06), radius: 6, y: 3)
+                    .padding(.top, -12)
+                    .frame(maxWidth: 300, alignment: .center)
+            }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .shadow(color: .black.opacity(0.1), radius: 12, y: 6)
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .strokeBorder(Color.black.opacity(0.05), lineWidth: 1)
-        )
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
     private func recommendedHousingRow(spot: HousingSpot) -> some View {
@@ -390,6 +415,10 @@ struct HousingView: View {
         }
         .padding(12)
         .background(Color(.systemGray6).opacity(0.6), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .onTapGesture {
+            selectedHousingSpot = spot
+            selectedRoommate = nil
+        }
     }
 
     private func roommateListRow(roommate: Roommate) -> some View {
@@ -2180,14 +2209,24 @@ private struct CreateHousingListingView: View {
     @State private var housingPeriod = ""
     @State private var housingType = "Apartment"
     @State private var housingRating: Int = 0
-    @State private var housingContact = ""
     @State private var housingAddress = ""
     @State private var housingAvailability: Date = Date()
-    @State private var housingAvailabilityStatus = "Currently living here"
+    @State private var housingAvailabilityStatus: String? = nil
+    @State private var contactMethod: ContactMethod? = nil
+    @State private var contactPhone = ""
+    @State private var contactEmail = ""
     @State private var selectedPhotoItems: [PhotosPickerItem] = []
     @State private var selectedImages: [UIImage] = []
     @State private var housingBadgesSelected: Set<String> = []
     @State private var housingBadgesCustom = ""
+    private let housingTypeOptions: [(value: String, label: String)] = [
+        (value: "Apartment", label: "🏢 Apartment"),
+        (value: "House", label: "🏠 House"),
+        (value: "Student residence", label: "🎓 Student residence"),
+        (value: "Room", label: "🛏️ Room")
+    ]
+    @StateObject private var addressSearchCompleter: AddressSearchCompleter
+    @FocusState private var addressFieldFocused: Bool
 
     @State private var roommateName = ""
     @State private var roommateAge = ""
@@ -2196,6 +2235,11 @@ private struct CreateHousingListingView: View {
     @State private var roommateMoveIn = ""
     @State private var roommateTags = ""
     @State private var currentStep = 0
+
+    private enum ContactMethod {
+        case phone
+        case email
+    }
 
     init(
         activeTab: Binding<HousingTab>,
@@ -2206,6 +2250,7 @@ private struct CreateHousingListingView: View {
     ) {
         _activeTab = activeTab
         _selectedTab = State(initialValue: activeTab.wrappedValue)
+        _addressSearchCompleter = StateObject(wrappedValue: AddressSearchCompleter(center: coordinate))
         self.coordinate = coordinate
         self.onCreateSpot = onCreateSpot
         self.onCreateRoommate = onCreateRoommate
@@ -2236,6 +2281,9 @@ private struct CreateHousingListingView: View {
                     actionBar
                 }
             }
+            .overlay(alignment: .topTrailing) {
+                closeButtonOverlay
+            }
             .navigationBarHidden(true)
         }
     }
@@ -2248,40 +2296,31 @@ private struct CreateHousingListingView: View {
                         .font(.app(size: 22, weight: .bold))
                         .foregroundStyle(.primary)
                 }
+                .padding(.top, 12)
 
                 Spacer()
-
-                Button(action: onClose) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 34, height: 34)
-                        .background(Color.white, in: Circle())
-                }
-                .buttonStyle(.plain)
             }
             
             HStack(alignment: .center, spacing: 10) {
-                Text(stepTitle)
-                    .font(.app(size: 13, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color(.systemGray6), in: Capsule())
-                
                 stepIndicator
             }
         }
-        .padding(14)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(Color.black.opacity(0.06), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.08), radius: 12, y: 6)
         .padding(.horizontal, 20)
-        .padding(.top, 10)
-        .padding(.bottom, 8)
+        .padding(.top, 40)
+        .padding(.bottom, 6)
+    }
+
+    private var closeButtonOverlay: some View {
+        Button(action: onClose) {
+            Image(systemName: "xmark")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 34, height: 34)
+                .background(Color(.systemGray5), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .padding(.top, 12)
+        .padding(.trailing, 20)
     }
 
     @ViewBuilder
@@ -2298,7 +2337,9 @@ private struct CreateHousingListingView: View {
         VStack(alignment: .leading, spacing: 12) {
             switch currentStep {
             case 0:
-                housingBasicsFields
+                VStack(spacing: 18) {
+                    housingBasicsFields
+                }
             case 1:
                 housingDetailsFields
             default:
@@ -2311,7 +2352,9 @@ private struct CreateHousingListingView: View {
         VStack(alignment: .leading, spacing: 12) {
             switch currentStep {
             case 0:
-                roommateBasicsFields
+                VStack(spacing: 18) {
+                    roommateBasicsFields
+                }
             default:
                 roommateExtrasFields
             }
@@ -2341,62 +2384,55 @@ private struct CreateHousingListingView: View {
             periodPicker
         }
 
-        formPicker("Type", selection: $housingType, options: ["Apartment", "House", "Student residence", "Room"])
+        formPicker("Type", selection: $housingType, options: housingTypeOptions)
 
-        formTextField("Address", text: $housingAddress)
+        addressAutocompleteField
     }
 
     @ViewBuilder
     private var housingDetailsFields: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Rating")
-                .font(.app(size: 14, weight: .semibold))
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 28) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Rating")
+                    .font(.app(size: 19, weight: .semibold))
+                    .foregroundStyle(.black)
 
-            HStack(spacing: 8) {
-                ForEach(1...5, id: \.self) { star in
-                    Button(action: {
-                        withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
-                            housingRating = star
+                VStack(spacing: 10) {
+                    HStack(spacing: 8) {
+                        ForEach(1...5, id: \.self) { star in
+                            Button(action: {
+                                withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
+                                    housingRating = star
+                                }
+                            }) {
+                                Image(systemName: star <= housingRating ? "star.fill" : "star")
+                                    .font(.system(size: 28, weight: .regular))
+                                    .foregroundStyle(star <= housingRating ? .yellow : Color(.systemGray4))
+                            }
+                            .buttonStyle(.plain)
                         }
-                    }) {
-                        Image(systemName: star <= housingRating ? "star.fill" : "star")
-                            .font(.system(size: 28, weight: .regular))
-                            .foregroundStyle(star <= housingRating ? .yellow : Color(.systemGray4))
                     }
-                    .buttonStyle(.plain)
-                }
+                    .frame(maxWidth: .infinity, alignment: .center)
 
-                Spacer()
-
-                if housingRating > 0 {
-                    Text(ratingLabel(for: housingRating))
-                        .font(.app(size: 14, weight: .medium))
-                        .foregroundStyle(.secondary)
+                    if housingRating > 0 {
+                        Text(ratingEmoji(for: housingRating))
+                            .font(.system(size: 26))
+                    }
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(Color.black.opacity(0.06), lineWidth: 1)
-            )
-        }
 
-        formTextField("Contact (email, phone, or other)", text: $housingContact)
+            contactMethodSection
 
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Next availability")
-                .font(.app(size: 14, weight: .semibold))
-                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Next availability")
+                    .font(.app(size: 19, weight: .semibold))
+                    .foregroundStyle(.black)
 
-            VStack(spacing: 10) {
-                HStack(spacing: 10) {
+                HStack(spacing: 14) {
                     ForEach(["Currently living here", "Already left"], id: \.self) { status in
                         Button(action: {
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                housingAvailabilityStatus = status
+                                housingAvailabilityStatus = (housingAvailabilityStatus == status) ? nil : status
                             }
                         }) {
                             Text(status)
@@ -2411,8 +2447,8 @@ private struct CreateHousingListingView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    Spacer()
                 }
+                .frame(maxWidth: .infinity, alignment: .center)
 
                 if housingAvailabilityStatus == "Currently living here" {
                     HStack {
@@ -2426,7 +2462,7 @@ private struct CreateHousingListingView: View {
                             .labelsHidden()
                             .tint(Color.appAccent)
                     }
-                } else {
+                } else if housingAvailabilityStatus == "Already left" {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 16))
@@ -2438,13 +2474,6 @@ private struct CreateHousingListingView: View {
                     }
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(Color.black.opacity(0.06), lineWidth: 1)
-            )
         }
     }
 
@@ -2452,8 +2481,8 @@ private struct CreateHousingListingView: View {
     private var housingExtrasFields: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Description")
-                .font(.app(size: 14, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .font(.app(size: 19, weight: .semibold))
+                .foregroundStyle(.black)
             ZStack(alignment: .topLeading) {
                 TextEditor(text: $housingDescription)
                     .frame(minHeight: 100)
@@ -2464,7 +2493,7 @@ private struct CreateHousingListingView: View {
                             .strokeBorder(Color.black.opacity(0.06), lineWidth: 1)
                     )
                 if housingDescription.isEmpty {
-                    Text("Describe the place, what's included, and what makes it special.")
+                    Text("Describe your experience")
                         .font(.app(size: 13, weight: .medium))
                         .foregroundStyle(.secondary.opacity(0.8))
                         .padding(.horizontal, 16)
@@ -2475,8 +2504,8 @@ private struct CreateHousingListingView: View {
 
         VStack(alignment: .leading, spacing: 8) {
             Text("Photos")
-                .font(.app(size: 14, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .font(.app(size: 19, weight: .semibold))
+                .foregroundStyle(.black)
 
             PhotosPicker(
                 selection: $selectedPhotoItems,
@@ -2549,10 +2578,225 @@ private struct CreateHousingListingView: View {
 
         VStack(alignment: .leading, spacing: 8) {
             Text("Badges")
-                .font(.app(size: 14, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .font(.app(size: 19, weight: .semibold))
+                .foregroundStyle(.black)
             badgeGrid(options: housingBadgeOptions, selection: $housingBadgesSelected)
             formTextField("Custom badges (comma separated)", text: $housingBadgesCustom)
+            badgeSuggestionRow
+        }
+    }
+
+    private var addressAutocompleteField: some View {
+        ZStack(alignment: .top) {
+            HStack(spacing: 10) {
+                Image(systemName: "mappin.circle.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.secondary)
+
+                TextField("Address", text: $housingAddress)
+                    .focused($addressFieldFocused)
+                    .onChange(of: housingAddress) { _, newValue in
+                        addressSearchCompleter.search(query: newValue)
+                    }
+
+                if !housingAddress.isEmpty {
+                    Button(action: {
+                        housingAddress = ""
+                        addressSearchCompleter.clear()
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Color.black.opacity(0.06), lineWidth: 1)
+            )
+
+            if addressFieldFocused && !addressSearchCompleter.results.isEmpty {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(addressSearchCompleter.results, id: \.self) { suggestion in
+                            Button(action: {
+                                let title = suggestion.title
+                                let subtitle = suggestion.subtitle
+                                housingAddress = subtitle.isEmpty ? title : "\(title), \(subtitle)"
+                                addressSearchCompleter.clear()
+                                addressFieldFocused = false
+                            }) {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "mappin.circle.fill")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(Color.appAccent)
+
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(suggestion.title)
+                                            .font(.app(size: 14, weight: .semibold))
+                                            .foregroundStyle(.primary)
+                                        if !suggestion.subtitle.isEmpty {
+                                            Text(suggestion.subtitle)
+                                                .font(.app(size: 12, weight: .regular))
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(Color.white)
+                            }
+                            .buttonStyle(.plain)
+
+                            if suggestion != addressSearchCompleter.results.last {
+                                Divider()
+                                    .padding(.leading, 38)
+                            }
+                        }
+                    }
+                }
+                .frame(maxHeight: 220)
+                .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .shadow(color: .black.opacity(0.1), radius: 10, y: 4)
+                .padding(.top, 56)
+            }
+        }
+    }
+
+    private var contactMethodSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("How to contact the owner")
+                .font(.app(size: 19, weight: .semibold))
+                .foregroundStyle(.black)
+
+            VStack(spacing: 10) {
+                contactOptionRow(
+                    emoji: "📞",
+                    title: "Phone number",
+                    method: .phone,
+                    text: $contactPhone
+                )
+                contactOptionRow(
+                    emoji: "✉️",
+                    title: "Email address",
+                    method: .email,
+                    text: $contactEmail
+                )
+            }
+        }
+    }
+
+    private func contactOptionRow(
+        emoji: String,
+        title: String,
+        method: ContactMethod,
+        text: Binding<String>
+    ) -> some View {
+        let isSelected = contactMethod == method
+
+        return HStack(spacing: 10) {
+            Button(action: {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    contactMethod = isSelected ? nil : method
+                }
+            }) {
+                Text(emoji)
+                    .font(.system(size: 22))
+                    .frame(width: 44, height: 44)
+                    .background(isSelected ? Color.appAccent.opacity(0.2) : Color(.systemGray6), in: Circle())
+            }
+            .buttonStyle(.plain)
+
+            TextField(title, text: text)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(Color.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(Color.black.opacity(0.06), lineWidth: 1)
+                )
+
+            Spacer()
+        }
+    }
+
+    private var hasContactInfo: Bool {
+        let phone = contactPhone.trimmingCharacters(in: .whitespacesAndNewlines)
+        let email = contactEmail.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !phone.isEmpty || !email.isEmpty
+    }
+
+    private var badgeSuggestion: (title: String, emoji: String)? {
+        let trimmed = housingBadgesCustom.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let lower = trimmed.lowercased()
+
+        if lower.contains("furnish") {
+            return (title: "Furnished", emoji: "🛋️")
+        }
+        if lower.contains("metro") || lower.contains("subway") {
+            return (title: "Near metro", emoji: "🚇")
+        }
+        if lower.contains("utilit") || lower.contains("bill") {
+            return (title: "Utilities included", emoji: "💡")
+        }
+        if lower.contains("pet") {
+            return (title: "Pet friendly", emoji: "🐾")
+        }
+        if lower.contains("quiet") || lower.contains("calm") {
+            return (title: "Quiet", emoji: "🤫")
+        }
+        if lower.contains("balcony") || lower.contains("terrace") {
+            return (title: "Balcony", emoji: "🌿")
+        }
+        if lower.contains("wifi") || lower.contains("internet") {
+            return (title: "Wi‑Fi", emoji: "📶")
+        }
+        if lower.contains("parking") {
+            return (title: "Parking", emoji: "🅿️")
+        }
+        if lower.contains("gym") {
+            return (title: "Gym", emoji: "🏋️")
+        }
+        if lower.contains("view") {
+            return (title: "Great view", emoji: "🌅")
+        }
+
+        let titled = trimmed.prefix(1).uppercased() + trimmed.dropFirst()
+        return (title: titled, emoji: "✨")
+    }
+
+    private var badgeSuggestionRow: some View {
+        Group {
+            if let suggestion = badgeSuggestion,
+               !housingBadgesSelected.contains(suggestion.title) {
+                HStack(spacing: 10) {
+                    Text("\(suggestion.emoji) \(suggestion.title)")
+                        .font(.app(size: 13, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color(.systemGray6), in: Capsule())
+
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            housingBadgesSelected.insert(suggestion.title)
+                            housingBadgesCustom = ""
+                        }
+                    }) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(Color.appAccent)
+                    }
+
+                    Spacer()
+                }
+            }
         }
     }
 
@@ -2578,20 +2822,20 @@ private struct CreateHousingListingView: View {
 
     private var stepTitles: [String] {
         selectedTab == .spots
-            ? ["Basics", "Details", "Media & badges"]
-            : ["Basics", "Move-in & tags"]
+            ? ["🏠 Basics", "⭐ Details", "📸 Media & badges"]
+            : ["👋 Basics", "📅 Move-in & tags"]
     }
 
     private var stepSubtitles: [String] {
         selectedTab == .spots
             ? [
-                "Title, price, type, and address.",
-                "Rating, contact, and availability.",
-                "Description, photos, and badges."
+                "Just the essentials to start.",
+                "Add trust & availability details.",
+                "Make it shine with photos."
             ]
             : [
-                "Name, age, budget, and location.",
-                "Move-in date and tags."
+                "Quick profile essentials.",
+                "Timing and tags to match."
             ]
     }
 
@@ -2610,11 +2854,8 @@ private struct CreateHousingListingView: View {
                     .fill(index <= currentStep ? Color.appAccent : Color.black.opacity(0.1))
                     .frame(width: index == currentStep ? 28 : 12, height: 6)
             }
-            Spacer()
-            Text("Step \(min(currentStep + 1, totalSteps)) of \(totalSteps)")
-                .font(.app(size: 11, weight: .medium))
-                .foregroundStyle(.secondary)
         }
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 
     private var isLastStep: Bool {
@@ -2632,12 +2873,29 @@ private struct CreateHousingListingView: View {
         switch selectedTab {
         case .spots:
             if currentStep == 0 {
-                return !housingTitle.isEmpty && Int(housingPrice) != nil
+                return !housingTitle.isEmpty
+                    && Int(housingPrice) != nil
+                    && !housingAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    && !housingPeriod.isEmpty
+            }
+            if currentStep == 1 {
+                return housingRating > 0
+                    && hasContactInfo
+                    && housingAvailabilityStatus != nil
+            }
+            if currentStep == 2 {
+                return !housingDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    && !selectedImages.isEmpty
+                    && !housingBadgesSelected.isEmpty
             }
             return true
         case .roommates:
             if currentStep == 0 {
                 return !roommateName.isEmpty && Int(roommateAge) != nil && Int(roommateBudget) != nil && !roommateLocation.isEmpty
+            }
+            if currentStep == 1 {
+                return !roommateMoveIn.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    && !roommateTags.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             }
             return true
         }
@@ -2701,7 +2959,7 @@ private struct CreateHousingListingView: View {
             .disabled(!canProceedCurrentStep)
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 16)
+        .padding(.vertical, 12)
         .background(Color.white)
         .overlay(
             Rectangle()
@@ -2714,15 +2972,39 @@ private struct CreateHousingListingView: View {
     private var canPublish: Bool {
         switch selectedTab {
         case .spots:
-            return !housingTitle.isEmpty && Int(housingPrice) != nil
+            return !housingTitle.isEmpty
+                && Int(housingPrice) != nil
+                && !housingAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && !housingPeriod.isEmpty
+                && housingRating > 0
+                && hasContactInfo
+                && housingAvailabilityStatus != nil
+                && !housingDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && !selectedImages.isEmpty
+                && !housingBadgesSelected.isEmpty
         case .roommates:
             return !roommateName.isEmpty && Int(roommateAge) != nil && Int(roommateBudget) != nil && !roommateLocation.isEmpty
+                && !roommateMoveIn.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && !roommateTags.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
     }
 
     private func handleCreate() {
         switch selectedTab {
         case .spots:
+            let trimmedAddress = housingAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+            let addressValue = trimmedAddress.isEmpty ? nil : trimmedAddress
+            let contactValue: String? = {
+                let phone = contactPhone.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !phone.isEmpty {
+                    return phone
+                }
+                let email = contactEmail.trimmingCharacters(in: .whitespacesAndNewlines)
+                return email.isEmpty ? nil : email
+            }()
+            let isAvailableNow = housingAvailabilityStatus != "Currently living here"
+            let availableDate = housingAvailabilityStatus == "Currently living here" ? housingAvailability : nil
+
             let customBadges = housingBadgesCustom
                 .split(separator: ",")
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -2750,7 +3032,11 @@ private struct CreateHousingListingView: View {
                 recommenderImg: "https://i.pravatar.cc/150?u=you",
                 lat: coordinate.latitude,
                 lng: coordinate.longitude,
-                type: housingType
+                type: housingType,
+                address: addressValue,
+                contact: contactValue,
+                availableDate: availableDate,
+                isAvailableNow: isAvailableNow
             )
             onCreateSpot(spot)
         case .roommates:
@@ -2791,6 +3077,17 @@ private struct CreateHousingListingView: View {
         default: return ""
         }
     }
+
+    private func ratingEmoji(for rating: Int) -> String {
+        switch rating {
+        case 1: return "😡"
+        case 2: return "😕"
+        case 3: return "🙂"
+        case 4: return "😄"
+        case 5: return "🤩"
+        default: return ""
+        }
+    }
     
     private func formTextField(_ title: String, text: Binding<String>, keyboard: UIKeyboardType = .default) -> some View {
         TextField(title, text: text)
@@ -2804,21 +3101,22 @@ private struct CreateHousingListingView: View {
             )
     }
 
-    private func formPicker(_ title: String, selection: Binding<String>, options: [String]) -> some View {
+    private func formPicker(_ title: String, selection: Binding<String>, options: [(value: String, label: String)]) -> some View {
         Menu {
-            ForEach(options, id: \.self) { option in
-                Button(option) { selection.wrappedValue = option }
+            ForEach(options, id: \.value) { option in
+                Button(option.label) { selection.wrappedValue = option.value }
             }
         } label: {
+            let selectedLabel = options.first(where: { $0.value == selection.wrappedValue })?.label ?? selection.wrappedValue
             HStack(spacing: 6) {
                 Text("\(title):")
-                    .foregroundStyle(Color.appAccent)
-                Text(selection.wrappedValue)
-                    .foregroundStyle(Color.appAccent)
+                    .foregroundStyle(.black)
+                Text(selectedLabel)
+                    .foregroundStyle(.black)
                 Spacer()
                 Image(systemName: "chevron.down")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.appAccent)
+                    .foregroundStyle(.black.opacity(0.7))
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
@@ -2838,10 +3136,10 @@ private struct CreateHousingListingView: View {
         } label: {
             HStack(spacing: 6) {
                 Text(housingPeriod.isEmpty ? "Period" : housingPeriod)
-                    .foregroundStyle(Color.appAccent)
+                    .foregroundStyle(.black)
                 Image(systemName: "chevron.down")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.appAccent)
+                    .foregroundStyle(.black.opacity(0.7))
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
@@ -2868,7 +3166,7 @@ private struct CreateHousingListingView: View {
                         selection.wrappedValue.insert(option)
                     }
                 }) {
-                    Text(option)
+                    Text(badgeDisplayText(option))
                         .font(.app(size: 13, weight: .semibold))
                         .foregroundStyle(selection.wrappedValue.contains(option) ? .white : .primary)
                         .frame(maxWidth: .infinity)
@@ -3100,7 +3398,7 @@ private struct HousingDetailSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 18) {
+                VStack(spacing: 20) {
                     housingHero
                     housingHeader
                     housingInfoCards
@@ -3113,7 +3411,7 @@ private struct HousingDetailSheet: View {
                 .padding(.top, 16)
                 .padding(.bottom, 40)
             }
-            .background(Color.white)
+            .background(Color(.systemGroupedBackground))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -3171,24 +3469,25 @@ private struct HousingDetailSheet: View {
     }
 
     private var housingHeader: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(spot.title)
                 .font(.app(size: 24, weight: .bold))
-                .foregroundStyle(.primary)
+                .foregroundStyle(.black)
 
             HStack(spacing: 6) {
                 Image(systemName: "house.fill")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.secondary)
                 Text(spot.type)
-                    .font(.app(size: 14, weight: .medium))
-                    .foregroundStyle(.secondary)
             }
+            .font(.app(size: 13, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color(.systemGray6), in: Capsule())
         }
     }
 
     private var housingInfoCards: some View {
-        VStack(spacing: 12) {
+        HStack(spacing: 12) {
             infoCard(
                 title: "Price",
                 subtitle: "Per \(spot.period)",
@@ -3206,35 +3505,43 @@ private struct HousingDetailSheet: View {
 
     private var housingDescription: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Description")
-                .font(.app(size: 18, weight: .semibold))
-                .foregroundStyle(.primary)
+            sectionTitle("Description")
             Text(spot.description)
-                .font(.app(size: 14, weight: .medium))
+                .font(.app(size: 15, weight: .regular))
                 .foregroundStyle(.secondary)
-                .lineSpacing(4)
+                .lineSpacing(5)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(Color.black.opacity(0.05), lineWidth: 1)
+                )
         }
     }
 
     private var housingBadges: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Features")
-                .font(.app(size: 18, weight: .semibold))
-                .foregroundStyle(.primary)
+            sectionTitle("Features")
 
             if spot.badges.isEmpty {
                 Text("✨ Cozy, well-located, and fully equipped.")
-                    .font(.app(size: 14, weight: .medium))
+                    .font(.app(size: 14, weight: .semibold))
                     .foregroundStyle(.secondary)
             } else {
                 FlowLayout(spacing: 8) {
                     ForEach(spot.badges, id: \.self) { badge in
-                        Text(badge)
+                        Text(badgeDisplayText(badge))
                             .font(.app(size: 13, weight: .semibold))
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(.black)
                             .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color(.systemGray6), in: Capsule())
+                            .padding(.vertical, 7)
+                            .background(Color.white, in: Capsule())
+                            .overlay(
+                                Capsule()
+                                    .strokeBorder(Color.black.opacity(0.08), lineWidth: 1)
+                            )
                     }
                 }
             }
@@ -3243,9 +3550,7 @@ private struct HousingDetailSheet: View {
 
     private var housingRecommender: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Recommended by")
-                .font(.app(size: 18, weight: .semibold))
-                .foregroundStyle(.primary)
+            sectionTitle("Recommended by")
 
             HStack(spacing: 12) {
                 AsyncImage(url: URL(string: spot.recommenderImg)) { phase in
@@ -3263,14 +3568,18 @@ private struct HousingDetailSheet: View {
                 .overlay(Circle().strokeBorder(.quaternary, lineWidth: 1))
 
                 Text(spot.recommender)
-                .font(.app(size: 16, weight: .semibold))
-                    .foregroundStyle(.primary)
+                    .font(.app(size: 16, weight: .semibold))
+                    .foregroundStyle(.black)
 
                 Spacer()
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Color.black.opacity(0.05), lineWidth: 1)
+            )
         }
     }
 
@@ -3278,9 +3587,7 @@ private struct HousingDetailSheet: View {
         Group {
             if spot.photos.count > 1 {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Photos")
-                        .font(.app(size: 18, weight: .semibold))
-                        .foregroundStyle(.primary)
+                    sectionTitle("Photos")
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 12) {
                             ForEach(Array(spot.photos.enumerated()), id: \.offset) { _, photo in
@@ -3293,8 +3600,12 @@ private struct HousingDetailSheet: View {
                                         Color(.systemGray5)
                                     }
                                 }
-                                .frame(width: 120, height: 120)
-                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .frame(width: 140, height: 110)
+                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .strokeBorder(Color.black.opacity(0.05), lineWidth: 1)
+                                )
                             }
                         }
                     }
@@ -3304,34 +3615,41 @@ private struct HousingDetailSheet: View {
     }
 
     private func infoCard(title: String, subtitle: String, systemImage: String, value: String) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             ZStack {
                 Circle()
-                    .fill(Color.appAccent.opacity(0.12))
+                    .fill(Color.appAccent.opacity(0.15))
                 Image(systemName: systemImage)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(Color.appAccent)
             }
-            .frame(width: 44, height: 44)
+            .frame(width: 34, height: 34)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.app(size: 15, weight: .semibold))
-                    .foregroundStyle(.primary)
-                Text(subtitle)
+                Text(value)
+                    .font(.app(size: 18, weight: .bold))
+                    .foregroundStyle(.black)
+                Text("\(title) • \(subtitle)")
                     .font(.app(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
             }
 
-            Spacer()
-
-            Text(value)
-                .font(.app(size: 15, weight: .semibold))
-                .foregroundStyle(.primary)
+            Spacer(minLength: 0)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Color.black.opacity(0.05), lineWidth: 1)
+        )
+    }
+
+    private func sectionTitle(_ title: String) -> some View {
+        Text(title)
+            .font(.app(size: 19, weight: .bold))
+            .foregroundStyle(.black)
     }
 }
 
@@ -3553,6 +3871,35 @@ private struct RoommateDetailSheet: View {
     }
 }
 
+private func emojiForBadge(_ badge: String) -> String {
+    switch badge.lowercased() {
+    case "furnished":
+        return "🛋️"
+    case "near metro":
+        return "🚇"
+    case "utilities included":
+        return "💡"
+    case "pet friendly":
+        return "🐾"
+    case "quiet":
+        return "🤫"
+    case "balcony":
+        return "🌿"
+    default:
+        return "✨"
+    }
+}
+
+private func badgeDisplayText(_ badge: String) -> String {
+    let hasEmoji = badge.unicodeScalars.contains {
+        $0.properties.isEmojiPresentation || $0.properties.isEmoji
+    }
+    if hasEmoji {
+        return badge
+    }
+    return "\(emojiForBadge(badge)) \(badge)"
+}
+
 // MARK: - Trip Location Searcher
 private class TripLocationSearcher: NSObject, ObservableObject, MKLocalSearchCompleterDelegate {
     @Published var results: [MKLocalSearchCompletion] = []
@@ -3580,6 +3927,44 @@ private class TripLocationSearcher: NSObject, ObservableObject, MKLocalSearchCom
         }
     }
     
+    func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
+        results = []
+    }
+}
+
+// MARK: - Address Search Completer
+private class AddressSearchCompleter: NSObject, ObservableObject, MKLocalSearchCompleterDelegate {
+    @Published var results: [MKLocalSearchCompletion] = []
+    private let completer = MKLocalSearchCompleter()
+
+    init(center: CLLocationCoordinate2D) {
+        super.init()
+        completer.delegate = self
+        completer.resultTypes = [.address]
+        completer.region = MKCoordinateRegion(
+            center: center,
+            span: MKCoordinateSpan(latitudeDelta: 0.2, longitudeDelta: 0.2)
+        )
+    }
+
+    func search(query: String) {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            clear()
+            return
+        }
+        completer.queryFragment = trimmed
+    }
+
+    func clear() {
+        completer.queryFragment = ""
+        results = []
+    }
+
+    func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
+        results = completer.results
+    }
+
     func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
         results = []
     }
