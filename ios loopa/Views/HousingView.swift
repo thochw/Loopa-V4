@@ -533,7 +533,7 @@ struct HousingView: View {
             NavigationStack {
                 VStack(spacing: 16) {
                     HStack {
-                        Text("New trip")
+                        Text("✈️ New trip")
                             .font(.app(size: 24, weight: .bold))
                             .foregroundStyle(.primary)
                         Spacer()
@@ -850,18 +850,22 @@ struct HousingView: View {
         @State private var selectedSpotForDetail: HousingSpot? = nil
         
         // Filter states
-        @State private var selectedTypeFilters: Set<String> = []
-        @State private var selectedPriceFilters: Set<String> = []
+        @State private var selectedHousingType: String = "All" // "All" | "Room" | "Entire place"
+        @State private var budgetMinValue: Double = 0
+        @State private var budgetMaxValue: Double = 2500 // range 0...2500, max shows "2500+"
+        @State private var budgetMinInput: String = "0"
+        @State private var budgetMaxInput: String = "2500"
+        @FocusState private var minBudgetFocused: Bool
+        @FocusState private var maxBudgetFocused: Bool
         @State private var selectedRatingFilters: Set<Int> = []
-        @State private var selectedArrivalDate: Date? = nil
+        @State private var availabilityFilterNow: Bool? = nil // nil = no filter, true = Now, false = Later
+        @State private var selectedArrivalDate: Date? = nil // used when Later is selected
         
-        // Filter options with emojis for better UX
-        private let typeOptionsWithEmoji: [(id: String, label: String, emoji: String, description: String)] = [
-            ("All", "All types", "🏠", "Show everything"),
-            ("Apartment", "Apartment", "🏢", "City living"),
-            ("House", "House", "🏡", "Full home"),
-            ("Student residence", "Student residence", "🎓", "Campus life"),
-            ("Room", "Room", "🛏️", "Private room")
+        // Type of housing: 3 options for horizontal segment
+        private let housingTypeOptions: [(id: String, label: String)] = [
+            ("All", "All types"),
+            ("Room", "Room"),
+            ("Entire place", "Entire place")
         ]
         
         private let priceOptionsWithEmoji: [(id: String, label: String, emoji: String)] = [
@@ -874,24 +878,17 @@ struct HousingView: View {
 
         private var filteredSpots: [HousingSpot] {
             spots.filter { spot in
-                // Type filter: if empty or contains the spot's type
-                let typeMatch = selectedTypeFilters.isEmpty || selectedTypeFilters.contains(spot.type)
-                
-                // Price filter: if empty, show all; otherwise check if price falls in any selected range
-                let priceMatch: Bool
-                if selectedPriceFilters.isEmpty {
-                    priceMatch = true
-                } else {
-                    priceMatch = selectedPriceFilters.contains { range in
-                        switch range {
-                        case "$0-500": return spot.price <= 500
-                        case "$500-1000": return spot.price > 500 && spot.price <= 1000
-                        case "$1000-1500": return spot.price > 1000 && spot.price <= 1500
-                        case "$1500+": return spot.price > 1500
-                        default: return false
-                        }
-                    }
+                // Type filter: All = all, Room = spot.type == "Room", Entire place = spot.type != "Room"
+                let typeMatch: Bool
+                switch selectedHousingType {
+                case "All": typeMatch = true
+                case "Room": typeMatch = spot.type == "Room"
+                case "Entire place": typeMatch = spot.type != "Room"
+                default: typeMatch = true
                 }
+                
+                // Price filter: spot in [min, max] range
+                let priceMatch = Double(spot.price) >= budgetMinValue && Double(spot.price) <= budgetMaxValue
                 
                 // Rating filter: if empty, show all; otherwise check if rating matches any selected
                 let ratingMatch: Bool
@@ -903,17 +900,23 @@ struct HousingView: View {
                     }
                 }
                 
-                // Availability filter - show spots available by the selected arrival date
+                // Availability filter: nil = all, true = Now only, false = Later (by selectedArrivalDate)
                 let availabilityMatch: Bool
-                if let arrivalDate = selectedArrivalDate {
-                    // Show spots that are available now OR will be available by the arrival date
-                    availabilityMatch = spot.isAvailableNow || (spot.availableDate != nil && spot.availableDate! <= arrivalDate)
-                } else {
-                    availabilityMatch = true
+                switch availabilityFilterNow {
+                case nil: availabilityMatch = true
+                case true?: availabilityMatch = spot.isAvailableNow
+                case false?:
+                    let date = selectedArrivalDate ?? Date()
+                    availabilityMatch = spot.availableDate != nil && spot.availableDate! <= date
                 }
                 
                 return typeMatch && priceMatch && ratingMatch && availabilityMatch
             }
+        }
+
+        private var budgetChipText: String {
+            let maxStr = Int(budgetMaxValue) >= 2500 ? "2500+ $CA" : "\(Int(budgetMaxValue)) $CA"
+            return "\(Int(budgetMinValue)) - \(maxStr)"
         }
 
         var body: some View {
@@ -1060,20 +1063,23 @@ struct HousingView: View {
                 .padding(.horizontal, 20)
 
                 // Active filter chips (only if filters are applied)
-                if !selectedTypeFilters.isEmpty || !selectedPriceFilters.isEmpty || !selectedRatingFilters.isEmpty || selectedArrivalDate != nil {
+                if selectedHousingType != "All" || budgetMinValue > 0 || budgetMaxValue < 2500 || !selectedRatingFilters.isEmpty || availabilityFilterNow != nil {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 10) {
-                            ForEach(Array(selectedTypeFilters), id: \.self) { type in
-                                filterChip(text: type, onRemove: { selectedTypeFilters.remove(type) })
+                            if selectedHousingType != "All" {
+                                filterChip(text: selectedHousingType == "Room" ? "Room" : "Entire place", onRemove: { selectedHousingType = "All" })
                             }
-                            ForEach(Array(selectedPriceFilters), id: \.self) { price in
-                                filterChip(text: price, onRemove: { selectedPriceFilters.remove(price) })
+                            if budgetMinValue > 0 || budgetMaxValue < 2500 {
+                                filterChip(text: budgetChipText, onRemove: { budgetMinValue = 0; budgetMaxValue = 2500 })
                             }
                             ForEach(Array(selectedRatingFilters), id: \.self) { rating in
                                 filterChip(text: "\(rating)+ ⭐", onRemove: { selectedRatingFilters.remove(rating) })
                             }
-                            if let arrivalDate = selectedArrivalDate {
-                                filterChip(text: "📅 \(arrivalDate.formatted(date: .abbreviated, time: .omitted))", onRemove: { selectedArrivalDate = nil })
+                            if availabilityFilterNow == true {
+                                filterChip(text: "💃 Now", onRemove: { availabilityFilterNow = nil })
+                            }
+                            if availabilityFilterNow == false, let d = selectedArrivalDate {
+                                filterChip(text: "🗓️ \(d.formatted(date: .abbreviated, time: .omitted))", onRemove: { availabilityFilterNow = nil; selectedArrivalDate = nil })
                             }
                         }
                         .padding(.horizontal, 20)
@@ -1169,20 +1175,23 @@ struct HousingView: View {
                 .padding(.bottom, 12)
 
                 // Active filters
-                if !selectedTypeFilters.isEmpty || !selectedPriceFilters.isEmpty || !selectedRatingFilters.isEmpty || selectedArrivalDate != nil {
+                if selectedHousingType != "All" || budgetMinValue > 0 || budgetMaxValue < 2500 || !selectedRatingFilters.isEmpty || availabilityFilterNow != nil {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 10) {
-                            ForEach(Array(selectedTypeFilters), id: \.self) { type in
-                                filterChip(text: type, onRemove: { selectedTypeFilters.remove(type) })
+                            if selectedHousingType != "All" {
+                                filterChip(text: selectedHousingType == "Room" ? "Room" : "Entire place", onRemove: { selectedHousingType = "All" })
                             }
-                            ForEach(Array(selectedPriceFilters), id: \.self) { price in
-                                filterChip(text: price, onRemove: { selectedPriceFilters.remove(price) })
+                            if budgetMinValue > 0 || budgetMaxValue < 2500 {
+                                filterChip(text: budgetChipText, onRemove: { budgetMinValue = 0; budgetMaxValue = 2500 })
                             }
                             ForEach(Array(selectedRatingFilters), id: \.self) { rating in
                                 filterChip(text: "\(rating)+ ⭐", onRemove: { selectedRatingFilters.remove(rating) })
                             }
-                            if let arrivalDate = selectedArrivalDate {
-                                filterChip(text: "Arrival: \(arrivalDate.formatted(date: .abbreviated, time: .omitted))", onRemove: { selectedArrivalDate = nil })
+                            if availabilityFilterNow == true {
+                                filterChip(text: "💃 Now", onRemove: { availabilityFilterNow = nil })
+                            }
+                            if availabilityFilterNow == false, let d = selectedArrivalDate {
+                                filterChip(text: "🗓️ \(d.formatted(date: .abbreviated, time: .omitted))", onRemove: { availabilityFilterNow = nil; selectedArrivalDate = nil })
                             }
                         }
                         .padding(.horizontal, 20)
@@ -1244,7 +1253,7 @@ struct HousingView: View {
             NavigationStack {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 28) {
-                        // Type filter - Cards style
+                        // Type filter - Horizontal segment (3 options on one line)
                         VStack(alignment: .leading, spacing: 16) {
                             HStack(spacing: 10) {
                                 Text("🏠")
@@ -1258,69 +1267,48 @@ struct HousingView: View {
                                 .font(.app(size: 14, weight: .regular))
                                 .foregroundStyle(.secondary)
 
-                            VStack(spacing: 10) {
-                                ForEach(typeOptionsWithEmoji, id: \.id) { option in
-                                    let isSelected = (option.id == "All" && selectedTypeFilters.isEmpty) || selectedTypeFilters.contains(option.id)
+                            HStack(spacing: 0) {
+                                ForEach(housingTypeOptions, id: \.id) { option in
+                                    let isSelected = selectedHousingType == option.id
                                     Button(action: {
                                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                            if option.id == "All" {
-                                                selectedTypeFilters.removeAll()
-                                            } else {
-                                                if selectedTypeFilters.contains(option.id) {
-                                                    selectedTypeFilters.remove(option.id)
-                                                } else {
-                                                    selectedTypeFilters.insert(option.id)
-                                                }
-                                            }
+                                            selectedHousingType = option.id
                                         }
                                     }) {
-                                        HStack(spacing: 14) {
-                                            Text(option.emoji)
-                                                .font(.system(size: 24))
-                                                .frame(width: 40, height: 40)
-                                                .background(
-                                                    isSelected ? Color.appAccent.opacity(0.15) : Color(.systemGray5),
-                                                    in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                                )
-                                            
-                                            VStack(alignment: .leading, spacing: 2) {
-                                                Text(option.label)
-                                                    .font(.app(size: 16, weight: .semibold))
-                                                    .foregroundStyle(.primary)
-                                                Text(option.description)
-                                                    .font(.app(size: 12, weight: .regular))
-                                                    .foregroundStyle(.secondary)
-                                            }
-                                            
-                                            Spacer()
-                                            
-                                            if isSelected {
-                                                Image(systemName: "checkmark.circle.fill")
-                                                    .font(.system(size: 24))
-                                                    .foregroundStyle(Color.appAccent)
-                                            } else {
-                                                Circle()
-                                                    .strokeBorder(Color(.systemGray4), lineWidth: 2)
-                                                    .frame(width: 24, height: 24)
-                                            }
-                                        }
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 14)
-                                        .background(
-                                            isSelected ? Color.appAccent.opacity(0.08) : Color.white,
-                                            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                        )
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                                .strokeBorder(
-                                                    isSelected ? Color.appAccent.opacity(0.4) : Color(.systemGray5),
-                                                    lineWidth: isSelected ? 2 : 1
-                                                )
-                                        )
+                                        Text(option.label)
+                                            .font(.app(size: 14, weight: .semibold))
+                                            .foregroundStyle(.primary)
+                                            .multilineTextAlignment(.center)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 12)
+                                            .background(
+                                                isSelected ? Color.white : Color.clear,
+                                                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                            )
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                    .strokeBorder(
+                                                        isSelected ? Color(hex: "222222") : Color.clear,
+                                                        lineWidth: 2
+                                                    )
+                                            )
+                                            .shadow(color: isSelected ? .black.opacity(0.06) : .clear, radius: 2, y: 1)
                                     }
                                     .buttonStyle(.plain)
+                                    if option.id != housingTypeOptions.last?.id {
+                                        Rectangle()
+                                            .fill(Color(.systemGray5))
+                                            .frame(width: 1)
+                                            .padding(.vertical, 8)
+                                    }
                                 }
                             }
+                            .padding(4)
+                            .background(Color.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .strokeBorder(Color(.systemGray5), lineWidth: 1)
+                            )
                         }
 
                         // Separator with style
@@ -1331,7 +1319,7 @@ struct HousingView: View {
                         }
                         .padding(.vertical, 4)
 
-                        // Price filter - Modern pill style
+                        // Price filter - Range slider with histogram + Min/Max pills
                         VStack(alignment: .leading, spacing: 16) {
                             HStack(spacing: 10) {
                                 Text("💰")
@@ -1341,66 +1329,11 @@ struct HousingView: View {
                                     .foregroundStyle(.primary)
                             }
                             
-                            Text("Select one or more price ranges")
+                            Text("Select your budget range")
                                 .font(.app(size: 14, weight: .regular))
                                 .foregroundStyle(.secondary)
 
-                            VStack(spacing: 10) {
-                                ForEach(priceOptionsWithEmoji, id: \.id) { option in
-                                    let isSelected = (option.id == "All" && selectedPriceFilters.isEmpty) || selectedPriceFilters.contains(option.id)
-                                    Button(action: {
-                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                            if option.id == "All" {
-                                                selectedPriceFilters.removeAll()
-                                            } else {
-                                                if selectedPriceFilters.contains(option.id) {
-                                                    selectedPriceFilters.remove(option.id)
-                                                } else {
-                                                    selectedPriceFilters.insert(option.id)
-                                                }
-                                            }
-                                        }
-                                    }) {
-                                        HStack(spacing: 12) {
-                                            Text(option.emoji)
-                                                .font(.system(size: 20))
-                                            
-                                            VStack(alignment: .leading, spacing: 2) {
-                                                Text(option.label)
-                                                    .font(.app(size: 15, weight: .semibold))
-                                                if option.id != "All" {
-                                                    Text(option.id)
-                                                        .font(.app(size: 12, weight: .medium))
-                                                        .foregroundStyle(.secondary)
-                                                }
-                                            }
-                                            .foregroundStyle(isSelected ? .white : .primary)
-                                            
-                                            Spacer()
-                                            
-                                            if isSelected {
-                                                Image(systemName: "checkmark")
-                                                    .font(.system(size: 14, weight: .bold))
-                                                    .foregroundStyle(.white)
-                                            }
-                                        }
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 14)
-                                        .background(
-                                            isSelected ? Color.appAccent : Color.white,
-                                            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        )
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                                .strokeBorder(
-                                                    isSelected ? Color.clear : Color(.systemGray5),
-                                                    lineWidth: 1
-                                                )
-                                        )
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
+                            budgetRangeSliderWithHistogram
                         }
                         
                         // Separator
@@ -1505,7 +1438,7 @@ struct HousingView: View {
                         }
                         .padding(.vertical, 4)
                         
-                        // Availability filter - Calendar style
+                        // Availability filter - Now / Later
                         VStack(alignment: .leading, spacing: 16) {
                             HStack(spacing: 10) {
                                 Text("📅")
@@ -1515,25 +1448,26 @@ struct HousingView: View {
                                     .foregroundStyle(.primary)
                             }
                             
-                            Text("When do you plan to move in?")
+                            Text("When do you need the place?")
                                 .font(.app(size: 14, weight: .regular))
                                 .foregroundStyle(.secondary)
                             
                             VStack(spacing: 10) {
-                                // Any date option
+                                // 💃 Now
                                 Button(action: {
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        availabilityFilterNow = true
                                         selectedArrivalDate = nil
                                     }
                                 }) {
                                     HStack(spacing: 12) {
-                                        Text("🌟")
+                                        Text("💃")
                                             .font(.system(size: 20))
-                                        Text("I'm flexible")
+                                        Text("Now")
                                             .font(.app(size: 15, weight: .semibold))
-                                            .foregroundStyle(selectedArrivalDate == nil ? .white : .primary)
+                                            .foregroundStyle(availabilityFilterNow == true ? .white : .primary)
                                         Spacer()
-                                        if selectedArrivalDate == nil {
+                                        if availabilityFilterNow == true {
                                             Image(systemName: "checkmark")
                                                 .font(.system(size: 14, weight: .bold))
                                                 .foregroundStyle(.white)
@@ -1542,29 +1476,58 @@ struct HousingView: View {
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 14)
                                     .background(
-                                        selectedArrivalDate == nil ? Color.appAccent : Color.white,
+                                        availabilityFilterNow == true ? Color.appAccent : Color.white,
                                         in: RoundedRectangle(cornerRadius: 14, style: .continuous)
                                     )
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 14, style: .continuous)
                                             .strokeBorder(
-                                                selectedArrivalDate == nil ? Color.clear : Color(.systemGray5),
+                                                availabilityFilterNow == true ? Color.clear : Color(.systemGray5),
                                                 lineWidth: 1
                                             )
                                     )
                                 }
                                 .buttonStyle(.plain)
                                 
-                                // Date picker
-                                HStack(spacing: 12) {
-                                    Text("🗓️")
-                                        .font(.system(size: 20))
-                                    Text("Pick a date")
-                                        .font(.app(size: 15, weight: .semibold))
-                                        .foregroundStyle(selectedArrivalDate != nil ? .white : .primary)
-                                    Spacer()
+                                // 🗓️ Later + date picker
+                                Button(action: {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        availabilityFilterNow = false
+                                        if selectedArrivalDate == nil { selectedArrivalDate = Date() }
+                                    }
+                                }) {
+                                    HStack(spacing: 12) {
+                                        Text("🗓️")
+                                            .font(.system(size: 20))
+                                        Text("Later")
+                                            .font(.app(size: 15, weight: .semibold))
+                                            .foregroundStyle(availabilityFilterNow == false ? .white : .primary)
+                                        Spacer()
+                                        if availabilityFilterNow == false {
+                                            Image(systemName: "checkmark")
+                                                .font(.system(size: 14, weight: .bold))
+                                                .foregroundStyle(.white)
+                                        }
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 14)
+                                    .background(
+                                        availabilityFilterNow == false ? Color.appAccent : Color.white,
+                                        in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            .strokeBorder(
+                                                availabilityFilterNow == false ? Color.clear : Color(.systemGray5),
+                                                lineWidth: 1
+                                            )
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                                
+                                if availabilityFilterNow == false {
                                     DatePicker(
-                                        "",
+                                        "Choose date",
                                         selection: Binding(
                                             get: { selectedArrivalDate ?? Date() },
                                             set: { selectedArrivalDate = $0 }
@@ -1572,23 +1535,11 @@ struct HousingView: View {
                                         in: Date()...,
                                         displayedComponents: .date
                                     )
-                                    .labelsHidden()
-                                    .tint(selectedArrivalDate != nil ? .white : Color.appAccent)
-                                    .colorScheme(selectedArrivalDate != nil ? .dark : .light)
+                                    .datePickerStyle(.graphical)
+                                    .tint(Color.appAccent)
+                                    .padding(.horizontal, 4)
+                                    .padding(.top, 8)
                                 }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .background(
-                                    selectedArrivalDate != nil ? Color.appAccent : Color.white,
-                                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .strokeBorder(
-                                            selectedArrivalDate != nil ? Color.clear : Color(.systemGray5),
-                                            lineWidth: 1
-                                        )
-                                )
                             }
                         }
                     }
@@ -1596,7 +1547,7 @@ struct HousingView: View {
                     .padding(.top, 20)
                     .padding(.bottom, 120)
                 }
-                .background(Color(.systemGray6).opacity(0.5))
+                .background(Color(.systemBackground))
                 .safeAreaInset(edge: .bottom) {
                     VStack(spacing: 0) {
                         Divider()
@@ -1610,7 +1561,7 @@ struct HousingView: View {
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
-                            .background(Color.appAccent, in: Capsule())
+                            .background(Color(hex: "222222"), in: Capsule())
                         }
                         .buttonStyle(.plain)
                         .padding(.horizontal, 24)
@@ -1626,15 +1577,17 @@ struct HousingView: View {
                         Button(action: { showFilterSheet = false }) {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.system(size: 24))
-                                .foregroundStyle(Color(.systemGray3))
+                                .foregroundStyle(Color.appAccent)
                         }
                     }
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button(action: {
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                selectedTypeFilters.removeAll()
-                                selectedPriceFilters.removeAll()
+                                selectedHousingType = "All"
+                                budgetMinValue = 0
+                                budgetMaxValue = 2500
                                 selectedRatingFilters.removeAll()
+                                availabilityFilterNow = nil
                                 selectedArrivalDate = nil
                             }
                         }) {
@@ -1650,8 +1603,100 @@ struct HousingView: View {
             .presentationCornerRadius(28)
         }
         
+        private let budgetRange: ClosedRange<Double> = 0...2500
+        private let budgetStep: Double = 50
+        
+        private var budgetRangeSliderWithHistogram: some View {
+            VStack(alignment: .leading, spacing: 16) {
+                // Range slider with two thumbs (no histogram)
+                BudgetRangeSliderView(
+                    minValue: $budgetMinValue,
+                    maxValue: $budgetMaxValue,
+                    range: budgetRange,
+                    step: budgetStep
+                )
+                .frame(height: 44)
+                
+                // Min / Max pills below – tappable, editable
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Minimum")
+                            .font(.app(size: 12, weight: .medium))
+                            .foregroundStyle(.secondary)
+                        budgetPillField(
+                            value: $budgetMinValue,
+                            input: $budgetMinInput,
+                            isFocused: $minBudgetFocused,
+                            isMax: false
+                        )
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 6) {
+                        Text("Maximum")
+                            .font(.app(size: 12, weight: .medium))
+                            .foregroundStyle(.secondary)
+                        budgetPillField(
+                            value: $budgetMaxValue,
+                            input: $budgetMaxInput,
+                            isFocused: $maxBudgetFocused,
+                            isMax: true
+                        )
+                    }
+                }
+            }
+            .padding(.vertical, 4)
+            .onChange(of: budgetMinValue) { _, newVal in
+                if !minBudgetFocused { budgetMinInput = "\(Int(newVal))" }
+            }
+            .onChange(of: budgetMaxValue) { _, newVal in
+                if !maxBudgetFocused { budgetMaxInput = "\(Int(newVal))" }
+            }
+        }
+        
+        private func budgetPillField(value: Binding<Double>, input: Binding<String>, isFocused: FocusState<Bool>.Binding, isMax: Bool) -> some View {
+            ZStack(alignment: .leading) {
+                if isFocused.wrappedValue {
+                    HStack(spacing: 2) {
+                        TextField("0", text: input)
+                            .font(.app(size: 15, weight: .semibold))
+                            .foregroundStyle(.primary)
+                            .keyboardType(.numberPad)
+                            .focused(isFocused)
+                            .frame(minWidth: 40)
+                        Text("$CA")
+                            .font(.app(size: 15, weight: .semibold))
+                            .foregroundStyle(.primary)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                } else {
+                    Text("\(Int(value.wrappedValue))\(isMax && Int(value.wrappedValue) >= 2500 ? "+" : "") $CA")
+                        .font(.app(size: 15, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .contentShape(Rectangle())
+                        .onTapGesture { input.wrappedValue = "\(Int(value.wrappedValue))"; isFocused.wrappedValue = true }
+                }
+            }
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color(.systemGray5), lineWidth: 1))
+            .onChange(of: input.wrappedValue) { _, newStr in
+                let parsed = Int(newStr.filter { $0.isNumber })
+                let clamped: Double
+                if isMax {
+                    let v = Double(min(max(parsed ?? 0, Int(budgetMinValue)), 2500))
+                    value.wrappedValue = v
+                } else {
+                    let v = Double(max(min(parsed ?? 0, Int(budgetMaxValue)), 0))
+                    value.wrappedValue = v
+                }
+            }
+            .onSubmit { isFocused.wrappedValue = false }
+        }
+        
         // Keep old compatibility
-        private var typeOptions: [String] { typeOptionsWithEmoji.map { $0.id } }
+        private var typeOptions: [String] { housingTypeOptions.map { $0.id } }
         private var priceOptions: [String] { priceOptionsWithEmoji.map { $0.id } }
         
         private func recommendedHousingRow(spot: HousingSpot) -> some View {
@@ -2784,7 +2829,7 @@ private struct CreateHousingListingView: View {
                 .padding(.bottom, 4)
             }
             
-            badgeGrid(options: housingBadgeOptions, selection: $housingBadgesSelected)
+            badgeQuinconceScroll(options: housingBadgeOptions, selection: $housingBadgesSelected)
             formTextField("Add custom badge", text: $housingBadgesCustom)
             badgeSuggestionRow
         }
@@ -3080,7 +3125,6 @@ private struct CreateHousingListingView: View {
                 return !housingTitle.isEmpty
                     && Int(housingPrice) != nil
                     && !housingAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    && !housingPeriod.isEmpty
             }
             if currentStep == 1 {
                 return housingRating > 0
@@ -3179,7 +3223,6 @@ private struct CreateHousingListingView: View {
             return !housingTitle.isEmpty
                 && Int(housingPrice) != nil
                 && !housingAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                && !housingPeriod.isEmpty
                 && housingRating > 0
                 && hasContactInfo
                 && housingAvailabilityStatus != nil
@@ -3353,41 +3396,73 @@ private struct CreateHousingListingView: View {
     }
 
     private var housingBadgeOptions: [String] {
-        ["Furnished", "Near metro", "Utilities included", "Pet friendly", "Quiet", "Balcony"]
+        [
+            "Furnished", "Near metro", "Utilities included", "Pet friendly", "Quiet", "Balcony",
+            "Great view", "Parking", "Wi‑Fi", "Washing machine", "Air conditioning", "Garden",
+            "Pool", "Workspace"
+        ]
     }
     
     private var selectedCustomBadges: [String] {
         Array(housingBadgesSelected).filter { !housingBadgeOptions.contains($0) }.sorted()
     }
 
-    private func badgeGrid(options: [String], selection: Binding<Set<String>>) -> some View {
-        let columns = [GridItem(.flexible()), GridItem(.flexible())]
-        return LazyVGrid(columns: columns, spacing: 10) {
-            ForEach(options, id: \.self) { option in
-                Button(action: {
-                    if selection.wrappedValue.contains(option) {
-                        selection.wrappedValue.remove(option)
-                    } else {
-                        selection.wrappedValue.insert(option)
+    private func badgeQuinconceScroll(options: [String], selection: Binding<Set<String>>) -> some View {
+        let rowSpacing: CGFloat = 10
+        let itemSpacing: CGFloat = 10
+        
+        let row0 = options.enumerated().filter { $0.offset % 3 == 0 }.map(\.element)
+        let row1 = options.enumerated().filter { $0.offset % 3 == 1 }.map(\.element)
+        let row2 = options.enumerated().filter { $0.offset % 3 == 2 }.map(\.element)
+        
+        return ScrollView(.horizontal, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: rowSpacing) {
+                HStack(spacing: itemSpacing) {
+                    ForEach(row0, id: \.self) { option in
+                        badgeChip(option: option, selection: selection)
                     }
-                }) {
-                    Text(badgeDisplayText(option))
-                        .font(.app(size: 13, weight: .semibold))
-                        .foregroundStyle(selection.wrappedValue.contains(option) ? .white : .primary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(
-                            selection.wrappedValue.contains(option) ? Color.appAccent : Color.white,
-                            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .strokeBorder(Color.black.opacity(0.06), lineWidth: 1)
-                        )
                 }
-                .buttonStyle(.plain)
+                HStack(spacing: itemSpacing) {
+                    ForEach(row1, id: \.self) { option in
+                        badgeChip(option: option, selection: selection)
+                    }
+                }
+                HStack(spacing: itemSpacing) {
+                    ForEach(row2, id: \.self) { option in
+                        badgeChip(option: option, selection: selection)
+                    }
+                }
             }
+            .padding(.vertical, 4)
+            .padding(.horizontal, 2)
         }
+        .frame(height: 3 * (44 + rowSpacing) - rowSpacing)
+    }
+    
+    private func badgeChip(option: String, selection: Binding<Set<String>>) -> some View {
+        Button(action: {
+            if selection.wrappedValue.contains(option) {
+                selection.wrappedValue.remove(option)
+            } else {
+                selection.wrappedValue.insert(option)
+            }
+        }) {
+            Text(badgeDisplayText(option))
+                .font(.app(size: 13, weight: .semibold))
+                .foregroundStyle(selection.wrappedValue.contains(option) ? .white : .primary)
+                .lineLimit(1)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(
+                    selection.wrappedValue.contains(option) ? Color.appAccent : Color.white,
+                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(Color.black.opacity(0.06), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -3595,6 +3670,93 @@ private struct CreateHousingListingView: View {
     
 }
 
+// MARK: - Budget Range Slider (two thumbs, track colored between)
+private struct BudgetRangeSliderView: View {
+    @Binding var minValue: Double
+    @Binding var maxValue: Double
+    let range: ClosedRange<Double>
+    let step: Double
+    
+    @State private var dragStartMin: Double?
+    @State private var dragStartMax: Double?
+    
+    private let thumbSize: CGFloat = 24
+    private let trackHeight: CGFloat = 6
+    
+    private var rangeWidth: Double { range.upperBound - range.lowerBound }
+    
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let usable = w - thumbSize
+            let minX = valueToX(minValue, width: w)
+            let maxX = valueToX(maxValue, width: w)
+            ZStack(alignment: .leading) {
+                // Background track (light gray)
+                RoundedRectangle(cornerRadius: trackHeight / 2)
+                    .fill(Color(.systemGray5))
+                    .frame(height: trackHeight)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, thumbSize / 2)
+                
+                // Active segment (red/pink between thumbs)
+                RoundedRectangle(cornerRadius: trackHeight / 2)
+                    .fill(Color.appAccent)
+                    .frame(width: max(0, maxX - minX), height: trackHeight)
+                    .offset(x: thumbSize / 2 + minX)
+                
+                // Min thumb
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: thumbSize, height: thumbSize)
+                    .overlay(Circle().strokeBorder(Color(.systemGray4), lineWidth: 1))
+                    .shadow(color: .black.opacity(0.12), radius: 4, y: 2)
+                    .offset(x: minX)
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { g in
+                                if dragStartMin == nil { dragStartMin = minValue }
+                                let deltaVal = Double(g.translation.width / usable) * rangeWidth
+                                let newVal = (dragStartMin ?? minValue) + deltaVal
+                                minValue = min(max(range.lowerBound, newVal.rounded(to: step)), maxValue - step)
+                            }
+                            .onEnded { _ in dragStartMin = nil }
+                    )
+                
+                // Max thumb
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: thumbSize, height: thumbSize)
+                    .overlay(Circle().strokeBorder(Color(.systemGray4), lineWidth: 1))
+                    .shadow(color: .black.opacity(0.12), radius: 4, y: 2)
+                    .offset(x: maxX)
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { g in
+                                if dragStartMax == nil { dragStartMax = maxValue }
+                                let deltaVal = Double(g.translation.width / usable) * rangeWidth
+                                let newVal = (dragStartMax ?? maxValue) + deltaVal
+                                maxValue = max(min(range.upperBound, newVal.rounded(to: step)), minValue + step)
+                            }
+                            .onEnded { _ in dragStartMax = nil }
+                    )
+            }
+            .frame(height: thumbSize)
+        }
+    }
+    
+    private func valueToX(_ value: Double, width: CGFloat) -> CGFloat {
+        let usable = width - thumbSize
+        return CGFloat((value - range.lowerBound) / rangeWidth) * usable
+    }
+}
+
+private extension Double {
+    func rounded(to step: Double) -> Double {
+        (self / step).rounded() * step
+    }
+}
+
 // MARK: - Housing Detail Sheet
 private struct HousingDetailSheet: View {
     let spot: HousingSpot
@@ -3628,7 +3790,7 @@ private struct HousingDetailSheet: View {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(Color.appAccent)
                         .frame(width: 34, height: 34)
                         .background(Color.white, in: Circle())
                         .shadow(color: .black.opacity(0.12), radius: 8, y: 3)
@@ -4199,6 +4361,22 @@ private func emojiForBadge(_ badge: String) -> String {
         return "🤫"
     case "balcony":
         return "🌿"
+    case "great view":
+        return "🌅"
+    case "parking":
+        return "🅿️"
+    case "wi‑fi", "wifi", "wi-fi":
+        return "📶"
+    case "washing machine":
+        return "🧺"
+    case "air conditioning":
+        return "❄️"
+    case "garden":
+        return "🌳"
+    case "pool":
+        return "🏊"
+    case "workspace":
+        return "💻"
     default:
         return "✨"
     }
