@@ -115,7 +115,7 @@ struct ExploreView: View {
         City(name: "Seoul, South Korea", coordinate: CLLocationCoordinate2D(latitude: 37.5665, longitude: 126.9780), flag: "🇰🇷"),
         City(name: "Mexico City, Mexico", coordinate: CLLocationCoordinate2D(latitude: 19.4326, longitude: -99.1332), flag: "🇲🇽")
     ]
-
+    
     private let data = AppData.shared
     
     var body: some View {
@@ -152,7 +152,7 @@ struct ExploreView: View {
                 .onChange(of: locationManager.location) { oldValue, newValue in
                     if let newLocation = newValue {
                         if !isTeleported && selectedSearchPin == nil {
-                            withAnimation {
+                        withAnimation {
                                 region.center = adjustedCenter(newLocation.coordinate)
                             }
                         }
@@ -188,14 +188,14 @@ struct ExploreView: View {
                 
                 // Bottom Sheet (Travelers only)
                 if variant == .travelers && !isTeleported {
-                    VStack {
-                        Spacer()
-                        bottomSheet
-                            .frame(height: isSheetOpen ? sheetHeight(for: geometry.size.height) : 0)
-                            .offset(y: isSheetOpen ? 0 : sheetHeight(for: geometry.size.height))
-                            .padding(.horizontal, 16) // Match navigation bar width
-                    }
-                    .ignoresSafeArea(edges: .bottom)
+                VStack {
+                    Spacer()
+                    bottomSheet
+                        .frame(height: isSheetOpen ? sheetHeight(for: geometry.size.height) : 0)
+                        .offset(y: isSheetOpen ? 0 : sheetHeight(for: geometry.size.height))
+                        .padding(.horizontal, 16) // Match navigation bar width
+                }
+                .ignoresSafeArea(edges: .bottom)
                 }
                 
                 
@@ -203,9 +203,9 @@ struct ExploreView: View {
                 if variant == .groups {
                     VStack(spacing: 16) {
                         // Recenter Map Button (on top)
-                        Button(action: {
+                                Button(action: {
                             if let location = locationManager.location {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                     currentCity = homeCity
                                     selectedSearchPin = nil
                                     region.center = adjustedCenter(location.coordinate)
@@ -228,14 +228,14 @@ struct ExploreView: View {
                         }
                         
                         // Add Place Button (below, white on blue) - Opens sheet directly
-                        Button(action: {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                Button(action: {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                 showCreatePlaceSheet = true
                             }
                         }) {
                             Image(systemName: "plus")
                                 .font(.system(size: 20, weight: .bold))
-                                .foregroundStyle(.white)
+                                        .foregroundStyle(.white)
                                 .frame(width: 50, height: 50)
                                 .background(
                                     Color.appAccent,
@@ -255,7 +255,7 @@ struct ExploreView: View {
                         VStack(spacing: 12) {
                             Button(action: {
                                 if let location = locationManager.location {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                         currentCity = homeCity
                                         selectedSearchPin = nil
                                         region.center = adjustedCenter(location.coordinate)
@@ -276,7 +276,7 @@ struct ExploreView: View {
                                     )
                                     .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
                             }
-
+                            
                             Button(action: {
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                     onAddGroupClick(.group)
@@ -293,7 +293,7 @@ struct ExploreView: View {
                                     .shadow(color: Color.appAccent.opacity(0.4), radius: 12, y: 6)
                             }
                         }
-                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
                         .padding(.trailing, 20)
                         .padding(.bottom, isSheetOpen ? sheetHeight(for: geometry.size.height) - 24 : 80)
                     }
@@ -420,7 +420,7 @@ struct ExploreView: View {
         VStack(spacing: 12) {
             // Enhanced Search Bar with profile picture inside (full width)
             ZStack(alignment: .top) {
-                HStack(spacing: 12) {
+        HStack(spacing: 12) {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundStyle(.secondary)
@@ -443,32 +443,32 @@ struct ExploreView: View {
                         .onSubmit {
                             performSearch()
                         }
-                    
-                    Spacer()
-                    
+            
+            Spacer()
+            
                     // Profile picture or close button (inside search bar) - same size to prevent layout shift
                     Group {
                         if searchText.isEmpty && !searchFieldFocused {
                             Button(action: {
                                 showProfileEditor = true
                             }) {
-                                AsyncImage(url: URL(string: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80")) { phase in
-                                    if let image = phase.image {
-                                        image
-                                            .resizable()
-                                            .aspectRatio(contentMode: .fill)
-                                    } else if phase.error != nil {
-                                        Image(systemName: "person.circle.fill")
-                                            .foregroundStyle(.secondary)
-                                    } else {
-                                        ProgressView()
-                                            .tint(.secondary)
-                                    }
-                                }
+                    AsyncImage(url: URL(string: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80")) { phase in
+                        if let image = phase.image {
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        } else if phase.error != nil {
+                            Image(systemName: "person.circle.fill")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ProgressView()
+                                .tint(.secondary)
+                        }
+                    }
                                 .frame(width: 32, height: 32)
-                                .clipShape(Circle())
-                                .overlay(
-                                    Circle()
+                    .clipShape(Circle())
+                    .overlay(
+                        Circle()
                                     .strokeBorder(Color.white, lineWidth: 2)
                                 )
                             }
@@ -503,7 +503,7 @@ struct ExploreView: View {
                     ScrollView(showsIndicators: true) {
                         LazyVStack(spacing: 0) {
                             ForEach(Array(searchSuggestions.enumerated()), id: \.element.id) { index, suggestion in
-                                Button(action: {
+            Button(action: {
                                     handleSuggestionTap(suggestion)
                                 }) {
                                     HStack(spacing: 12) {
@@ -699,8 +699,8 @@ struct ExploreView: View {
                                     .padding(.horizontal, 18)
                                     .padding(.vertical, 12)
                                     .background(Color(.systemBackground))
-                                }
-                                .buttonStyle(.plain)
+            }
+            .buttonStyle(.plain)
                                 
                                 if index < searchSuggestions.count - 1 {
                                     Divider()
@@ -948,9 +948,9 @@ struct ExploreView: View {
                         joinBottomSheetContent(item: joinItem)
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     } else if variant == .groups {
-                        groupsContent
+                    groupsContent
                             .transition(.move(edge: .leading).combined(with: .opacity))
-                    } else {
+                } else {
                         friendsSheetContent
                             .transition(.move(edge: .trailing).combined(with: .opacity))
                     }
@@ -1011,13 +1011,13 @@ struct ExploreView: View {
                             }
                         }
                     } else {
-                        if value.translation.height > 100 {
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                isSheetOpen = false
-                            }
-                        } else {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                isSheetOpen = true
+                    if value.translation.height > 100 {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            isSheetOpen = false
+                        }
+                    } else {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            isSheetOpen = true
                             }
                         }
                     }
@@ -1054,15 +1054,15 @@ struct ExploreView: View {
             .pickerStyle(.segmented)
             .padding(.horizontal, 20)
             .padding(.top, 8)
-
+            
             ZStack(alignment: .top) {
                 if friendsSheetType == .groups {
-                    groupsView
+                groupsView
                         .transition(.move(edge: .leading).combined(with: .opacity))
-                } else {
+            } else {
                     travelersContent
                         .transition(.move(edge: .trailing).combined(with: .opacity))
-                }
+            }
             }
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: friendsSheetType)
         }
@@ -1204,7 +1204,7 @@ struct ExploreView: View {
         }) {
             ZStack(alignment: .bottomLeading) {
                 userImageView(user)
-                    .aspectRatio(contentMode: .fill)
+                        .aspectRatio(contentMode: .fill)
                     .frame(width: 110, height: 140)
                 
                 // Gradient overlay
@@ -1325,7 +1325,7 @@ struct ExploreView: View {
     private func userAnnotation(user: User) -> some View {
         ZStack {
             userImageView(user)
-                .frame(width: 48, height: 48)
+            .frame(width: 48, height: 48)
             .clipShape(Circle())
             .overlay(Circle().stroke(Color.white, lineWidth: 2))
             

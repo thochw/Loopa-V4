@@ -847,6 +847,7 @@ struct HousingView: View {
         @State private var hasAnimated = false
         @State private var sheetState: SheetState = .partial
         @State private var showFilterSheet = false
+        @State private var selectedSpotForDetail: HousingSpot? = nil
         
         // Filter states
         @State private var selectedTypeFilters: Set<String> = []
@@ -854,9 +855,22 @@ struct HousingView: View {
         @State private var selectedRatingFilters: Set<Int> = []
         @State private var selectedArrivalDate: Date? = nil
         
-        private let typeOptions = ["All", "Apartment", "House", "Student residence", "Room"]
-        private let priceOptions = ["All", "$0-500", "$500-1000", "$1000-1500", "$1500+"]
-        private let ratingOptions = [0, 1, 2, 3, 4, 5] // 0 = All
+        // Filter options with emojis for better UX
+        private let typeOptionsWithEmoji: [(id: String, label: String, emoji: String, description: String)] = [
+            ("All", "All types", "🏠", "Show everything"),
+            ("Apartment", "Apartment", "🏢", "City living"),
+            ("House", "House", "🏡", "Full home"),
+            ("Student residence", "Student residence", "🎓", "Campus life"),
+            ("Room", "Room", "🛏️", "Private room")
+        ]
+        
+        private let priceOptionsWithEmoji: [(id: String, label: String, emoji: String)] = [
+            ("All", "All prices", "💫"),
+            ("$0-500", "Budget", "💚"),
+            ("$500-1000", "Affordable", "💙"),
+            ("$1000-1500", "Mid-range", "💜"),
+            ("$1500+", "Premium", "💎")
+        ]
 
         private var filteredSpots: [HousingSpot] {
             spots.filter { spot in
@@ -965,6 +979,9 @@ struct HousingView: View {
             .sheet(isPresented: $showFilterSheet) {
                 filterSheet
             }
+            .sheet(item: $selectedSpotForDetail) { spot in
+                HousingDetailSheet(spot: spot, onClose: { selectedSpotForDetail = nil })
+            }
         }
 
         private var togglePill: some View {
@@ -1004,18 +1021,15 @@ struct HousingView: View {
                     .frame(width: 36, height: 5)
                     .padding(.top, 10)
 
-                // Header
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text(tripTitle)
-                            .font(.app(size: 22, weight: .bold))
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        Text(tripSubtitle)
-                            .font(.app(size: 14, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                    }
-
+                // Header - City name centered
+                Text(tripTitle)
+                    .font(.app(size: 22, weight: .bold))
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.horizontal, 20)
+                
+                // Dates + Filters on same line
+                HStack {
                     HStack(spacing: 8) {
                         Image(systemName: "calendar")
                             .font(.system(size: 14, weight: .semibold))
@@ -1024,42 +1038,46 @@ struct HousingView: View {
                             .font(.app(size: 14, weight: .semibold))
                             .foregroundStyle(.secondary)
                     }
+                    
+                    Spacer()
+                    
+                    Button(action: { showFilterSheet = true }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "slider.horizontal.3")
+                                .font(.system(size: 13, weight: .semibold))
+                            Text("Filters")
+                                .font(.app(size: 13, weight: .semibold))
+                        }
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Color.white, in: Capsule())
+                        .overlay(Capsule().strokeBorder(Color.black.opacity(0.1), lineWidth: 1))
+                        .shadow(color: .black.opacity(0.05), radius: 4, y: 2)
+                    }
+                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 20)
 
-                // Filter chips
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        Button(action: { showFilterSheet = true }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "slider.horizontal.3")
-                                    .font(.system(size: 13, weight: .semibold))
-                                Text("Filters")
-                                    .font(.app(size: 13, weight: .semibold))
+                // Active filter chips (only if filters are applied)
+                if !selectedTypeFilters.isEmpty || !selectedPriceFilters.isEmpty || !selectedRatingFilters.isEmpty || selectedArrivalDate != nil {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(Array(selectedTypeFilters), id: \.self) { type in
+                                filterChip(text: type, onRemove: { selectedTypeFilters.remove(type) })
                             }
-                            .foregroundStyle(.primary)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(Color.white, in: Capsule())
-                            .overlay(Capsule().strokeBorder(Color.black.opacity(0.1), lineWidth: 1))
-                            .shadow(color: .black.opacity(0.05), radius: 4, y: 2)
+                            ForEach(Array(selectedPriceFilters), id: \.self) { price in
+                                filterChip(text: price, onRemove: { selectedPriceFilters.remove(price) })
+                            }
+                            ForEach(Array(selectedRatingFilters), id: \.self) { rating in
+                                filterChip(text: "\(rating)+ ⭐", onRemove: { selectedRatingFilters.remove(rating) })
+                            }
+                            if let arrivalDate = selectedArrivalDate {
+                                filterChip(text: "📅 \(arrivalDate.formatted(date: .abbreviated, time: .omitted))", onRemove: { selectedArrivalDate = nil })
+                            }
                         }
-                        .buttonStyle(.plain)
-
-                        ForEach(Array(selectedTypeFilters), id: \.self) { type in
-                            filterChip(text: type, onRemove: { selectedTypeFilters.remove(type) })
-                        }
-                        ForEach(Array(selectedPriceFilters), id: \.self) { price in
-                            filterChip(text: price, onRemove: { selectedPriceFilters.remove(price) })
-                        }
-                        ForEach(Array(selectedRatingFilters), id: \.self) { rating in
-                            filterChip(text: "\(rating)+ ⭐", onRemove: { selectedRatingFilters.remove(rating) })
-                        }
-                        if let arrivalDate = selectedArrivalDate {
-                            filterChip(text: "Arrival: \(arrivalDate.formatted(date: .abbreviated, time: .omitted))", onRemove: { selectedArrivalDate = nil })
-                        }
+                        .padding(.horizontal, 20)
                     }
-                    .padding(.horizontal, 20)
                 }
 
                 // List header
@@ -1225,63 +1243,78 @@ struct HousingView: View {
         private var filterSheet: some View {
             NavigationStack {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 32) {
-                        // Type filter
+                    VStack(alignment: .leading, spacing: 28) {
+                        // Type filter - Cards style
                         VStack(alignment: .leading, spacing: 16) {
-                            HStack {
-                                Image(systemName: "house.fill")
-                                    .font(.system(size: 18, weight: .semibold))
-                                    .foregroundStyle(Color.appAccent)
+                            HStack(spacing: 10) {
+                                Text("🏠")
+                                    .font(.system(size: 22))
                                 Text("Type of housing")
-                                    .font(.app(size: 18, weight: .bold))
+                                    .font(.app(size: 20, weight: .bold))
                                     .foregroundStyle(.primary)
                             }
+                            
+                            Text("What kind of place are you looking for?")
+                                .font(.app(size: 14, weight: .regular))
+                                .foregroundStyle(.secondary)
 
-                            VStack(spacing: 12) {
-                                ForEach(typeOptions, id: \.self) { option in
+                            VStack(spacing: 10) {
+                                ForEach(typeOptionsWithEmoji, id: \.id) { option in
+                                    let isSelected = (option.id == "All" && selectedTypeFilters.isEmpty) || selectedTypeFilters.contains(option.id)
                                     Button(action: {
                                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                            if option == "All" {
+                                            if option.id == "All" {
                                                 selectedTypeFilters.removeAll()
                                             } else {
-                                                if selectedTypeFilters.contains(option) {
-                                                    selectedTypeFilters.remove(option)
+                                                if selectedTypeFilters.contains(option.id) {
+                                                    selectedTypeFilters.remove(option.id)
                                                 } else {
-                                                    selectedTypeFilters.insert(option)
+                                                    selectedTypeFilters.insert(option.id)
                                                 }
                                             }
                                         }
                                     }) {
-                                        HStack {
-                                            Text(option)
-                                                .font(.app(size: 16, weight: .medium))
-                                                .foregroundStyle(.primary)
+                                        HStack(spacing: 14) {
+                                            Text(option.emoji)
+                                                .font(.system(size: 24))
+                                                .frame(width: 40, height: 40)
+                                                .background(
+                                                    isSelected ? Color.appAccent.opacity(0.15) : Color(.systemGray5),
+                                                    in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                )
+                                            
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(option.label)
+                                                    .font(.app(size: 16, weight: .semibold))
+                                                    .foregroundStyle(.primary)
+                                                Text(option.description)
+                                                    .font(.app(size: 12, weight: .regular))
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                            
                                             Spacer()
-                                            if (option == "All" && selectedTypeFilters.isEmpty) || selectedTypeFilters.contains(option) {
+                                            
+                                            if isSelected {
                                                 Image(systemName: "checkmark.circle.fill")
-                                                    .font(.system(size: 22))
+                                                    .font(.system(size: 24))
                                                     .foregroundStyle(Color.appAccent)
                                             } else {
                                                 Circle()
                                                     .strokeBorder(Color(.systemGray4), lineWidth: 2)
-                                                    .frame(width: 22, height: 22)
+                                                    .frame(width: 24, height: 24)
                                             }
                                         }
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 14)
                                         .background(
-                                            (option == "All" && selectedTypeFilters.isEmpty) || selectedTypeFilters.contains(option)
-                                                ? Color.appAccent.opacity(0.1) 
-                                                : Color(.systemGray6),
-                                            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            isSelected ? Color.appAccent.opacity(0.08) : Color.white,
+                                            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
                                         )
                                         .overlay(
-                                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            RoundedRectangle(cornerRadius: 16, style: .continuous)
                                                 .strokeBorder(
-                                                    (option == "All" && selectedTypeFilters.isEmpty) || selectedTypeFilters.contains(option)
-                                                        ? Color.appAccent.opacity(0.3) 
-                                                        : Color.clear,
-                                                    lineWidth: 1.5
+                                                    isSelected ? Color.appAccent.opacity(0.4) : Color(.systemGray5),
+                                                    lineWidth: isSelected ? 2 : 1
                                                 )
                                         )
                                     }
@@ -1290,271 +1323,337 @@ struct HousingView: View {
                             }
                         }
 
-                        Divider()
-                            .padding(.vertical, 4)
+                        // Separator with style
+                        HStack {
+                            Rectangle()
+                                .fill(Color(.systemGray4))
+                                .frame(height: 1)
+                        }
+                        .padding(.vertical, 4)
 
-                        // Price filter
+                        // Price filter - Modern pill style
                         VStack(alignment: .leading, spacing: 16) {
-                            HStack {
-                                Image(systemName: "dollarsign.circle.fill")
-                                    .font(.system(size: 18, weight: .semibold))
-                                    .foregroundStyle(Color.appAccent)
-                                Text("Price range/month")
-                                    .font(.app(size: 18, weight: .bold))
+                            HStack(spacing: 10) {
+                                Text("💰")
+                                    .font(.system(size: 22))
+                                Text("Monthly budget")
+                                    .font(.app(size: 20, weight: .bold))
                                     .foregroundStyle(.primary)
                             }
+                            
+                            Text("Select one or more price ranges")
+                                .font(.app(size: 14, weight: .regular))
+                                .foregroundStyle(.secondary)
 
-                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                                ForEach(priceOptions, id: \.self) { option in
+                            VStack(spacing: 10) {
+                                ForEach(priceOptionsWithEmoji, id: \.id) { option in
+                                    let isSelected = (option.id == "All" && selectedPriceFilters.isEmpty) || selectedPriceFilters.contains(option.id)
                                     Button(action: {
                                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                            if option == "All" {
+                                            if option.id == "All" {
                                                 selectedPriceFilters.removeAll()
                                             } else {
-                                                if selectedPriceFilters.contains(option) {
-                                                    selectedPriceFilters.remove(option)
+                                                if selectedPriceFilters.contains(option.id) {
+                                                    selectedPriceFilters.remove(option.id)
                                                 } else {
-                                                    selectedPriceFilters.insert(option)
+                                                    selectedPriceFilters.insert(option.id)
                                                 }
                                             }
                                         }
                                     }) {
-                                        Text(option)
-                                            .font(.app(size: 15, weight: .semibold))
-                                            .foregroundStyle(
-                                                (option == "All" && selectedPriceFilters.isEmpty) || selectedPriceFilters.contains(option)
-                                                    ? .white 
-                                                    : .primary
-                                            )
-                                            .frame(maxWidth: .infinity)
-                                            .padding(.vertical, 16)
-                                            .background(
-                                                (option == "All" && selectedPriceFilters.isEmpty) || selectedPriceFilters.contains(option)
-                                                    ? Color.appAccent 
-                                                    : Color(.systemGray6),
-                                                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                            )
+                                        HStack(spacing: 12) {
+                                            Text(option.emoji)
+                                                .font(.system(size: 20))
+                                            
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(option.label)
+                                                    .font(.app(size: 15, weight: .semibold))
+                                                if option.id != "All" {
+                                                    Text(option.id)
+                                                        .font(.app(size: 12, weight: .medium))
+                                                        .foregroundStyle(.secondary)
+                                                }
+                                            }
+                                            .foregroundStyle(isSelected ? .white : .primary)
+                                            
+                                            Spacer()
+                                            
+                                            if isSelected {
+                                                Image(systemName: "checkmark")
+                                                    .font(.system(size: 14, weight: .bold))
+                                                    .foregroundStyle(.white)
+                                            }
+                                        }
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 14)
+                                        .background(
+                                            isSelected ? Color.appAccent : Color.white,
+                                            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        )
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                                .strokeBorder(
+                                                    isSelected ? Color.clear : Color(.systemGray5),
+                                                    lineWidth: 1
+                                                )
+                                        )
                                     }
                                     .buttonStyle(.plain)
                                 }
                             }
                         }
                         
-                        Divider()
-                            .padding(.vertical, 4)
+                        // Separator
+                        HStack {
+                            Rectangle()
+                                .fill(Color(.systemGray4))
+                                .frame(height: 1)
+                        }
+                        .padding(.vertical, 4)
                         
-                        // Rating filter
+                        // Rating filter - Stars visual
                         VStack(alignment: .leading, spacing: 16) {
-                            HStack {
-                                Image(systemName: "star.fill")
-                                    .font(.system(size: 18, weight: .semibold))
-                                    .foregroundStyle(Color.appAccent)
+                            HStack(spacing: 10) {
+                                Text("⭐")
+                                    .font(.system(size: 22))
                                 Text("Minimum rating")
-                                    .font(.app(size: 18, weight: .bold))
+                                    .font(.app(size: 20, weight: .bold))
                                     .foregroundStyle(.primary)
                             }
                             
-                            HStack(spacing: 8) {
-                                // All option
-                                Button(action: {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                        selectedRatingFilters.removeAll()
-                                    }
-                                }) {
-                                    Text("All")
-                                        .font(.app(size: 14, weight: .semibold))
-                                        .foregroundStyle(selectedRatingFilters.isEmpty ? .white : .primary)
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 12)
-                                        .background(
-                                            selectedRatingFilters.isEmpty ? Color.appAccent : Color(.systemGray6),
-                                            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        )
-                                }
-                                .buttonStyle(.plain)
-                                
-                                ForEach(1...5, id: \.self) { rating in
+                            Text("Only show highly-rated places")
+                                .font(.app(size: 14, weight: .regular))
+                                .foregroundStyle(.secondary)
+                            
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 10) {
+                                    // All option
                                     Button(action: {
                                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                            if selectedRatingFilters.contains(rating) {
-                                                selectedRatingFilters.remove(rating)
-                                            } else {
-                                                selectedRatingFilters.insert(rating)
-                                            }
+                                            selectedRatingFilters.removeAll()
                                         }
                                     }) {
-                                        HStack(spacing: 4) {
-                                            Text("\(rating)")
-                                                .font(.app(size: 14, weight: .semibold))
-                                            Image(systemName: "star.fill")
-                                                .font(.system(size: 12))
+                                        VStack(spacing: 6) {
+                                            Text("✨")
+                                                .font(.system(size: 24))
+                                            Text("All")
+                                                .font(.app(size: 13, weight: .semibold))
                                         }
-                                        .foregroundStyle(selectedRatingFilters.contains(rating) ? .white : .primary)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 12)
+                                        .foregroundStyle(selectedRatingFilters.isEmpty ? .white : .primary)
+                                        .frame(width: 60, height: 70)
                                         .background(
-                                            selectedRatingFilters.contains(rating) ? Color.appAccent : Color(.systemGray6),
-                                            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                            selectedRatingFilters.isEmpty ? Color.appAccent : Color.white,
+                                            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        )
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                                .strokeBorder(
+                                                    selectedRatingFilters.isEmpty ? Color.clear : Color(.systemGray5),
+                                                    lineWidth: 1
+                                                )
                                         )
                                     }
                                     .buttonStyle(.plain)
+                                    
+                                    ForEach(1...5, id: \.self) { rating in
+                                        let isSelected = selectedRatingFilters.contains(rating)
+                                        Button(action: {
+                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                                if isSelected {
+                                                    selectedRatingFilters.remove(rating)
+                                                } else {
+                                                    selectedRatingFilters.insert(rating)
+                                                }
+                                            }
+                                        }) {
+                                            VStack(spacing: 6) {
+                                                HStack(spacing: 2) {
+                                                    ForEach(0..<rating, id: \.self) { _ in
+                                                        Image(systemName: "star.fill")
+                                                            .font(.system(size: rating > 3 ? 8 : 10))
+                                                            .foregroundStyle(isSelected ? .white : .yellow)
+                                                    }
+                                                }
+                                                Text("\(rating)+")
+                                                    .font(.app(size: 13, weight: .semibold))
+                                            }
+                                            .foregroundStyle(isSelected ? .white : .primary)
+                                            .frame(width: 60, height: 70)
+                                            .background(
+                                                isSelected ? Color.appAccent : Color.white,
+                                                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            )
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                                    .strokeBorder(
+                                                        isSelected ? Color.clear : Color(.systemGray5),
+                                                        lineWidth: 1
+                                                    )
+                                            )
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
                                 }
                             }
                         }
                         
-                        Divider()
-                            .padding(.vertical, 4)
+                        // Separator
+                        HStack {
+                            Rectangle()
+                                .fill(Color(.systemGray4))
+                                .frame(height: 1)
+                        }
+                        .padding(.vertical, 4)
                         
-                        // Availability filter
+                        // Availability filter - Calendar style
                         VStack(alignment: .leading, spacing: 16) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Image(systemName: "calendar")
-                                        .font(.system(size: 18, weight: .semibold))
-                                        .foregroundStyle(Color.appAccent)
-                                    Text("Availability")
-                                        .font(.app(size: 18, weight: .bold))
-                                        .foregroundStyle(.primary)
-                                }
-                                Text("When do you plan to arrive?")
-                                    .font(.app(size: 14, weight: .regular))
-                                    .foregroundStyle(.secondary)
+                            HStack(spacing: 10) {
+                                Text("📅")
+                                    .font(.system(size: 22))
+                                Text("Availability")
+                                    .font(.app(size: 20, weight: .bold))
+                                    .foregroundStyle(.primary)
                             }
                             
-                            VStack(spacing: 12) {
+                            Text("When do you plan to move in?")
+                                .font(.app(size: 14, weight: .regular))
+                                .foregroundStyle(.secondary)
+                            
+                            VStack(spacing: 10) {
                                 // Any date option
                                 Button(action: {
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                         selectedArrivalDate = nil
                                     }
                                 }) {
-                                    HStack {
-                                        Text("Any date")
-                                            .font(.app(size: 16, weight: .medium))
-                                            .foregroundStyle(.primary)
+                                    HStack(spacing: 12) {
+                                        Text("🌟")
+                                            .font(.system(size: 20))
+                                        Text("I'm flexible")
+                                            .font(.app(size: 15, weight: .semibold))
+                                            .foregroundStyle(selectedArrivalDate == nil ? .white : .primary)
                                         Spacer()
                                         if selectedArrivalDate == nil {
-                                            Image(systemName: "checkmark.circle.fill")
-                                                .font(.system(size: 22))
-                                                .foregroundStyle(Color.appAccent)
-                                        } else {
-                                            Circle()
-                                                .strokeBorder(Color(.systemGray4), lineWidth: 2)
-                                                .frame(width: 22, height: 22)
+                                            Image(systemName: "checkmark")
+                                                .font(.system(size: 14, weight: .bold))
+                                                .foregroundStyle(.white)
                                         }
                                     }
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 14)
                                     .background(
-                                        selectedArrivalDate == nil
-                                            ? Color.appAccent.opacity(0.1)
-                                            : Color(.systemGray6),
+                                        selectedArrivalDate == nil ? Color.appAccent : Color.white,
                                         in: RoundedRectangle(cornerRadius: 14, style: .continuous)
                                     )
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 14, style: .continuous)
                                             .strokeBorder(
-                                                selectedArrivalDate == nil
-                                                    ? Color.appAccent.opacity(0.3)
-                                                    : Color.clear,
-                                                lineWidth: 1.5
+                                                selectedArrivalDate == nil ? Color.clear : Color(.systemGray5),
+                                                lineWidth: 1
                                             )
                                     )
                                 }
                                 .buttonStyle(.plain)
                                 
                                 // Date picker
-                                VStack(spacing: 0) {
-                                    HStack {
-                                        Text("Select arrival date")
-                                            .font(.app(size: 16, weight: .medium))
-                                            .foregroundStyle(.primary)
-                                        Spacer()
-                                        DatePicker(
-                                            "",
-                                            selection: Binding(
-                                                get: { selectedArrivalDate ?? Date() },
-                                                set: { selectedArrivalDate = $0 }
-                                            ),
-                                            in: Date()...,
-                                            displayedComponents: .date
-                                        )
-                                        .labelsHidden()
-                                        .tint(Color.appAccent)
-                                    }
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 14)
-                                    .background(
-                                        selectedArrivalDate != nil
-                                            ? Color.appAccent.opacity(0.1)
-                                            : Color(.systemGray6),
-                                        in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                HStack(spacing: 12) {
+                                    Text("🗓️")
+                                        .font(.system(size: 20))
+                                    Text("Pick a date")
+                                        .font(.app(size: 15, weight: .semibold))
+                                        .foregroundStyle(selectedArrivalDate != nil ? .white : .primary)
+                                    Spacer()
+                                    DatePicker(
+                                        "",
+                                        selection: Binding(
+                                            get: { selectedArrivalDate ?? Date() },
+                                            set: { selectedArrivalDate = $0 }
+                                        ),
+                                        in: Date()...,
+                                        displayedComponents: .date
                                     )
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                            .strokeBorder(
-                                                selectedArrivalDate != nil
-                                                    ? Color.appAccent.opacity(0.3)
-                                                    : Color.clear,
-                                                lineWidth: 1.5
-                                            )
-                                    )
+                                    .labelsHidden()
+                                    .tint(selectedArrivalDate != nil ? .white : Color.appAccent)
+                                    .colorScheme(selectedArrivalDate != nil ? .dark : .light)
                                 }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background(
+                                    selectedArrivalDate != nil ? Color.appAccent : Color.white,
+                                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .strokeBorder(
+                                            selectedArrivalDate != nil ? Color.clear : Color(.systemGray5),
+                                            lineWidth: 1
+                                        )
+                                )
                             }
                         }
                     }
                     .padding(.horizontal, 24)
-                    .padding(.top, 24)
+                    .padding(.top, 20)
                     .padding(.bottom, 120)
                 }
-                .background(Color(.systemGroupedBackground))
+                .background(Color(.systemGray6).opacity(0.5))
                 .safeAreaInset(edge: .bottom) {
                     VStack(spacing: 0) {
                         Divider()
                         Button(action: { showFilterSheet = false }) {
-                            Text("Show \(filteredSpots.count) results")
-                                .font(.app(size: 16, weight: .semibold))
-                                .foregroundStyle(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(Color.appAccent, in: Capsule())
+                            HStack(spacing: 8) {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.system(size: 16, weight: .semibold))
+                                Text("Show \(filteredSpots.count) results")
+                                    .font(.app(size: 16, weight: .semibold))
+                            }
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.appAccent, in: Capsule())
                         }
                         .buttonStyle(.plain)
                         .padding(.horizontal, 24)
                         .padding(.top, 16)
                         .padding(.bottom, 8)
                     }
-                    .background(Color(.systemGroupedBackground))
+                    .background(.ultraThinMaterial)
                 }
-                .navigationTitle("Filters")
+                .navigationTitle("🔍 Find your place")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) {
                         Button(action: { showFilterSheet = false }) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(.secondary)
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 24))
+                                .foregroundStyle(Color(.systemGray3))
                         }
                     }
                     ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("Reset") {
+                        Button(action: {
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                 selectedTypeFilters.removeAll()
                                 selectedPriceFilters.removeAll()
                                 selectedRatingFilters.removeAll()
                                 selectedArrivalDate = nil
                             }
+                        }) {
+                            Text("Reset")
+                                .font(.app(size: 15, weight: .semibold))
+                                .foregroundStyle(Color.appAccent)
                         }
-                        .font(.app(size: 15, weight: .semibold))
-                        .foregroundStyle(Color.appAccent)
                     }
                 }
             }
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
-            .presentationCornerRadius(24)
+            .presentationCornerRadius(28)
         }
-
+        
+        // Keep old compatibility
+        private var typeOptions: [String] { typeOptionsWithEmoji.map { $0.id } }
+        private var priceOptions: [String] { priceOptionsWithEmoji.map { $0.id } }
+        
         private func recommendedHousingRow(spot: HousingSpot) -> some View {
             HStack(spacing: 12) {
                 AsyncImage(url: URL(string: spot.image)) { phase in
@@ -1593,6 +1692,9 @@ struct HousingView: View {
             }
             .padding(12)
             .background(Color(.systemGray6).opacity(0.6), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .onTapGesture {
+                selectedSpotForDetail = spot
+            }
         }
 
         private func avatarStack(images: [String]) -> some View {
@@ -2653,8 +2755,37 @@ private struct CreateHousingListingView: View {
             Text("Badges")
                 .font(.app(size: 19, weight: .semibold))
                 .foregroundStyle(.black)
+            
+            // Display custom badges (not in predefined options) that are selected
+            if !selectedCustomBadges.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(selectedCustomBadges, id: \.self) { badge in
+                            HStack(spacing: 6) {
+                                Text("✨ \(badge)")
+                                    .font(.app(size: 13, weight: .semibold))
+                                    .foregroundStyle(.white)
+                                Button(action: {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                        _ = housingBadgesSelected.remove(badge)
+                                    }
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(.white.opacity(0.8))
+                                }
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Color.appAccent, in: Capsule())
+                        }
+                    }
+                }
+                .padding(.bottom, 4)
+            }
+            
             badgeGrid(options: housingBadgeOptions, selection: $housingBadgesSelected)
-            formTextField("Custom badges (comma separated)", text: $housingBadgesCustom)
+            formTextField("Add custom badge", text: $housingBadgesCustom)
             badgeSuggestionRow
         }
     }
@@ -3224,6 +3355,10 @@ private struct CreateHousingListingView: View {
     private var housingBadgeOptions: [String] {
         ["Furnished", "Near metro", "Utilities included", "Pet friendly", "Quiet", "Balcony"]
     }
+    
+    private var selectedCustomBadges: [String] {
+        Array(housingBadgesSelected).filter { !housingBadgeOptions.contains($0) }.sorted()
+    }
 
     private func badgeGrid(options: [String], selection: Binding<Set<String>>) -> some View {
         let columns = [GridItem(.flexible()), GridItem(.flexible())]
@@ -3592,7 +3727,8 @@ private struct HousingDetailSheet: View {
     }
     
     private var statsRow: some View {
-        HStack(spacing: 24) {
+        HStack(spacing: 0) {
+            // Rating section - centered in left half
             VStack(spacing: 4) {
                 Text(String(format: "%.1f", spot.rating))
                     .font(.app(size: 20, weight: .bold))
@@ -3605,11 +3741,13 @@ private struct HousingDetailSheet: View {
                     }
                 }
             }
+            .frame(maxWidth: .infinity)
             
             Rectangle()
                 .fill(Color(.systemGray4))
                 .frame(width: 1, height: 44)
             
+            // Traveler favorite section - centered in right half
             VStack(spacing: 2) {
                 HStack(spacing: 4) {
                     Text("🏆")
@@ -3624,8 +3762,9 @@ private struct HousingDetailSheet: View {
                     .font(.app(size: 11, weight: .semibold))
                     .foregroundStyle(.black)
             }
+            .frame(maxWidth: .infinity)
         }
-        .frame(maxWidth: .infinity, alignment: .center)
+        .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
         .padding(.horizontal, 20)
     }
