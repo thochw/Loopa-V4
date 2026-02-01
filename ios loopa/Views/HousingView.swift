@@ -2382,6 +2382,7 @@ private struct CreateHousingListingView: View {
     @State private var roommateMoveIn = ""
     @State private var roommateTags = ""
     @State private var currentStep = 0
+    @State private var housingWelcomeRegion: MKCoordinateRegion
 
     private enum ContactMethod {
         case phone
@@ -2398,6 +2399,7 @@ private struct CreateHousingListingView: View {
         _activeTab = activeTab
         _selectedTab = State(initialValue: activeTab.wrappedValue)
         _addressSearchCompleter = StateObject(wrappedValue: AddressSearchCompleter(center: coordinate))
+        _housingWelcomeRegion = State(initialValue: MKCoordinateRegion(center: coordinate, span: MKCoordinateSpan(latitudeDelta: 0.04, longitudeDelta: 0.04)))
         self.coordinate = coordinate
         self.onCreateSpot = onCreateSpot
         self.onCreateRoommate = onCreateRoommate
@@ -2409,23 +2411,28 @@ private struct CreateHousingListingView: View {
             ZStack {
                 Color.white.ignoresSafeArea()
 
-                VStack(spacing: 0) {
-                    closeButton
+                if selectedTab == .spots && currentStep == 0 {
+                    // First step: full-screen "Create nearby" style (map + type cards + Continue)
+                    housingWelcomeStepContent
+                } else {
+                    VStack(spacing: 0) {
+                        closeButton
 
-                    ScrollView(showsIndicators: false) {
-                        VStack(spacing: 16) {
-                            formContent
+                        ScrollView(showsIndicators: false) {
+                            VStack(spacing: 16) {
+                                formContent
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.top, 12)
+                            .padding(.bottom, 24)
+                            .id(currentStep)
+                            .transition(.opacity.combined(with: .move(edge: .trailing)))
+                            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: currentStep)
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 12)
-                        .padding(.bottom, 24)
-                        .id(currentStep)
-                        .transition(.opacity.combined(with: .move(edge: .trailing)))
-                        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: currentStep)
-                    }
-                    .background(Color.white)
+                        .background(Color.white)
 
-                    actionBar
+                        actionBar
+                    }
                 }
             }
             .overlay(alignment: .topTrailing) {
@@ -2470,6 +2477,157 @@ private struct CreateHousingListingView: View {
         .padding(.trailing, 20)
     }
 
+    // MARK: - First step: "Add housing tip" (map with blur + example listings ranking + Continue)
+    private static let welcomeExampleListings: [(title: String, price: Int, type: String, rank: Int)] = [
+        ("Sunny Studio in Plateau", 1200, "Apartment", 1),
+        ("Cozy room near metro", 650, "Room", 2),
+        ("Loft with terrace", 1850, "Apartment", 3)
+    ]
+
+    private var housingWelcomeStepContent: some View {
+        VStack(spacing: 0) {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    // Title & subtitle – centered
+                    VStack(spacing: 8) {
+                        Text("Add housing tip 🌎")
+                            .font(.app(size: 24, weight: .bold))
+                            .foregroundStyle(.primary)
+                            .multilineTextAlignment(.center)
+                        Text("Recommend a place to stay. This will help other travelers to find the perfect place; Thank you!")
+                            .font(.app(size: 14, weight: .regular))
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 72)
+                    .padding(.bottom, 20)
+
+                    // Map with blur/fade at edges + user location (blue circle)
+                    ZStack(alignment: .center) {
+                        Map(coordinateRegion: $housingWelcomeRegion, interactionModes: [.zoom])
+                            .mapStyle(.standard(pointsOfInterest: .excludingAll))
+                            .frame(height: 220)
+                            .allowsHitTesting(false)
+                        // Fade at edges: vertical gradient
+                        VStack(spacing: 0) {
+                            LinearGradient(colors: [Color.white.opacity(0.92), Color.clear], startPoint: .top, endPoint: .bottom)
+                                .frame(height: 50)
+                            Spacer()
+                            LinearGradient(colors: [Color.clear, Color.white.opacity(0.92)], startPoint: .top, endPoint: .bottom)
+                                .frame(height: 50)
+                        }
+                        .allowsHitTesting(false)
+                        // Fade at edges: horizontal gradient
+                        HStack(spacing: 0) {
+                            LinearGradient(colors: [Color.white.opacity(0.88), Color.clear], startPoint: .leading, endPoint: .trailing)
+                                .frame(width: 40)
+                            Spacer()
+                            LinearGradient(colors: [Color.clear, Color.white.opacity(0.88)], startPoint: .leading, endPoint: .trailing)
+                                .frame(width: 40)
+                        }
+                        .allowsHitTesting(false)
+                        // User location pin
+                        ZStack(alignment: .center) {
+                            Circle()
+                                .fill(Color.blue.opacity(0.25))
+                                .frame(width: 44, height: 44)
+                            Circle()
+                                .strokeBorder(Color.blue, lineWidth: 2)
+                                .frame(width: 44, height: 44)
+                            Image(systemName: "plus")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(.white)
+                        }
+                    }
+                    .frame(height: 220)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.6), lineWidth: 1)
+                    )
+                    .padding(.horizontal, 20)
+
+                    // Example housing listings (ranking: different sizes + perspective, non-selectable)
+                    housingWelcomeExampleListingsStack
+                        .padding(.top, 28)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 24)
+                }
+            }
+            .background(Color.white)
+
+            // Continue button
+            Button(action: nextStep) {
+                Text("Continue")
+                    .font(.app(size: 17, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(Color.appAccent, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+            .padding(.bottom, 34)
+            .background(Color.white)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.white)
+    }
+
+    private var housingWelcomeExampleListingsStack: some View {
+        ZStack(alignment: .bottom) {
+            // Escalier: 3e (plus étroit, derrière) → 2e → 1er (plus large, premier plan). Le 2e dépasse pour que son texte soit lisible.
+            ForEach(Array(Self.welcomeExampleListings.enumerated()), id: \.offset) { pair in
+                let index = pair.offset
+                let item = pair.element
+                // 1er plan = plus large (1.0), 2e = 0.92, 3e = 0.84
+                let scale: CGFloat = index == 0 ? 1.0 : (index == 1 ? 0.92 : 0.84)
+                // Décalage vers le haut : 2e carte bien visible (texte lisible), 3e reste en retrait
+                let yOffset: CGFloat = index == 0 ? 0 : (index == 1 ? -58 : -28)
+                housingWelcomeExampleCard(title: item.title, price: item.price, type: item.type, rank: item.rank)
+                    .scaleEffect(scale)
+                    .offset(y: yOffset)
+                    .zIndex(Double(2 - index)) // index 0 devant (zIndex 2), index 2 derrière (zIndex 0)
+            }
+        }
+        .frame(height: 210)
+    }
+
+    private func housingWelcomeExampleCard(title: String, price: Int, type: String, rank: Int) -> some View {
+        HStack(spacing: 12) {
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemGray5))
+                .frame(width: 56, height: 56)
+                .overlay(
+                    Text(rank == 1 ? "🏠" : (rank == 2 ? "🛏️" : "✨"))
+                        .font(.system(size: 24))
+                )
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.app(size: 15, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Text("$\(price)/mo · \(type)")
+                    .font(.app(size: 12, weight: .regular))
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Text("#\(rank)")
+                .font(.app(size: 12, weight: .bold))
+                .foregroundStyle(Color.appAccent)
+        }
+        .padding(14)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Color.black.opacity(0.06), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.06), radius: 8, y: 4)
+    }
+
     @ViewBuilder
     private var formContent: some View {
         switch selectedTab {
@@ -2484,10 +2642,12 @@ private struct CreateHousingListingView: View {
         VStack(alignment: .leading, spacing: 12) {
             switch currentStep {
             case 0:
+                EmptyView() // Step 0 = welcome (map + cards), shown in housingWelcomeStepContent
+            case 1:
                 VStack(spacing: 18) {
                     housingBasicsFields
                 }
-            case 1:
+            case 2:
                 housingDetailsFields
             default:
                 housingExtrasFields
@@ -3066,18 +3226,19 @@ private struct CreateHousingListingView: View {
     }
 
     private var totalSteps: Int {
-        selectedTab == .spots ? 3 : 2
+        selectedTab == .spots ? 4 : 2
     }
 
     private var stepTitles: [String] {
         selectedTab == .spots
-            ? ["🏠 Basics", "⭐ Details", "📸 Media & badges"]
+            ? ["📍 Area & type", "🏠 Basics", "⭐ Details", "📸 Media & badges"]
             : ["👋 Basics", "📅 Move-in & tags"]
     }
 
     private var stepSubtitles: [String] {
         selectedTab == .spots
             ? [
+                "Choose your area and type of place.",
                 "Just the essentials to start.",
                 "Add trust & availability details.",
                 "Make it shine with photos."
@@ -3122,16 +3283,19 @@ private struct CreateHousingListingView: View {
         switch selectedTab {
         case .spots:
             if currentStep == 0 {
+                return true // Welcome step: Continue always enabled
+            }
+            if currentStep == 1 {
                 return !housingTitle.isEmpty
                     && Int(housingPrice) != nil
                     && !housingAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             }
-            if currentStep == 1 {
+            if currentStep == 2 {
                 return housingRating > 0
                     && hasContactInfo
                     && housingAvailabilityStatus != nil
             }
-            if currentStep == 2 {
+            if currentStep == 3 {
                 return !housingDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     && !selectedImages.isEmpty
                     && !housingBadgesSelected.isEmpty
