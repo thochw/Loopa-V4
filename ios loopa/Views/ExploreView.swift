@@ -8,6 +8,7 @@
 import SwiftUI
 import UIKit
 import MapKit
+import MapboxMaps
 import CoreLocation
 import Combine
 
@@ -72,6 +73,7 @@ struct ExploreView: View {
     @State private var selectedPlaceSheet: PlaceSelection?
     @State private var travelAnimationToken = UUID()
     @State private var showCreatePlaceSheet = false
+    @State private var exploreViewport: MapboxMaps.Viewport = .camera(center: CLLocationCoordinate2D(latitude: 45.5017, longitude: -73.5673), zoom: 10, bearing: 0, pitch: 0)
     
     // Search functionality
     @State private var searchText = ""
@@ -118,17 +120,38 @@ struct ExploreView: View {
     
     private let data = AppData.shared
     
+    private var exploreMapView: some View {
+        MapboxMaps.Map(viewport: $exploreViewport) {
+            MapboxMaps.Puck2D(bearing: .heading)
+            MapboxMaps.ForEvery(annotations) { item in
+                MapboxMaps.MapViewAnnotation(coordinate: item.coordinate) {
+                    annotationView(for: item)
+                }
+            }
+        }
+        .mapStyle(MapboxMaps.MapStyle.appStyle)
+        .ignoresSafeArea()
+        .onAppear {
+            exploreViewport = MapboxMaps.Viewport.camera(center: region.center, zoom: mapboxZoom(from: region.span), bearing: 0, pitch: 0)
+            locationManager.requestLocationPermission()
+            locationManager.startUpdatingLocation()
+        }
+        .onChange(of: region.center.latitude) { _, _ in
+            exploreViewport = MapboxMaps.Viewport.camera(center: region.center, zoom: mapboxZoom(from: region.span), bearing: 0, pitch: 0)
+        }
+        .onChange(of: region.center.longitude) { _, _ in
+            exploreViewport = MapboxMaps.Viewport.camera(center: region.center, zoom: mapboxZoom(from: region.span), bearing: 0, pitch: 0)
+        }
+        .onChange(of: region.span.latitudeDelta) { _, _ in
+            exploreViewport = MapboxMaps.Viewport.camera(center: region.center, zoom: mapboxZoom(from: region.span), bearing: 0, pitch: 0)
+        }
+    }
+    
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Map
-                Map(coordinateRegion: $region, showsUserLocation: true, annotationItems: annotations) { item in
-                    MapAnnotation(coordinate: item.coordinate) {
-                        annotationView(for: item)
-                    }
-                }
-                .mapStyle(.standard(pointsOfInterest: .excludingAll))
-                .ignoresSafeArea()
+                // Map (Mapbox)
+                exploreMapView
                 .onTapGesture {
                     if variant == .groups && isSheetExpanded {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
@@ -144,10 +167,6 @@ struct ExploreView: View {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                         region.center = mapCenterForSheet(baseCoordinate, isOpen: isOpen)
                     }
-                }
-                .onAppear {
-                    locationManager.requestLocationPermission()
-                    locationManager.startUpdatingLocation()
                 }
                 .onChange(of: locationManager.location) { oldValue, newValue in
                     if let newLocation = newValue {

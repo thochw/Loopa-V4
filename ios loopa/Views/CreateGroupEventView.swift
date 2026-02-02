@@ -7,6 +7,7 @@
 
 import SwiftUI
 import MapKit
+import MapboxMaps
 import PhotosUI
 
 struct CreateGroupEventView: View {
@@ -411,20 +412,32 @@ struct LocationPickerMapView: View {
         center: CLLocationCoordinate2D(latitude: 45.5017, longitude: -73.5673),
         span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
     )
+    @State private var pickerViewport: MapboxMaps.Viewport = .camera(center: CLLocationCoordinate2D(latitude: 45.5017, longitude: -73.5673), zoom: 12, bearing: 0, pitch: 0)
+    @State private var lastMapCenter: CLLocationCoordinate2D = CLLocationCoordinate2D(latitude: 45.5017, longitude: -73.5673)
     
     var body: some View {
         ZStack(alignment: .center) {
-            Map(coordinateRegion: $region, annotationItems: annotations) { item in
-                MapAnnotation(coordinate: item.coordinate) {
-                    Image(systemName: "mappin.circle.fill")
-                        .font(.system(size: 32))
-                        .foregroundStyle(Color.appAccent)
+            MapboxMaps.Map(viewport: $pickerViewport) {
+                MapboxMaps.ForEvery(annotations) { item in
+                    MapboxMaps.MapViewAnnotation(coordinate: item.coordinate) {
+                        Image(systemName: "mappin.circle.fill")
+                            .font(.system(size: 32))
+                            .foregroundStyle(Color.appAccent)
+                    }
                 }
             }
-            .mapStyle(.standard(pointsOfInterest: .excludingAll))
-            .onTapGesture { location in
-                // Convert tap location to coordinate
-                // Note: This is a simplified version - in production, you'd need proper coordinate conversion
+            .mapStyle(MapboxMaps.MapStyle.appStyle)
+            .onAppear {
+                pickerViewport = MapboxMaps.Viewport.camera(center: region.center, zoom: mapboxZoom(from: region.span), bearing: 0, pitch: 0)
+                lastMapCenter = region.center
+            }
+            .onChange(of: region.center.latitude) { _, _ in
+                pickerViewport = MapboxMaps.Viewport.camera(center: region.center, zoom: mapboxZoom(from: region.span), bearing: 0, pitch: 0)
+                lastMapCenter = region.center
+            }
+            .onChange(of: region.center.longitude) { _, _ in
+                pickerViewport = MapboxMaps.Viewport.camera(center: region.center, zoom: mapboxZoom(from: region.span), bearing: 0, pitch: 0)
+                lastMapCenter = region.center
             }
             
             // Center Pin
@@ -436,7 +449,7 @@ struct LocationPickerMapView: View {
             VStack {
                 Spacer()
                 Button(action: {
-                    selectedLocation = region.center
+                    selectedLocation = lastMapCenter
                 }) {
                     Text("Select This Location")
                         .font(.app(size: 17, weight: .semibold))

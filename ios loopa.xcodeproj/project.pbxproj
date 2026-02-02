@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		9CD3E65C2F3141560039A9C2 /* MapboxMaps in Frameworks */ = {isa = PBXBuildFile; productRef = E84079FB2F1C293F001ECAA0 /* MapboxMaps */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		E84079EA2F1C293D001ECAA0 /* ios loopa.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ios loopa.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9CD3E65C2F3141560039A9C2 /* MapboxMaps in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			);
 			name = "ios loopa";
 			packageProductDependencies = (
+				E84079FB2F1C293F001ECAA0 /* MapboxMaps */,
 			);
 			productName = "ios loopa";
 			productReference = E84079EA2F1C293D001ECAA0 /* ios loopa.app */;
@@ -94,6 +100,9 @@
 			);
 			mainGroup = E84079E12F1C293D001ECAA0;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				E84079FA2F1C293F001ECAA0 /* XCRemoteSwiftPackageReference "mapbox-maps-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E84079EB2F1C293D001ECAA0 /* Products */;
 			projectDirPath = "";
@@ -357,6 +366,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		E84079FA2F1C293F001ECAA0 /* XCRemoteSwiftPackageReference "mapbox-maps-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/mapbox/mapbox-maps-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		E84079FB2F1C293F001ECAA0 /* MapboxMaps */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E84079FA2F1C293F001ECAA0 /* XCRemoteSwiftPackageReference "mapbox-maps-ios" */;
+			productName = MapboxMaps;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E84079E22F1C293D001ECAA0 /* Project object */;
 }

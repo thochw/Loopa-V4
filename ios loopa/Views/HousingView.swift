@@ -7,8 +7,11 @@
 
 import SwiftUI
 import MapKit
+import MapboxMaps
 import PhotosUI
 import Combine
+
+// Style Mapbox partagé : MapboxMapStyle.appStyle (voir MapboxMapStyle.swift)
 
 enum HousingTab: String, CaseIterable {
     case spots = "Housing"
@@ -922,10 +925,11 @@ struct HousingView: View {
         var body: some View {
             GeometryReader { geometry in
                 ZStack {
-                    // Map
-                    Map(coordinateRegion: $region)
-                        .mapStyle(.standard(pointsOfInterest: .excludingAll))
+                    // Map (Mapbox)
+                    MapboxMaps.Map(initialViewport: MapboxMaps.Viewport.camera(center: region.center, zoom: mapboxZoom(from: region.span), bearing: 0, pitch: 0))
+                        .mapStyle(MapboxMaps.MapStyle.appStyle)
                         .ignoresSafeArea()
+                        .id("\(region.center.latitude)-\(region.center.longitude)-\(region.span.latitudeDelta)")
                         .onAppear {
                             animateToTrip()
                         }
@@ -1851,35 +1855,37 @@ struct HousingView: View {
 
     private var housingMapContent: some View {
         ZStack(alignment: .top) {
-            Map(coordinateRegion: $mapRegion, annotationItems: mapItems) { item in
-                MapAnnotation(coordinate: item.coordinate) {
-                    Button(action: {
-                        if let spot = item.spot {
-                            selectedHousingSpot = spot
-                            selectedRoommate = nil
-                        } else if let roommate = item.roommate {
-                            selectedRoommate = roommate
-                            selectedHousingSpot = nil
+            MapboxMaps.Map(initialViewport: MapboxMaps.Viewport.camera(center: mapRegion.center, zoom: mapboxZoom(from: mapRegion.span), bearing: 0, pitch: 0)) {
+                MapboxMaps.ForEvery(mapItems) { item in
+                    MapboxMaps.MapViewAnnotation(coordinate: item.coordinate) {
+                        Button(action: {
+                            if let spot = item.spot {
+                                selectedHousingSpot = spot
+                                selectedRoommate = nil
+                            } else if let roommate = item.roommate {
+                                selectedRoommate = roommate
+                                selectedHousingSpot = nil
+                            }
+                        }) {
+                            VStack(spacing: 4) {
+                                Image(systemName: item.icon)
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 26, height: 26)
+                                    .background(Color.appAccent, in: Circle())
+                                Text(item.title)
+                                    .font(.app(size: 10, weight: .semibold))
+                                    .foregroundStyle(.primary)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 3)
+                                    .background(Color.white, in: Capsule())
+                            }
                         }
-                    }) {
-                        VStack(spacing: 4) {
-                            Image(systemName: item.icon)
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(.white)
-                                .frame(width: 26, height: 26)
-                                .background(Color.appAccent, in: Circle())
-                            Text(item.title)
-                                .font(.app(size: 10, weight: .semibold))
-                                .foregroundStyle(.primary)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 3)
-                                .background(Color.white, in: Capsule())
-                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
             }
-            .mapStyle(.standard(pointsOfInterest: .excludingAll))
+            .mapStyle(MapboxMaps.MapStyle.appStyle)
             .ignoresSafeArea(edges: .bottom)
             .id(activeTab)
 
@@ -2504,10 +2510,10 @@ private struct CreateHousingListingView: View {
                     .padding(.top, 72)
                     .padding(.bottom, 20)
 
-                    // Map with blur/fade at edges + user location (blue circle)
+                    // Mapbox map with blur/fade at edges + user location (blue circle)
                     ZStack(alignment: .center) {
-                        Map(coordinateRegion: $housingWelcomeRegion, interactionModes: [.zoom])
-                            .mapStyle(.standard(pointsOfInterest: .excludingAll))
+                        MapboxMaps.Map(initialViewport: MapboxMaps.Viewport.camera(center: housingWelcomeRegion.center, zoom: 12, bearing: 0, pitch: 0))
+                            .mapStyle(MapboxMaps.MapStyle.appStyle)
                             .frame(height: 220)
                             .allowsHitTesting(false)
                         // Fade at edges: vertical gradient
