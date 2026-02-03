@@ -74,6 +74,11 @@ struct ExploreView: View {
     @State private var travelAnimationToken = UUID()
     @State private var showCreatePlaceSheet = false
     @State private var exploreViewport: MapboxMaps.Viewport = .camera(center: CLLocationCoordinate2D(latitude: 45.5017, longitude: -73.5673), zoom: 10, bearing: 0, pitch: 0)
+    @State private var animateNextViewportSync = false
+    @State private var pendingUserRecenter = false
+    @State private var isFollowingUser = false
+    @State private var suppressNextViewportSync = false
+    @State private var didInitialFriendsRecenter = false
     
     // Search functionality
     @State private var searchText = ""
@@ -132,18 +137,28 @@ struct ExploreView: View {
         .mapStyle(MapboxMaps.MapStyle.appStyle)
         .ignoresSafeArea()
         .onAppear {
-            exploreViewport = MapboxMaps.Viewport.camera(center: region.center, zoom: mapboxZoom(from: region.span), bearing: 0, pitch: 0)
+            syncViewport(animated: false)
             locationManager.requestLocationPermission()
             locationManager.startUpdatingLocation()
         }
         .onChange(of: region.center.latitude) { _, _ in
-            exploreViewport = MapboxMaps.Viewport.camera(center: region.center, zoom: mapboxZoom(from: region.span), bearing: 0, pitch: 0)
+            if suppressNextViewportSync {
+                suppressNextViewportSync = false
+                return
+            }
+            syncViewport(animated: animateNextViewportSync)
+            animateNextViewportSync = false
         }
         .onChange(of: region.center.longitude) { _, _ in
-            exploreViewport = MapboxMaps.Viewport.camera(center: region.center, zoom: mapboxZoom(from: region.span), bearing: 0, pitch: 0)
+            if suppressNextViewportSync {
+                suppressNextViewportSync = false
+                return
+            }
+            syncViewport(animated: animateNextViewportSync)
+            animateNextViewportSync = false
         }
         .onChange(of: region.span.latitudeDelta) { _, _ in
-            exploreViewport = MapboxMaps.Viewport.camera(center: region.center, zoom: mapboxZoom(from: region.span), bearing: 0, pitch: 0)
+            syncViewport(animated: false)
         }
     }
     
@@ -153,6 +168,7 @@ struct ExploreView: View {
                 // Map (Mapbox)
                 exploreMapView
                 .onTapGesture {
+                    isFollowingUser = false
                     if variant == .groups && isSheetExpanded {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                             isSheetExpanded = false
@@ -161,6 +177,12 @@ struct ExploreView: View {
                 }
                 .onChange(of: isSheetOpen) { _, isOpen in
                     guard variant == .travelers else { return }
+                    if isFollowingUser {
+                        if let coordinate = locationManager.location?.coordinate {
+                            recenterMapOnUser(coordinate)
+                        }
+                        return
+                    }
                     let baseCoordinate = selectedSearchPin?.coordinate
                         ?? locationManager.location?.coordinate
                         ?? region.center
@@ -170,12 +192,27 @@ struct ExploreView: View {
                 }
                 .onChange(of: locationManager.location) { oldValue, newValue in
                     if let newLocation = newValue {
+                        if variant == .travelers && !didInitialFriendsRecenter && !isTeleported && selectedSearchPin == nil {
+                            didInitialFriendsRecenter = true
+                            currentCity = homeCity
+                            recenterMapOnUser(newLocation.coordinate)
+                            updateCityFromLocation(newLocation)
+                            return
+                        }
+                        if isFollowingUser {
+                            updateCityFromLocation(newLocation)
+                            return
+                        }
                         if !isTeleported && selectedSearchPin == nil {
                         withAnimation {
                                 region.center = adjustedCenter(newLocation.coordinate)
                             }
                         }
                         updateCityFromLocation(newLocation)
+                        if pendingUserRecenter {
+                            pendingUserRecenter = false
+                            recenterMapOnUser(newLocation.coordinate)
+                        }
                     }
                 }
                 .onReceive(searchCompleter.$results) { results in
@@ -227,12 +264,14 @@ struct ExploreView: View {
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                     currentCity = homeCity
                                     selectedSearchPin = nil
-                                    region.center = adjustedCenter(location.coordinate)
+                                    recenterMapOnUser(location.coordinate)
                                 }
                                 updateCityFromLocation(location)
                             } else {
+                                pendingUserRecenter = true
                                 locationManager.requestLocationPermission()
                                 locationManager.startUpdatingLocation()
+                                recenterMapOnUser(locationManager.location?.coordinate ?? region.center)
                             }
                         }) {
                             Image(systemName: "location.fill")
@@ -277,10 +316,11 @@ struct ExploreView: View {
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                         currentCity = homeCity
                                         selectedSearchPin = nil
-                                        region.center = adjustedCenter(location.coordinate)
+                                        recenterMapOnUser(location.coordinate)
                                     }
                                     updateCityFromLocation(location)
                                 } else {
+                                    pendingUserRecenter = true
                                     locationManager.requestLocationPermission()
                                     locationManager.startUpdatingLocation()
                                 }
@@ -929,6 +969,37 @@ struct ExploreView: View {
 
     private func adjustedCenter(_ coordinate: CLLocationCoordinate2D) -> CLLocationCoordinate2D {
         mapCenterForSheet(coordinate, isOpen: isSheetOpen)
+    }
+
+    private func syncViewport(animated: Bool) {
+        let nextViewport = MapboxMaps.Viewport.camera(
+            center: region.center,
+            zoom: mapboxZoom(from: region.span),
+            bearing: 0,
+            pitch: 0
+        )
+        if animated {
+            withViewportAnimation(.easeInOut(duration: 0.35)) {
+                exploreViewport = nextViewport
+            }
+        } else {
+            exploreViewport = nextViewport
+        }
+    }
+
+    private func recenterMapOnUser(_ coordinate: CLLocationCoordinate2D) {
+        isFollowingUser = true
+        suppressNextViewportSync = true
+        region.center = coordinate
+        let bottomPadding: CGFloat = (variant == .travelers && isSheetOpen) ? 420 : 0
+        let viewportPadding = EdgeInsets(top: 0, leading: 0, bottom: bottomPadding, trailing: 0)
+        withViewportAnimation(.default(maxDuration: 0.6)) {
+            exploreViewport = .followPuck(
+                zoom: max(mapboxZoom(from: region.span), 13),
+                bearing: .heading,
+                pitch: 0
+            ).padding(viewportPadding)
+        }
     }
 
     private func mapCenterForSheet(_ coordinate: CLLocationCoordinate2D, isOpen: Bool) -> CLLocationCoordinate2D {

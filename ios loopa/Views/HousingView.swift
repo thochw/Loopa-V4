@@ -847,7 +847,9 @@ struct HousingView: View {
             center: CLLocationCoordinate2D(latitude: 45.5017, longitude: -73.5673),
             span: MKCoordinateSpan(latitudeDelta: 0.25, longitudeDelta: 0.25)
         )
+        @State private var housingViewport: MapboxMaps.Viewport = .camera(center: CLLocationCoordinate2D(latitude: 45.5017, longitude: -73.5673), zoom: 10, bearing: 0, pitch: 0)
         @State private var hasAnimated = false
+        @State private var tripCoordinate: CLLocationCoordinate2D? = nil
         @State private var sheetState: SheetState = .partial
         @State private var showFilterSheet = false
         @State private var selectedSpotForDetail: HousingSpot? = nil
@@ -926,11 +928,11 @@ struct HousingView: View {
             GeometryReader { geometry in
                 ZStack {
                     // Map (Mapbox)
-                    MapboxMaps.Map(initialViewport: MapboxMaps.Viewport.camera(center: region.center, zoom: mapboxZoom(from: region.span), bearing: 0, pitch: 0))
+                    MapboxMaps.Map(viewport: $housingViewport)
                         .mapStyle(MapboxMaps.MapStyle.appStyle)
                         .ignoresSafeArea()
-                        .id("\(region.center.latitude)-\(region.center.longitude)-\(region.span.latitudeDelta)")
                         .onAppear {
+                            syncHousingViewport(animated: false)
                             animateToTrip()
                         }
                         .opacity(sheetState == .full ? 0 : 1)
@@ -1098,6 +1100,7 @@ struct HousingView: View {
                     Spacer()
                     Button(action: {
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            zoomOutToTrip()
                             sheetState = .full
                         }
                     }) {
@@ -1146,6 +1149,7 @@ struct HousingView: View {
                 HStack {
                     Button(action: {
                         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                            zoomInToTrip()
                             sheetState = .partial
                         }
                     }) {
@@ -1792,17 +1796,71 @@ struct HousingView: View {
             guard !hasAnimated else { return }
             hasAnimated = true
 
+            resolveTripCoordinate { coordinate in
+                applyTripViewport(coordinate: coordinate, zoomedOut: false)
+            }
+        }
+
+        private func zoomOutToTrip() {
+            resolveTripCoordinate { coordinate in
+                applyTripViewport(coordinate: coordinate, zoomedOut: true)
+            }
+        }
+
+        private func zoomInToTrip() {
+            resolveTripCoordinate { coordinate in
+                applyTripViewport(coordinate: coordinate, zoomedOut: false)
+            }
+        }
+
+        private func resolveTripCoordinate(_ completion: @escaping (CLLocationCoordinate2D) -> Void) {
+            if let cached = tripCoordinate {
+                completion(cached)
+                return
+            }
             let geocoder = CLGeocoder()
             geocoder.geocodeAddressString(trip.destination) { placemarks, _ in
                 let coordinate = placemarks?.first?.location?.coordinate
                     ?? CLLocationCoordinate2D(latitude: -8.4095, longitude: 115.1889)
-                withAnimation(.easeInOut(duration: 0.8)) {
-                    region.center = CLLocationCoordinate2D(
-                        latitude: coordinate.latitude - 0.035,
-                        longitude: coordinate.longitude
-                    )
-                    region.span = MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08)
+                tripCoordinate = coordinate
+                completion(coordinate)
+            }
+        }
+
+        private func applyTripViewport(coordinate: CLLocationCoordinate2D, zoomedOut: Bool) {
+            let targetCenter = zoomedOut
+                ? coordinate
+                : CLLocationCoordinate2D(
+                    latitude: coordinate.latitude - 0.035,
+                    longitude: coordinate.longitude
+                )
+            let targetSpan = zoomedOut
+                ? MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
+                : MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08)
+            withAnimation(.easeInOut(duration: 0.8)) {
+                region.center = targetCenter
+                region.span = targetSpan
+            }
+            syncHousingViewport(center: targetCenter, span: targetSpan, animated: true)
+        }
+
+        private func syncHousingViewport(animated: Bool) {
+            syncHousingViewport(center: region.center, span: region.span, animated: animated)
+        }
+
+        private func syncHousingViewport(center: CLLocationCoordinate2D, span: MKCoordinateSpan, animated: Bool) {
+            let nextViewport = MapboxMaps.Viewport.camera(
+                center: center,
+                zoom: mapboxZoom(from: span),
+                bearing: 0,
+                pitch: 0
+            )
+            if animated {
+                withViewportAnimation(.default(maxDuration: 0.8)) {
+                    housingViewport = nextViewport
                 }
+            } else {
+                housingViewport = nextViewport
             }
         }
     }

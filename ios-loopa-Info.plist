@@ -4,6 +4,8 @@
 <dict>
 	<key>MBXAccessToken</key>
 	<string>pk.eyJ1IjoidGhvY2h3IiwiYSI6ImNta2JxM2JtdDA3azczZG9sZmtmbG81YmsifQ.7l6MvwnRDjpJPw0j2zgiIQ</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Loopa uses your location to center the map around you.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>WorkSans-Black.ttf</string>
