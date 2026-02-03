@@ -427,6 +427,7 @@ struct LocationPickerMapView: View {
                 }
             }
             .mapStyle(MapboxMaps.MapStyle.appStyle)
+            .ornamentOptions(MapboxMaps.OrnamentOptions(scaleBar: MapboxMaps.ScaleBarViewOptions(visibility: .hidden)))
             .onAppear {
                 pickerViewport = MapboxMaps.Viewport.camera(center: region.center, zoom: mapboxZoom(from: region.span), bearing: 0, pitch: 0)
                 lastMapCenter = region.center

@@ -48,37 +48,37 @@ struct HousingView: View {
     private let data = AppData.shared
     
     var body: some View {
-        VStack(spacing: 0) {
+            VStack(spacing: 0) {
             myTripHeader
-
-            // Enhanced Content with smooth transitions
-            ZStack(alignment: .top) {
-                if showMapView {
-                    housingMapContent
-                        .transition(.opacity.combined(with: .move(edge: .trailing)))
-                } else {
+                
+                // Enhanced Content with smooth transitions
+                ZStack(alignment: .top) {
+                    if showMapView {
+                        housingMapContent
+                            .transition(.opacity.combined(with: .move(edge: .trailing)))
+                    } else {
                     Color.white
-                        .ignoresSafeArea()
-                    
-                    ScrollView {
+                            .ignoresSafeArea()
+                        
+                        ScrollView {
                         LazyVStack(spacing: 24) {
                             upcomingTripsSection
                             recommendedHousingSection
                             findRoommatesSection
-                        }
-                        .padding(.horizontal, 20)
+                            }
+                            .padding(.horizontal, 20)
                         .padding(.top, 18)
                         .padding(.bottom, 120)
                         .background(Color.white)
-                    }
+                        }
                     .background(Color.white)
                     .id(activeTab)
-                    .transition(.opacity.combined(with: .move(edge: .leading)))
+                        .transition(.opacity.combined(with: .move(edge: .leading)))
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .animation(.easeInOut(duration: 0.25), value: showMapView)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .animation(.easeInOut(duration: 0.25), value: showMapView)
-        }
         .background(Color.white)
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: activeTab)
         .sheet(isPresented: $showSearchFlow) {
@@ -306,7 +306,7 @@ struct HousingView: View {
         let statusText = tripStatusText(start: trip.startDate, end: trip.endDate)
 
         return VStack(spacing: 0) {
-            ZStack {
+                            ZStack {
                 AsyncImage(url: URL(string: trip.imageUrl)) { phase in
                     if let image = phase.image {
                         image
@@ -317,7 +317,7 @@ struct HousingView: View {
                     }
                 }
                 .frame(width: 300, height: 190)
-                .clipped()
+                                    .clipped()
 
                 LinearGradient(
                     colors: [.black.opacity(0.35), .clear],
@@ -369,7 +369,7 @@ struct HousingView: View {
                     .padding(.vertical, 6)
                     .background(Color.white, in: Capsule())
                     .overlay(
-                        Capsule()
+                            Capsule()
                             .strokeBorder(Color.black.opacity(0.08), lineWidth: 1)
                     )
                     .shadow(color: .black.opacity(0.06), radius: 6, y: 3)
@@ -462,9 +462,9 @@ struct HousingView: View {
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
                             .strokeBorder(Color.appAccent.opacity(0.6), lineWidth: 1.2)
                     )
-            }
-            .buttonStyle(.plain)
-        }
+                    }
+                    .buttonStyle(.plain)
+                }
         .padding(.vertical, 6)
         .contentShape(Rectangle())
         .onTapGesture {
@@ -930,6 +930,7 @@ struct HousingView: View {
                     // Map (Mapbox)
                     MapboxMaps.Map(viewport: $housingViewport)
                         .mapStyle(MapboxMaps.MapStyle.appStyle)
+                        .ornamentOptions(MapboxMaps.OrnamentOptions(scaleBar: MapboxMaps.ScaleBarViewOptions(visibility: .hidden)))
                         .ignoresSafeArea()
                         .onAppear {
                             syncHousingViewport(animated: false)
@@ -952,8 +953,8 @@ struct HousingView: View {
                                 }
                                 .buttonStyle(.plain)
                                 Spacer()
-                            }
-                            .padding(.horizontal, 16)
+            }
+            .padding(.horizontal, 16)
                             .padding(.top, 8)
                             Spacer()
                         }
@@ -1177,8 +1178,8 @@ struct HousingView: View {
                             .background(Color(.systemGray6), in: Circle())
                     }
                     .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 20)
+        }
+        .padding(.horizontal, 20)
                 .padding(.top, 16)
                 .padding(.bottom, 12)
 
@@ -1546,7 +1547,7 @@ struct HousingView: View {
                                     .datePickerStyle(.graphical)
                                     .tint(Color.appAccent)
                                     .padding(.horizontal, 4)
-                                    .padding(.top, 8)
+        .padding(.top, 8)
                                 }
                             }
                         }
@@ -1555,7 +1556,7 @@ struct HousingView: View {
                     .padding(.top, 20)
                     .padding(.bottom, 120)
                 }
-                .background(Color(.systemBackground))
+        .background(Color(.systemBackground))
                 .safeAreaInset(edge: .bottom) {
                     VStack(spacing: 0) {
                         Divider()
@@ -1925,25 +1926,26 @@ struct HousingView: View {
                                 selectedHousingSpot = nil
                             }
                         }) {
-                            VStack(spacing: 4) {
-                                Image(systemName: item.icon)
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(.white)
-                                    .frame(width: 26, height: 26)
-                                    .background(Color.appAccent, in: Circle())
-                                Text(item.title)
+                    VStack(spacing: 4) {
+                        Image(systemName: item.icon)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 26, height: 26)
+                            .background(Color.appAccent, in: Circle())
+                        Text(item.title)
                                     .font(.app(size: 10, weight: .semibold))
-                                    .foregroundStyle(.primary)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 3)
-                                    .background(Color.white, in: Capsule())
-                            }
-                        }
-                        .buttonStyle(.plain)
+                            .foregroundStyle(.primary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(Color.white, in: Capsule())
                     }
+                }
+                        .buttonStyle(.plain)
+            }
                 }
             }
             .mapStyle(MapboxMaps.MapStyle.appStyle)
+            .ornamentOptions(MapboxMaps.OrnamentOptions(scaleBar: MapboxMaps.ScaleBarViewOptions(visibility: .hidden)))
             .ignoresSafeArea(edges: .bottom)
             .id(activeTab)
 
@@ -2482,13 +2484,13 @@ private struct CreateHousingListingView: View {
                     VStack(spacing: 0) {
                         closeButton
 
-                        ScrollView(showsIndicators: false) {
-                            VStack(spacing: 16) {
-                                formContent
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.top, 12)
-                            .padding(.bottom, 24)
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 16) {
+                    formContent
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+                .padding(.bottom, 24)
                             .id(currentStep)
                             .transition(.opacity.combined(with: .move(edge: .trailing)))
                             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: currentStep)
@@ -2512,11 +2514,11 @@ private struct CreateHousingListingView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(selectedTab == .spots ? "New housing recommendation" : "Find roommates")
                         .font(.app(size: 22, weight: .bold))
-                        .foregroundStyle(.primary)
+                .foregroundStyle(.primary)
                 }
                 .padding(.top, 12)
 
-                Spacer()
+            Spacer()
             }
             
             HStack(alignment: .center, spacing: 10) {
@@ -2529,14 +2531,14 @@ private struct CreateHousingListingView: View {
     }
 
     private var closeButtonOverlay: some View {
-        Button(action: onClose) {
-            Image(systemName: "xmark")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .frame(width: 34, height: 34)
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 34, height: 34)
                 .background(Color(.systemGray5), in: Circle())
-        }
-        .buttonStyle(.plain)
+            }
+            .buttonStyle(.plain)
         .padding(.top, 12)
         .padding(.trailing, 20)
     }
@@ -2572,6 +2574,7 @@ private struct CreateHousingListingView: View {
                     ZStack(alignment: .center) {
                         MapboxMaps.Map(initialViewport: MapboxMaps.Viewport.camera(center: housingWelcomeRegion.center, zoom: 12, bearing: 0, pitch: 0))
                             .mapStyle(MapboxMaps.MapStyle.appStyle)
+                            .ornamentOptions(MapboxMaps.OrnamentOptions(scaleBar: MapboxMaps.ScaleBarViewOptions(visibility: .hidden)))
                             .frame(height: 220)
                             .allowsHitTesting(false)
                         // Fade at edges: vertical gradient
@@ -2630,8 +2633,8 @@ private struct CreateHousingListingView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(Color.appAccent, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            }
-            .buttonStyle(.plain)
+                }
+                .buttonStyle(.plain)
             .padding(.horizontal, 20)
             .padding(.top, 16)
             .padding(.bottom, 34)
@@ -2927,24 +2930,24 @@ private struct CreateHousingListingView: View {
             Text("Description")
                 .font(.app(size: 19, weight: .semibold))
                 .foregroundStyle(.black)
-            ZStack(alignment: .topLeading) {
-                TextEditor(text: $housingDescription)
-                    .frame(minHeight: 100)
-                    .padding(8)
-                    .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .strokeBorder(Color.black.opacity(0.06), lineWidth: 1)
-                    )
-                if housingDescription.isEmpty {
+                ZStack(alignment: .topLeading) {
+                    TextEditor(text: $housingDescription)
+                        .frame(minHeight: 100)
+                        .padding(8)
+                        .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .strokeBorder(Color.black.opacity(0.06), lineWidth: 1)
+                        )
+                    if housingDescription.isEmpty {
                     Text("Describe your experience")
                         .font(.app(size: 13, weight: .medium))
-                        .foregroundStyle(.secondary.opacity(0.8))
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 16)
+                            .foregroundStyle(.secondary.opacity(0.8))
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 16)
+                    }
                 }
             }
-        }
 
         VStack(alignment: .leading, spacing: 8) {
             Text("Photos")
@@ -3020,8 +3023,8 @@ private struct CreateHousingListingView: View {
             }
         }
 
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Badges")
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Badges")
                 .font(.app(size: 19, weight: .semibold))
                 .foregroundStyle(.black)
             
@@ -3040,7 +3043,7 @@ private struct CreateHousingListingView: View {
                                     }
                                 }) {
                                     Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                                         .foregroundStyle(.white.opacity(0.8))
                                 }
                             }
@@ -3110,7 +3113,7 @@ private struct CreateHousingListingView: View {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(suggestion.title)
                                             .font(.app(size: 14, weight: .semibold))
-                                            .foregroundStyle(.primary)
+                .foregroundStyle(.primary)
                                         if !suggestion.subtitle.isEmpty {
                                             Text(suggestion.subtitle)
                                                 .font(.app(size: 12, weight: .regular))
@@ -3275,19 +3278,19 @@ private struct CreateHousingListingView: View {
 
     @ViewBuilder
     private var roommateBasicsFields: some View {
-        formTextField("Name", text: $roommateName)
-        HStack(spacing: 12) {
-            formTextField("Age", text: $roommateAge, keyboard: .numberPad)
-            formTextField("Budget", text: $roommateBudget, keyboard: .numberPad)
-        }
-        formTextField("Location", text: $roommateLocation)
+            formTextField("Name", text: $roommateName)
+            HStack(spacing: 12) {
+                formTextField("Age", text: $roommateAge, keyboard: .numberPad)
+                formTextField("Budget", text: $roommateBudget, keyboard: .numberPad)
+            }
+            formTextField("Location", text: $roommateLocation)
     }
 
     @ViewBuilder
     private var roommateExtrasFields: some View {
-        formTextField("Move-in date", text: $roommateMoveIn)
-        formTextField("Tags (comma separated)", text: $roommateTags)
-    }
+            formTextField("Move-in date", text: $roommateMoveIn)
+            formTextField("Tags (comma separated)", text: $roommateTags)
+        }
 
     private var totalSteps: Int {
         selectedTab == .spots ? 4 : 2
@@ -3430,8 +3433,8 @@ private struct CreateHousingListingView: View {
                     canProceedCurrentStep ? Color.appAccent : Color(.systemGray5),
                     in: Capsule()
                 )
-            }
-            .buttonStyle(.plain)
+        }
+        .buttonStyle(.plain)
             .disabled(!canProceedCurrentStep)
         }
         .padding(.horizontal, 20)
@@ -3563,7 +3566,7 @@ private struct CreateHousingListingView: View {
         default: return ""
         }
     }
-    
+
     private func formTextField(_ title: String, text: Binding<String>, keyboard: UIKeyboardType = .default) -> some View {
         TextField(title, text: text)
             .keyboardType(keyboard)
@@ -3668,29 +3671,29 @@ private struct CreateHousingListingView: View {
     }
     
     private func badgeChip(option: String, selection: Binding<Set<String>>) -> some View {
-        Button(action: {
-            if selection.wrappedValue.contains(option) {
-                selection.wrappedValue.remove(option)
-            } else {
-                selection.wrappedValue.insert(option)
-            }
-        }) {
+                Button(action: {
+                    if selection.wrappedValue.contains(option) {
+                        selection.wrappedValue.remove(option)
+                    } else {
+                        selection.wrappedValue.insert(option)
+                    }
+                }) {
             Text(badgeDisplayText(option))
                 .font(.app(size: 13, weight: .semibold))
-                .foregroundStyle(selection.wrappedValue.contains(option) ? .white : .primary)
+                        .foregroundStyle(selection.wrappedValue.contains(option) ? .white : .primary)
                 .lineLimit(1)
                 .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(
-                    selection.wrappedValue.contains(option) ? Color.appAccent : Color.white,
-                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(Color.black.opacity(0.06), lineWidth: 1)
-                )
-        }
-        .buttonStyle(.plain)
+                        .padding(.vertical, 10)
+                        .background(
+                            selection.wrappedValue.contains(option) ? Color.appAccent : Color.white,
+                            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .strokeBorder(Color.black.opacity(0.06), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
     }
 }
 
@@ -3777,16 +3780,16 @@ private struct CreateHousingListingView: View {
                 Text(spot.description)
                     .font(.app(size: 13, weight: .regular))
                     .foregroundStyle(.secondary)
-                    .lineLimit(2)
-
+                            .lineLimit(2)
+                        
                 HStack(spacing: 6) {
-                    Text("\(spot.currency)\(spot.price)")
+                            Text("\(spot.currency)\(spot.price)")
                         .font(.app(size: 15, weight: .bold))
                         .foregroundStyle(.primary)
-                    Text("/\(spot.period)")
+                            Text("/\(spot.period)")
                         .font(.app(size: 13, weight: .medium))
-                        .foregroundStyle(.secondary)
-                }
+                                .foregroundStyle(.secondary)
+                        }
             }
             .padding(14)
             .background(Color.white, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
@@ -3850,7 +3853,7 @@ private struct CreateHousingListingView: View {
                         HStack(spacing: 6) {
                             Image(systemName: "mappin.and.ellipse")
                                 .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(.secondary)
+                        .foregroundStyle(.secondary)
                             Text(roommate.location)
                                 .font(.app(size: 12, weight: .medium))
                                 .foregroundStyle(.secondary)
@@ -3869,7 +3872,7 @@ private struct CreateHousingListingView: View {
                 }
 
                 if !roommate.tags.isEmpty {
-                    HStack(spacing: 6) {
+                        HStack(spacing: 6) {
                         ForEach(roommate.tags.prefix(3), id: \.self) { tag in
                             cardTag(text: tag)
                         }
@@ -3890,11 +3893,11 @@ private struct CreateHousingListingView: View {
     private func cardTag(text: String) -> some View {
         Text(text)
             .font(.app(size: 11, weight: .semibold))
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(Color(.systemGray6), in: Capsule())
-    }
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(Color(.systemGray6), in: Capsule())
+                            }
     
 }
 
@@ -4166,18 +4169,18 @@ private struct HousingDetailSheet: View {
                 .foregroundStyle(.black)
             
             HStack(spacing: 12) {
-                AsyncImage(url: URL(string: spot.recommenderImg)) { phase in
-                    if let image = phase.image {
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } else {
-                        Image(systemName: "person.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                        AsyncImage(url: URL(string: spot.recommenderImg)) { phase in
+                            if let image = phase.image {
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                            } else {
+                                Image(systemName: "person.circle.fill")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                 .frame(width: 46, height: 46)
-                .clipShape(Circle())
+                        .clipShape(Circle())
                 .overlay(Circle().strokeBorder(.white, lineWidth: 2))
                 .shadow(color: .black.opacity(0.08), radius: 4, y: 2)
                 
@@ -4293,7 +4296,7 @@ private struct HousingDetailSheet: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
         .background(Color.white)
-        .overlay(
+            .overlay(
             Rectangle()
                 .fill(Color(.systemGray4).opacity(0.5))
                 .frame(height: 1),
@@ -4395,30 +4398,30 @@ private struct RoommateDetailSheet: View {
     }
 
     private var roommateHero: some View {
-        AsyncImage(url: URL(string: roommate.image)) { phase in
-            if let image = phase.image {
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } else if phase.error != nil {
+                AsyncImage(url: URL(string: roommate.image)) { phase in
+                    if let image = phase.image {
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } else if phase.error != nil {
                 Color(.systemGray5)
-            } else {
-                ProgressView()
-                    .tint(.secondary)
-            }
-        }
+                    } else {
+                        ProgressView()
+                            .tint(.secondary)
+                    }
+                }
         .frame(height: 260)
         .frame(maxWidth: .infinity)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(
+                .overlay(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .strokeBorder(Color.black.opacity(0.05), lineWidth: 1)
-        )
+                )
         .shadow(color: .black.opacity(0.08), radius: 10, y: 6)
     }
-
+                
     private var roommateHeader: some View {
-        VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("\(roommate.name), \(roommate.age)")
@@ -4427,13 +4430,13 @@ private struct RoommateDetailSheet: View {
                     HStack(spacing: 6) {
                         Image(systemName: "mappin.circle.fill")
                             .font(.system(size: 14))
-                            .foregroundStyle(.secondary)
+                                .foregroundStyle(.secondary)
                         Text(roommate.location)
                             .font(.app(size: 14, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
                 }
-
+                
                 Spacer()
             }
 
@@ -4475,8 +4478,8 @@ private struct RoommateDetailSheet: View {
                         Text("\(emojiForRoommateTag(tag)) \(tag)")
                             .font(.app(size: 13, weight: .semibold))
                             .foregroundStyle(.primary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
                             .background(Color(.systemGray6), in: Capsule())
                     }
                 }
@@ -4529,9 +4532,9 @@ private struct RoommateDetailSheet: View {
                     .font(.app(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
             }
-
-            Spacer()
-
+                    
+                    Spacer()
+                    
             Text(value)
                 .font(.app(size: 15, weight: .semibold))
                 .foregroundStyle(.primary)

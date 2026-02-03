@@ -130,16 +130,17 @@ struct ExploreView: View {
             MapboxMaps.Puck2D(bearing: .heading)
             MapboxMaps.ForEvery(annotations) { item in
                 MapboxMaps.MapViewAnnotation(coordinate: item.coordinate) {
-                    annotationView(for: item)
+                        annotationView(for: item)
+                    }
                 }
-            }
         }
         .mapStyle(MapboxMaps.MapStyle.appStyle)
-        .ignoresSafeArea()
-        .onAppear {
+        .ornamentOptions(MapboxMaps.OrnamentOptions(scaleBar: MapboxMaps.ScaleBarViewOptions(visibility: .hidden)))
+                .ignoresSafeArea()
+                .onAppear {
             syncViewport(animated: false)
-            locationManager.requestLocationPermission()
-            locationManager.startUpdatingLocation()
+                    locationManager.requestLocationPermission()
+                    locationManager.startUpdatingLocation()
         }
         .onChange(of: region.center.latitude) { _, _ in
             if suppressNextViewportSync {

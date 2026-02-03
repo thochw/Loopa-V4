@@ -16,51 +16,41 @@ struct ProfileEditorView: View {
     private let profileName = "Thomas"
     private let profileCountry = "France"
     private let profileFlag = "🇫🇷"
-    private let avatarURL = "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80"
+    private let profileAbout = "Hey, I'm Thomas! I love meeting travelers nearby. Say hi and share your next destination ✨"
     @State private var showAllGroups = false
     @State private var showAllFriends = false
-    @State private var globeTargetCoordinate: CLLocationCoordinate2D? = nil
-    @State private var globeAnimationKey = UUID()
-    @State private var scrollOffset: CGFloat = 0
+    @StateObject private var locationManager = LocationManager()
 
     var body: some View {
-        ZStack(alignment: .top) {
-            Color(hex: "04152E")
-                .ignoresSafeArea()
+        GeometryReader { geometry in
+            ZStack(alignment: .bottom) {
+                Color.white.ignoresSafeArea()
 
-            topBackground
-
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
-                    GeometryReader { proxy in
-                        Color.clear
-                            .preference(key: ScrollOffsetKey.self, value: proxy.frame(in: .named("profile-scroll")).minY)
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 0) {
+                        profileHeroSection(width: geometry.size.width)
+                        profileContentCard
+                            .offset(y: -28)
                     }
-                    .frame(height: 0)
-
-                    globeHeader
-                        .frame(height: globeHeight)
-                        .clipped()
-                        .opacity(globeOpacity)
-                        .offset(y: globeYOffset)
-
-                    profileSummary
-                    groupsSection
-                    friendsSection
                 }
-                .padding(.bottom, 24)
-            }
-            .coordinateSpace(name: "profile-scroll")
-            .onPreferenceChange(ScrollOffsetKey.self) { value in
-                scrollOffset = value
-            }
-            .ignoresSafeArea(edges: .top)
-            .background(Color(hex: "F6F6F8"))
+                .ignoresSafeArea(edges: .top)
 
-            compactHeader
-                .opacity(compactHeaderOpacity)
-                .allowsHitTesting(compactHeaderOpacity > 0.1)
+                profileBottomBar
+            }
+            .overlay(alignment: .topTrailing) {
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color.appAccent)
+                        .frame(width: 34, height: 34)
+                        .background(Color.white, in: Circle())
+                        .shadow(color: .black.opacity(0.12), radius: 8, y: 3)
+                }
+                .padding(.trailing, 20)
+                .padding(.top, 16)
+            }
         }
+        .environment(\.colorScheme, .light)
         .sheet(isPresented: $showAllGroups) {
             AllGroupsListView(groups: data.groups) {
                 showAllGroups = false
@@ -71,154 +61,199 @@ struct ProfileEditorView: View {
                 showAllFriends = false
             }
         }
-    }
-
-    private var globeHeader: some View {
-        ZStack(alignment: .top) {
-            ZStack {
-                LinearGradient(
-                    colors: [Color(hex: "04152E"), Color(hex: "0B2D5C")],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-
-                starField
-
-                GlobeMapView(
-                    targetCoordinate: globeTargetCoordinate,
-                    animationKey: globeAnimationKey
-                )
-                    .clipShape(Circle())
-                    .overlay(
-                        Circle()
-                            .stroke(Color.white.opacity(0.7), lineWidth: 2)
-                            .blur(radius: 0.2)
-                    )
-                    .shadow(color: Color.white.opacity(0.6), radius: 18)
-                    .frame(width: 320, height: 320)
-                    .offset(y: 6)
-                    .onAppear {
-                        animateGlobeToProfileCountry()
-                    }
-            }
-            .frame(height: 330)
-            .clipped()
-            .ignoresSafeArea(edges: .top)
-
-            HStack {
-                circleIconButton(systemName: "arrow.left", action: onClose)
-                Spacer()
-                circleIconButton(systemName: "gearshape") {}
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 38)
+        .onAppear {
+            locationManager.requestLocationPermission()
+            locationManager.startUpdatingLocation()
         }
     }
 
-    private var topBackground: some View {
-        LinearGradient(
-            colors: [Color(hex: "04152E"), Color(hex: "0B2D5C")],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-        .frame(height: 520)
-        .ignoresSafeArea(edges: .top)
+    private func profileHeroSection(width: CGFloat) -> some View {
+        ProfileGlobeView(userCoordinate: locationManager.location?.coordinate)
+            .frame(width: width, height: 320)
+            .clipped()
     }
 
-    private var profileSummary: some View {
-        ZStack(alignment: .topLeading) {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(spacing: 16) {
-                    Spacer(minLength: 88)
-                    statsRow
-                }
+    private var profileContentCard: some View {
+        VStack(spacing: 0) {
+            VStack(spacing: 0) {
+                profileStatsRow
+                profileDivider
+                profileNameAndVerificationRow
+                profileLocationRow
+                profileDivider
+                profileAboutSection
+                profileDivider
+                groupsSection
+                profileDivider
+                friendsSection
+            }
+            .padding(.top, 24)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 120)
+        }
+        .frame(maxWidth: .infinity)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+        .shadow(color: .black.opacity(0.1), radius: 18, y: -6)
+    }
 
-                HStack(alignment: .center, spacing: 12) {
-                    Text(profileName)
-                        .font(.app(size: 24, weight: .bold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
+    private var profileStatsRow: some View {
+        HStack(spacing: 0) {
+            VStack(spacing: 4) {
+                Text("\(data.groups.count)")
+                    .font(.app(size: 20, weight: .bold))
+                    .foregroundStyle(.black)
+                Text("Groups")
+                    .font(.app(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
 
-                    verificationPill
+            Rectangle()
+                .fill(Color(.systemGray4))
+                .frame(width: 1, height: 44)
 
-                    Spacer()
+            VStack(spacing: 4) {
+                Text("1")
+                    .font(.app(size: 20, weight: .bold))
+                    .foregroundStyle(.black)
+                Text("Trips")
+                    .font(.app(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
 
-                    Button(action: {}) {
-                        HStack(spacing: 6) {
-                            Text("Edit Profile")
-                                .font(.app(size: 14, weight: .semibold))
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12, weight: .semibold))
-                        }
-                        .foregroundStyle(.primary)
-                    }
-                    .buttonStyle(.plain)
-                }
+            Rectangle()
+                .fill(Color(.systemGray4))
+                .frame(width: 1, height: 44)
 
-                HStack(spacing: 8) {
-                    Text(profileFlag)
-                        .font(.app(size: 16))
-                    Text(profileCountry)
-                        .font(.app(size: 14, weight: .semibold))
+            VStack(spacing: 4) {
+                Text("1")
+                    .font(.app(size: 20, weight: .bold))
+                    .foregroundStyle(.black)
+                Text("Visited")
+                    .font(.app(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .padding(.horizontal, 20)
+    }
+
+    private var profileNameAndVerificationRow: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Text(profileName)
+                .font(.app(size: 20, weight: .bold))
+                .foregroundStyle(.black)
+            HStack(spacing: 6) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.white)
+                Text("Not Verified")
+                    .font(.app(size: 12, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color.orange.opacity(0.85), in: Capsule())
+            Spacer()
+            Button(action: {}) {
+                HStack(spacing: 4) {
+                    Text("Edit Profile")
+                        .font(.app(size: 15, weight: .medium))
+                        .foregroundStyle(.black)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.secondary)
                 }
             }
-            .padding(.top, 48)
-            .padding(.bottom, 16)
-            .padding(.horizontal, 20)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.white)
-            .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .stroke(Color.black.opacity(0.06), lineWidth: 1)
-            )
-            .shadow(color: .black.opacity(0.08), radius: 14, y: 8)
-
-            AsyncImage(url: URL(string: avatarURL)) { phase in
-                if let image = phase.image {
-                    image.resizable().scaledToFill()
-                } else {
-                    Color.gray.opacity(0.2)
-                }
-            }
-            .frame(width: 88, height: 88)
-            .clipShape(Circle())
-            .overlay(Circle().stroke(Color.white, lineWidth: 4))
-            .shadow(color: .black.opacity(0.12), radius: 10, y: 6)
-            .scaleEffect(avatarScale)
-            .offset(x: 18, y: -44 + avatarYOffset)
+            .buttonStyle(.plain)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, -40)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
     }
 
-
-    private var statsRow: some View {
-        HStack(spacing: 10) {
-            statCard(value: "0", title: "Groups")
-            statCard(value: "1", title: "Trips")
-            statCard(value: "1", title: "Visited")
+    private var profileLocationRow: some View {
+        HStack(spacing: 8) {
+            Text(profileFlag)
+                .font(.system(size: 18))
+            Text(profileCountry)
+                .font(.app(size: 14, weight: .regular))
+                .foregroundStyle(.secondary)
+            Spacer()
         }
+        .padding(.horizontal, 20)
+        .padding(.bottom, 16)
+    }
+
+    private var profileAboutSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("About")
+                .font(.app(size: 18, weight: .bold))
+                .foregroundStyle(.black)
+            Text(profileAbout)
+                .font(.app(size: 14, weight: .regular))
+                .foregroundStyle(.secondary)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, 16)
+    }
+
+    private var profileBottomBar: some View {
+        HStack(spacing: 12) {
+            Spacer()
+            Button(action: {}) {
+                HStack(spacing: 8) {
+                    Image(systemName: "envelope.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text("Contact")
+                        .font(.app(size: 16, weight: .semibold))
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 12)
+                .background(Color.appAccent, in: Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .background(Color.white)
+        .overlay(
+            Rectangle()
+                .fill(Color(.systemGray4).opacity(0.5))
+                .frame(height: 1),
+            alignment: .top
+        )
+    }
+
+    private var profileDivider: some View {
+        Rectangle()
+            .fill(Color(.systemGray4).opacity(0.5))
+            .frame(maxWidth: .infinity)
+            .frame(height: 1)
     }
 
     private var groupsSection: some View {
-        VStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Groups you Joined")
                     .font(.app(size: 18, weight: .bold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Color(.darkGray))
                 Spacer()
                 Button(action: {
                     showAllGroups = true
                 }) {
-                    HStack(spacing: 6) {
+                    HStack(spacing: 4) {
                         Text("See all")
                             .font(.app(size: 14, weight: .semibold))
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .semibold))
+                        Text(">")
+                            .font(.system(size: 14, weight: .semibold))
                     }
-                    .foregroundStyle(Color.appAccent)
+                    .foregroundStyle(Color.red)
                 }
                 .buttonStyle(.plain)
             }
@@ -229,237 +264,56 @@ struct ProfileEditorView: View {
                         groupCard(group)
                     }
                 }
+                .padding(.vertical, 4)
             }
         }
         .padding(.horizontal, 20)
+        .padding(.vertical, 16)
     }
 
     private var friendsSection: some View {
-        VStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("My Friends")
                     .font(.app(size: 18, weight: .bold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Color(.darkGray))
                 Spacer()
                 Button(action: {
                     showAllFriends = true
                 }) {
-                    HStack(spacing: 6) {
+                    HStack(spacing: 4) {
                         Text("See all")
                             .font(.app(size: 14, weight: .semibold))
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .semibold))
+                        Text(">")
+                            .font(.system(size: 14, weight: .semibold))
                     }
-                    .foregroundStyle(Color.appAccent)
+                    .foregroundStyle(Color.red)
                 }
                 .buttonStyle(.plain)
             }
-            HStack(spacing: 12) {
+            HStack(spacing: 14) {
                 Image(systemName: "person.3.fill")
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(Color.appAccent)
-                    .frame(width: 52, height: 52)
-                    .background(Color.appAccent.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-
+                    .font(.system(size: 28, weight: .medium))
+                    .foregroundStyle(Color.red)
+                    .frame(width: 56, height: 56)
+                    .background(Color.red.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 VStack(alignment: .leading, spacing: 4) {
                     Text("No Friends Yet")
-                        .font(.app(size: 16, weight: .semibold))
-                        .foregroundStyle(.primary)
+                        .font(.app(size: 16, weight: .bold))
+                        .foregroundStyle(Color(.darkGray))
                     Text("You haven't made any friends")
-                        .font(.app(size: 13, weight: .medium))
+                        .font(.app(size: 13, weight: .regular))
                         .foregroundStyle(.secondary)
                 }
-
                 Spacer()
             }
-            .padding(14)
-            .background(Color.appAccent.opacity(0.08))
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.red.opacity(0.08))
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .padding(.horizontal, 20)
-    }
-
-    private var verificationPill: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "checkmark.seal.fill")
-                .font(.system(size: 12, weight: .bold))
-            Text("Not Verified")
-                .font(.app(size: 12, weight: .semibold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.9)
-        }
-        .foregroundStyle(Color.red)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(Color.red.opacity(0.1), in: Capsule())
-        .fixedSize(horizontal: true, vertical: false)
-    }
-
-    private var starField: some View {
-        ZStack {
-            ForEach(starPositions.indices, id: \.self) { index in
-                Circle()
-                    .fill(Color.white.opacity(0.8))
-                    .frame(width: index.isMultiple(of: 3) ? 2 : 1.4, height: index.isMultiple(of: 3) ? 2 : 1.4)
-                    .position(starPositions[index])
-            }
-        }
-    }
-
-    private var starPositions: [CGPoint] {
-        [
-            CGPoint(x: 30, y: 24), CGPoint(x: 90, y: 60), CGPoint(x: 140, y: 18),
-            CGPoint(x: 200, y: 46), CGPoint(x: 260, y: 30), CGPoint(x: 320, y: 72),
-            CGPoint(x: 40, y: 120), CGPoint(x: 110, y: 140), CGPoint(x: 180, y: 110),
-            CGPoint(x: 250, y: 150), CGPoint(x: 320, y: 120), CGPoint(x: 60, y: 200),
-            CGPoint(x: 140, y: 210), CGPoint(x: 220, y: 190), CGPoint(x: 300, y: 210),
-            CGPoint(x: 20, y: 260), CGPoint(x: 100, y: 260), CGPoint(x: 180, y: 250),
-            CGPoint(x: 260, y: 270), CGPoint(x: 330, y: 250)
-        ]
-    }
-
-    private var avatarScale: CGFloat {
-        let progress = scrollProgress
-        return 1 - (0.28 * progress)
-    }
-
-    private var avatarYOffset: CGFloat {
-        let progress = scrollProgress
-        return 16 * progress
-    }
-
-    private var scrollProgress: CGFloat {
-        min(max(-scrollOffset / 220, 0), 1)
-    }
-
-    private var globeOpacity: CGFloat {
-        1 - scrollProgress
-    }
-
-    private var globeYOffset: CGFloat {
-        -80 * scrollProgress
-    }
-
-    private var globeHeight: CGFloat {
-        max(0, 330 * (1 - scrollProgress))
-    }
-
-    private var compactHeaderOpacity: CGFloat {
-        scrollProgress
-    }
-
-    private var compactHeader: some View {
-        HStack(spacing: 12) {
-            circleIconButton(systemName: "arrow.left", action: onClose)
-
-            AsyncImage(url: URL(string: avatarURL)) { phase in
-                if let image = phase.image {
-                    image.resizable().scaledToFill()
-                } else {
-                    Color.gray.opacity(0.2)
-                }
-            }
-            .frame(width: 36, height: 36)
-            .clipShape(Circle())
-
-            Text(profileName)
-                .font(.app(size: 18, weight: .bold))
-                .foregroundStyle(.primary)
-
-            Spacer()
-
-            circleIconButton(systemName: "gearshape") {}
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 10)
-        .padding(.bottom, 10)
-        .background(Color.white)
-        .shadow(color: .black.opacity(0.08), radius: 10, y: 6)
-    }
-
-    private func animateGlobeToProfileCountry() {
-        let geocoder = CLGeocoder()
-        geocoder.geocodeAddressString(profileCountry) { placemarks, _ in
-            let coordinate = placemarks?.first?.location?.coordinate
-                ?? CLLocationCoordinate2D(latitude: 48.8566, longitude: 2.3522)
-            globeTargetCoordinate = coordinate
-            globeAnimationKey = UUID()
-        }
-    }
-
-    private func statCard(value: String, title: String) -> some View {
-        VStack(spacing: 6) {
-            Text(value)
-                .font(.app(size: 18, weight: .bold))
-                .foregroundStyle(.primary)
-            Text(title)
-                .font(.app(size: 12, weight: .medium))
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.black.opacity(0.06), lineWidth: 1)
-        )
-    }
-
-    private func groupRow(_ group: Explore) -> some View {
-        HStack(spacing: 12) {
-            AsyncImage(url: URL(string: group.image)) { phase in
-                if let image = phase.image {
-                    image.resizable().scaledToFill()
-                } else {
-                    Color.gray.opacity(0.2)
-                }
-            }
-            .frame(width: 56, height: 56)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(group.title)
-                    .font(.app(size: 16, weight: .semibold))
-                    .foregroundStyle(.primary)
-                Text("\(group.attendees) members")
-                    .font(.app(size: 13, weight: .medium))
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-
-            avatarStack(group.avatars)
-        }
-        .padding(.vertical, 8)
-    }
-
-    private func friendRow(_ friend: User) -> some View {
-        HStack(spacing: 12) {
-            AsyncImage(url: URL(string: friend.image)) { phase in
-                if let image = phase.image {
-                    image.resizable().scaledToFill()
-                } else {
-                    Color.gray.opacity(0.2)
-                }
-            }
-            .frame(width: 48, height: 48)
-            .clipShape(Circle())
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(friend.name)
-                    .font(.app(size: 16, weight: .semibold))
-                    .foregroundStyle(.primary)
-                Text(friend.flag)
-                    .font(.app(size: 13))
-            }
-
-            Spacer()
-
-            Text(friend.distance)
-                .font(.app(size: 13, weight: .medium))
-                .foregroundStyle(.secondary)
-        }
-        .padding(.vertical, 8)
+        .padding(.vertical, 16)
     }
 
     private func groupCard(_ group: Explore) -> some View {
@@ -469,7 +323,7 @@ struct ProfileEditorView: View {
                     if let image = phase.image {
                         image.resizable().scaledToFill()
                     } else {
-                        Color.white
+                        Color(.systemGray5)
                     }
                 }
                 .frame(height: 120)
@@ -485,13 +339,13 @@ struct ProfileEditorView: View {
                 .foregroundStyle(.white)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .background(Color.black.opacity(0.6), in: Capsule())
+                .background(Color(.darkGray), in: Capsule())
                 .padding(8)
             }
 
             Text(group.title)
                 .font(.app(size: 15, weight: .semibold))
-                .foregroundStyle(.primary)
+                .foregroundStyle(Color(.darkGray))
                 .lineLimit(2)
                 .frame(height: 40, alignment: .top)
 
@@ -508,13 +362,13 @@ struct ProfileEditorView: View {
         }
         .padding(12)
         .frame(width: 220, height: 230)
-        .background(Color.white)
+        .background(Color(.systemGray6))
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.black.opacity(0.05), lineWidth: 1)
+                .stroke(Color.black.opacity(0.06), lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.08), radius: 12, y: 6)
+        .shadow(color: .black.opacity(0.06), radius: 8, y: 4)
     }
 
     private func avatarStack(_ urls: [String]) -> some View {
@@ -551,37 +405,41 @@ struct ProfileEditorView: View {
     }
 }
 
-private struct ScrollOffsetKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
+// MARK: - Profile globe (Mapbox)
+private struct ProfileGlobeView: UIViewRepresentable {
+    static let styleURL = "mapbox://styles/thochw/cmkbqgty5004901rxgct4a0z6"
+    var userCoordinate: CLLocationCoordinate2D?
 
-private struct GlobeMapView: UIViewRepresentable {
-    let targetCoordinate: CLLocationCoordinate2D?
-    let animationKey: UUID
-
-    func makeUIView(context: Context) -> MapView {
-        let options = MapInitOptions(styleURI: .standard)
-        let mapView = MapView(frame: .zero, mapInitOptions: options)
-        mapView.mapboxMap.setCamera(to: .init(center: CLLocationCoordinate2D(latitude: 20, longitude: -50), zoom: 1.35, bearing: 0, pitch: 0))
-
-        try? mapView.mapboxMap.setProjection(StyleProjection(name: .globe))
+    func makeUIView(context: Context) -> MapboxMaps.MapView {
+        let styleURI = MapboxMaps.StyleURI(rawValue: Self.styleURL) ?? .standard
+        let options = MapboxMaps.MapInitOptions(styleURI: styleURI)
+        let mapView = MapboxMaps.MapView(frame: .zero, mapInitOptions: options)
+        mapView.mapboxMap.setCamera(to: MapboxMaps.CameraOptions(
+            center: CLLocationCoordinate2D(latitude: 20, longitude: -50),
+            zoom: 0.5,
+            bearing: 0,
+            pitch: 0
+        ))
+        try? mapView.mapboxMap.setProjection(MapboxMaps.StyleProjection(name: .globe))
+        mapView.ornaments.options.scaleBar.visibility = .hidden
         mapView.mapboxMap.onStyleLoaded.observeNext { _ in
-            try? mapView.mapboxMap.setAtmosphere(Atmosphere())
+            try? mapView.mapboxMap.setAtmosphere(MapboxMaps.Atmosphere())
         }.store(in: &context.coordinator.cancelables)
-
         return mapView
     }
 
-    func updateUIView(_ uiView: MapView, context: Context) {
-        guard let coordinate = targetCoordinate else { return }
-        if context.coordinator.lastAnimationKey == animationKey {
-            return
+    func updateUIView(_ uiView: MapboxMaps.MapView, context: Context) {
+        guard let coordinate = userCoordinate, !context.coordinator.didAnimateToUser else { return }
+        context.coordinator.didAnimateToUser = true
+        let target = MapboxMaps.CameraOptions(
+            center: coordinate,
+            zoom: 7,
+            bearing: 0,
+            pitch: 0
+        )
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            uiView.camera.ease(to: target, duration: 5.5, curve: .easeInOut, completion: nil)
         }
-        context.coordinator.lastAnimationKey = animationKey
-        context.coordinator.animate(to: coordinate, on: uiView)
     }
 
     func makeCoordinator() -> Coordinator {
@@ -590,25 +448,7 @@ private struct GlobeMapView: UIViewRepresentable {
 
     final class Coordinator {
         var cancelables = Set<AnyCancelable>()
-        var lastAnimationKey: UUID?
-
-        func animate(to coordinate: CLLocationCoordinate2D, on mapView: MapView) {
-            let start = CameraOptions(
-                center: CLLocationCoordinate2D(latitude: coordinate.latitude, longitude: coordinate.longitude - 40),
-                zoom: 1.4,
-                bearing: 220,
-                pitch: 0
-            )
-            mapView.mapboxMap.setCamera(to: start)
-
-            let target = CameraOptions(
-                center: coordinate,
-                zoom: 1.9,
-                bearing: 260,
-                pitch: 0
-            )
-            mapView.camera.ease(to: target, duration: 1.6, curve: .easeInOut, completion: nil)
-        }
+        var didAnimateToUser = false
     }
 }
 
