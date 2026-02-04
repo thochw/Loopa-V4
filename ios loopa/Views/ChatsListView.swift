@@ -120,10 +120,6 @@ struct ChatsListView: View {
                                     }
                                 }
 
-                            if index < filteredChats.count - 1 {
-                                Divider()
-                                    .padding(.leading, 76)
-                            }
                         }
                     }
                 }

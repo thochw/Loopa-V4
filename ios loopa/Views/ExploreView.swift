@@ -141,6 +141,9 @@ struct ExploreView: View {
             syncViewport(animated: false)
                     locationManager.requestLocationPermission()
                     locationManager.startUpdatingLocation()
+                    if variant == .travelers {
+                        showTravelersFromClosed()
+                    }
         }
         .onChange(of: region.center.latitude) { _, _ in
             if suppressNextViewportSync {
@@ -992,7 +995,7 @@ struct ExploreView: View {
         isFollowingUser = true
         suppressNextViewportSync = true
         region.center = coordinate
-        let bottomPadding: CGFloat = (variant == .travelers && isSheetOpen) ? 420 : 0
+        let bottomPadding: CGFloat = (variant == .travelers && isSheetOpen) ? 400 : 0
         let viewportPadding = EdgeInsets(top: 0, leading: 0, bottom: bottomPadding, trailing: 0)
         withViewportAnimation(.default(maxDuration: 0.6)) {
             exploreViewport = .followPuck(
@@ -1009,6 +1012,23 @@ struct ExploreView: View {
             latitude: coordinate.latitude - 0.030,
             longitude: coordinate.longitude
         )
+    }
+
+    private func showTravelersFromClosed() {
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            if isTeleported {
+                if let location = locationManager.location {
+                    selectedSearchPin = nil
+                    region.center = adjustedCenter(location.coordinate)
+                } else {
+                    selectedSearchPin = nil
+                    region.center = adjustedCenter(CLLocationCoordinate2D(latitude: 45.5017, longitude: -73.5673))
+                }
+                currentCity = homeCity
+            }
+            isSheetExpanded = false
+            isSheetOpen = true
+        }
     }
     
     private func iconButton(icon: String, color: Color = .secondary) -> some View {

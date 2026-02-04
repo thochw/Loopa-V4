@@ -19,6 +19,7 @@ struct ProfileEditorView: View {
     private let profileAbout = "Hey, I'm Thomas! I love meeting travelers nearby. Say hi and share your next destination ✨"
     @State private var showAllGroups = false
     @State private var showAllFriends = false
+    @State private var showProfileSettings = false
     @StateObject private var locationManager = LocationManager()
 
     var body: some View {
@@ -35,19 +36,30 @@ struct ProfileEditorView: View {
                 }
                 .ignoresSafeArea(edges: .top)
 
-                profileBottomBar
             }
             .overlay(alignment: .topTrailing) {
-                Button(action: onClose) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .semibold))
+                Button(action: { showProfileSettings = true }) {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(Color.appAccent)
-                        .frame(width: 34, height: 34)
+                        .frame(width: 40, height: 40)
                         .background(Color.white, in: Circle())
                         .shadow(color: .black.opacity(0.12), radius: 8, y: 3)
                 }
                 .padding(.trailing, 20)
-                .padding(.top, 16)
+                .padding(.top, 8)
+            }
+            .overlay(alignment: .topLeading) {
+                Button(action: onClose) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Color.appAccent)
+                        .frame(width: 40, height: 40)
+                        .background(Color.white, in: Circle())
+                        .shadow(color: .black.opacity(0.12), radius: 8, y: 3)
+                }
+                .padding(.leading, 20)
+                .padding(.top, 8)
             }
         }
         .environment(\.colorScheme, .light)
@@ -60,6 +72,9 @@ struct ProfileEditorView: View {
             AllFriendsListView(friends: data.users) {
                 showAllFriends = false
             }
+        }
+        .sheet(isPresented: $showProfileSettings) {
+            ProfileSettingsView()
         }
         .onAppear {
             locationManager.requestLocationPermission()
@@ -144,20 +159,21 @@ struct ProfileEditorView: View {
 
     private var profileNameAndVerificationRow: some View {
         HStack(alignment: .center, spacing: 10) {
+            AsyncImage(url: URL(string: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80")) { phase in
+                if let image = phase.image {
+                    image.resizable().scaledToFill()
+                } else {
+                    Color.gray.opacity(0.2)
+                }
+            }
+            .frame(width: 40, height: 40)
+            .clipShape(Circle())
+            .overlay(Circle().stroke(Color.white, lineWidth: 2))
+            .shadow(color: .black.opacity(0.08), radius: 4, y: 2)
+
             Text(profileName)
                 .font(.app(size: 20, weight: .bold))
                 .foregroundStyle(.black)
-            HStack(spacing: 6) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white)
-                Text("Not Verified")
-                    .font(.app(size: 12, weight: .semibold))
-                    .foregroundStyle(.white)
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Color.orange.opacity(0.85), in: Capsule())
             Spacer()
             Button(action: {}) {
                 HStack(spacing: 4) {
@@ -200,34 +216,6 @@ struct ProfileEditorView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.vertical, 16)
-    }
-
-    private var profileBottomBar: some View {
-        HStack(spacing: 12) {
-            Spacer()
-            Button(action: {}) {
-                HStack(spacing: 8) {
-                    Image(systemName: "envelope.fill")
-                        .font(.system(size: 14, weight: .semibold))
-                    Text("Contact")
-                        .font(.app(size: 16, weight: .semibold))
-                }
-                .foregroundStyle(.white)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 12)
-                .background(Color.appAccent, in: Capsule())
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .background(Color.white)
-        .overlay(
-            Rectangle()
-                .fill(Color(.systemGray4).opacity(0.5))
-                .frame(height: 1),
-            alignment: .top
-        )
     }
 
     private var profileDivider: some View {
