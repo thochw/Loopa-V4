@@ -14,6 +14,10 @@ struct ProfileSettingsView: View {
     @State private var introduction: String = ""
     @State private var instagramUsername: String = ""
     @State private var tiktokUsername: String = ""
+    @State private var dateOfBirth: Date = Date(timeIntervalSince1970: 1013904000) // Feb 17, 2002
+    @State private var genderPreference: String = "Everyone"
+    @State private var nationality: String = "France"
+    @State private var selectedLifestyle: String = "digital nomad"
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,26 +28,11 @@ struct ProfileSettingsView: View {
                     textFieldSection(title: "First Name", placeholder: "Thomas", text: $firstName)
                     introSection
                     dateFieldSection
-                    preferenceSection(
-                        title: "Gender Preference",
-                        subtitle: "You'll only receive messages from this gender",
-                        value: "Everyone",
-                        icon: "🧑‍🤝‍🧑"
-                    )
-                    preferenceSection(
-                        title: "Travel Lifestyle",
-                        subtitle: nil,
-                        value: "Digital nomad",
-                        icon: "💻"
-                    )
+                    genderPreferenceSection
+                    travelLifestyleSection
                     textFieldSection(title: "Instagram Username", placeholder: "Instagram username", text: $instagramUsername)
                     textFieldSection(title: "TikTok Username", placeholder: "TikTok username", text: $tiktokUsername)
-                    preferenceSection(
-                        title: "Nationality",
-                        subtitle: nil,
-                        value: "France",
-                        icon: "🇫🇷"
-                    )
+                    nationalitySection
                     languagesSection
                     interestsSection
                 }
@@ -71,7 +60,7 @@ struct ProfileSettingsView: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 18)
                         .padding(.vertical, 10)
-                        .background(Color.blue, in: Capsule())
+                        .background(Color.appAccent, in: Capsule())
                 }
             }
             Text("Edit Profile")
@@ -185,44 +174,116 @@ struct ProfileSettingsView: View {
             Text("Date of Birth")
                 .font(.app(size: 20, weight: .bold))
                 .foregroundStyle(.black)
-            HStack {
-                Text("February 17, 2002")
-                    .font(.app(size: 16, weight: .medium))
-                    .foregroundStyle(.primary)
-                Spacer()
-                Image(systemName: "calendar")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.primary)
+            ZStack {
+                HStack {
+                    Text(dateOfBirth.formatted(date: .long, time: .omitted))
+                        .font(.app(size: 16, weight: .medium))
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Image(systemName: "calendar")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(.primary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                DatePicker("", selection: $dateOfBirth, displayedComponents: .date)
+                    .labelsHidden()
+                    .datePickerStyle(.compact)
+                    .opacity(0.02)
+                    .padding(.horizontal, 16)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
     }
 
-    private func preferenceSection(title: String, subtitle: String?, value: String, icon: String) -> some View {
+    private var genderPreferenceSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title)
+            Text("Gender Preference")
                 .font(.app(size: 20, weight: .bold))
                 .foregroundStyle(.black)
-            if let subtitle {
-                Text(subtitle)
-                    .font(.app(size: 13, weight: .regular))
-                    .foregroundStyle(.secondary)
+            Text("You'll only receive messages from this gender")
+                .font(.app(size: 13, weight: .regular))
+                .foregroundStyle(.secondary)
+
+            Menu {
+                Button("🧑‍🤝‍🧑 Everyone") { genderPreference = "Everyone" }
+                Button("👩 Women") { genderPreference = "Women" }
+                Button("👨 Men") { genderPreference = "Men" }
+                Button("⚧️ Non-binary") { genderPreference = "Non-binary" }
+            } label: {
+                HStack {
+                    Text(genderPreferenceEmoji)
+                    Text(genderPreference)
+                        .font(.app(size: 16, weight: .medium))
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
-            HStack {
-                Text(icon)
-                Text(value)
-                    .font(.app(size: 16, weight: .medium))
-                    .foregroundStyle(.primary)
-                Spacer()
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.secondary)
+        }
+    }
+
+    private var travelLifestyleSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Travel Lifestyle")
+                .font(.app(size: 20, weight: .bold))
+                .foregroundStyle(.black)
+
+            Menu {
+                ForEach(lifestyleOptions, id: \.id) { option in
+                    Button("\(option.emoji) \(option.label)") {
+                        selectedLifestyle = option.id
+                    }
+                }
+            } label: {
+                HStack {
+                    Text(lifestyleEmoji(for: selectedLifestyle))
+                    Text(selectedLifestyle)
+                        .font(.app(size: 16, weight: .medium))
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+    }
+
+    private var nationalitySection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Nationality")
+                .font(.app(size: 20, weight: .bold))
+                .foregroundStyle(.black)
+            Menu {
+                Button("🇫🇷 France") { nationality = "France" }
+                Button("🇨🇦 Canada") { nationality = "Canada" }
+                Button("🇺🇸 USA") { nationality = "USA" }
+                Button("🇧🇷 Brazil") { nationality = "Brazil" }
+            } label: {
+                HStack {
+                    Text(nationalityFlag)
+                    Text(nationality)
+                        .font(.app(size: 16, weight: .medium))
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
         }
     }
 
@@ -263,5 +324,44 @@ struct ProfileSettingsView: View {
             .padding(.vertical, 8)
             .background(Color.white, in: Capsule())
     }
+
+    private var lifestyleOptions: [LifestyleOption] {
+        [
+            LifestyleOption(id: "backpacking", emoji: "🎒", label: "backpacking"),
+            LifestyleOption(id: "digital nomad", emoji: "💻", label: "digital nomad"),
+            LifestyleOption(id: "gap year", emoji: "👋", label: "gap year"),
+            LifestyleOption(id: "studying abroad", emoji: "📚", label: "studying abroad"),
+            LifestyleOption(id: "living abroad", emoji: "🏠", label: "living abroad"),
+            LifestyleOption(id: "au pair", emoji: "🤹", label: "au pair")
+        ]
+    }
+
+    private func lifestyleEmoji(for id: String) -> String {
+        lifestyleOptions.first(where: { $0.id == id })?.emoji ?? "🎒"
+    }
+
+    private var genderPreferenceEmoji: String {
+        switch genderPreference {
+        case "Women": return "👩"
+        case "Men": return "👨"
+        case "Non-binary": return "⚧️"
+        default: return "🧑‍🤝‍🧑"
+        }
+    }
+
+    private var nationalityFlag: String {
+        switch nationality.lowercased() {
+        case "france": return "🇫🇷"
+        case "canada": return "🇨🇦"
+        case "usa": return "🇺🇸"
+        case "brazil": return "🇧🇷"
+        default: return "🏳️"
+        }
+    }
 }
 
+private struct LifestyleOption {
+    let id: String
+    let emoji: String
+    let label: String
+}

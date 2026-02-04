@@ -20,6 +20,7 @@ struct ProfileEditorView: View {
     @State private var showAllGroups = false
     @State private var showAllFriends = false
     @State private var showProfileSettings = false
+    @State private var showAppSettings = false
     @StateObject private var locationManager = LocationManager()
 
     var body: some View {
@@ -38,7 +39,7 @@ struct ProfileEditorView: View {
 
             }
             .overlay(alignment: .topTrailing) {
-                Button(action: { showProfileSettings = true }) {
+                Button(action: { showAppSettings = true }) {
                     Image(systemName: "gearshape")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(Color.appAccent)
@@ -75,6 +76,9 @@ struct ProfileEditorView: View {
         }
         .sheet(isPresented: $showProfileSettings) {
             ProfileSettingsView()
+        }
+        .sheet(isPresented: $showAppSettings) {
+            ProfileSettingsScreen()
         }
         .onAppear {
             locationManager.requestLocationPermission()
@@ -175,7 +179,7 @@ struct ProfileEditorView: View {
                 .font(.app(size: 20, weight: .bold))
                 .foregroundStyle(.black)
             Spacer()
-            Button(action: {}) {
+            Button(action: { showProfileSettings = true }) {
                 HStack(spacing: 4) {
                     Text("Edit Profile")
                         .font(.app(size: 15, weight: .medium))
