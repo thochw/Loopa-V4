@@ -48,84 +48,19 @@ struct HousingView: View {
     private let data = AppData.shared
     
     var body: some View {
-            VStack(spacing: 0) {
-            myTripHeader
-                
-                // Enhanced Content with smooth transitions
-                ZStack(alignment: .top) {
-                    if showMapView {
-                        housingMapContent
-                            .transition(.opacity.combined(with: .move(edge: .trailing)))
-                    } else {
-                    Color.white
-                            .ignoresSafeArea()
-                        
-                        ScrollView {
-                        LazyVStack(spacing: 24) {
-                            upcomingTripsSection
-                            recommendedHousingSection
-                            findRoommatesSection
-                            }
-                            .padding(.horizontal, 20)
-                        .padding(.top, 18)
-                        .padding(.bottom, 120)
-                        .background(Color.white)
-                        }
-                    .background(Color.white)
-                    .id(activeTab)
-                        .transition(.opacity.combined(with: .move(edge: .leading)))
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .animation(.easeInOut(duration: 0.25), value: showMapView)
-            }
-        .background(Color.white)
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: activeTab)
-        .sheet(isPresented: $showSearchFlow) {
-            HousingSearchFlowView(activeTab: $activeTab) {
-                showSearchFlow = false
-            }
-        }
-        .sheet(isPresented: $showCreateSheet) {
-            CreateHousingListingView(activeTab: $activeTab, coordinate: mapRegion.center) { spot in
-                housingSpots.insert(spot, at: 0)
-            } onCreateRoommate: { roommate in
-                roommates.insert(roommate, at: 0)
-            } onClose: {
-                showCreateSheet = false
-            }
-        }
-        .sheet(isPresented: $showCreateTripSheet) {
-            CreateTripView { trip in
-                trips.insert(trip, at: 0)
-                showCreateTripSheet = false
-            } onClose: {
-                showCreateTripSheet = false
-            }
-        }
-        .sheet(isPresented: $showTripsList) {
-            UpcomingTripsListView(trips: $trips) {
-                showTripsList = false
-            }
-        }
-        .sheet(item: $selectedHousingSpot) { spot in
-            HousingDetailSheet(spot: spot, onClose: {
-                selectedHousingSpot = nil
-            })
-        }
-        .sheet(item: $selectedRoommate) { roommate in
-            RoommateDetailSheet(roommate: roommate, onClose: {
-                selectedRoommate = nil
-            })
-        }
-        .fullScreenCover(item: $selectedTripForHousing) { trip in
-            RecommendedHousingMapView(
-                trip: trip,
-                spots: housingSpots,
-                avatarImages: data.users.map(\.image),
-                onClose: { selectedTripForHousing = nil }
-            )
-        }
+        let defaultTrip = trips.first ?? Trip(
+            destination: "Bali",
+            startDate: Calendar.current.date(from: DateComponents(year: 2026, month: 1, day: 17)) ?? Date(),
+            endDate: Calendar.current.date(from: DateComponents(year: 2026, month: 2, day: 23)) ?? Date(),
+            imageUrl: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80"
+        )
+        RecommendedHousingMapView(
+            trip: defaultTrip,
+            spots: housingSpots,
+            avatarImages: data.users.map(\.image),
+            onClose: {},
+            showBackButton: false
+        )
     }
 
     private var myTripHeader: some View {
@@ -135,7 +70,7 @@ struct HousingView: View {
                 .foregroundStyle(.primary)
 
             Spacer()
-
+            
             Button(action: {
                 showCreateTripSheet = true
             }) {
@@ -837,11 +772,45 @@ struct HousingView: View {
         }
     }
 
+    /// Vue globe terrestre pour la map Trips (tout le globe visible).
+    private struct TripsGlobeView: UIViewRepresentable {
+        static let styleURL = "mapbox://styles/thochw/cmkbqgty5004901rxgct4a0z6"
+
+        func makeUIView(context: Context) -> MapboxMaps.MapView {
+            let styleURI = MapboxMaps.StyleURI(rawValue: Self.styleURL) ?? .standard
+            let options = MapboxMaps.MapInitOptions(styleURI: styleURI)
+            let mapView = MapboxMaps.MapView(frame: .zero, mapInitOptions: options)
+            mapView.mapboxMap.setCamera(to: MapboxMaps.CameraOptions(
+                center: CLLocationCoordinate2D(latitude: 20, longitude: -50),
+                zoom: 0.5,
+                bearing: 0,
+                pitch: 0
+            ))
+            try? mapView.mapboxMap.setProjection(MapboxMaps.StyleProjection(name: .globe))
+            mapView.ornaments.options.scaleBar.visibility = .hidden
+            mapView.mapboxMap.onStyleLoaded.observeNext { _ in
+                try? mapView.mapboxMap.setAtmosphere(MapboxMaps.Atmosphere())
+            }.store(in: &context.coordinator.cancelables)
+            return mapView
+        }
+
+        func updateUIView(_ uiView: MapboxMaps.MapView, context: Context) {}
+
+        func makeCoordinator() -> Coordinator {
+            Coordinator()
+        }
+
+        final class Coordinator {
+            var cancelables = Set<AnyCancelable>()
+        }
+    }
+
     private struct RecommendedHousingMapView: View {
         let trip: Trip
         let spots: [HousingSpot]
         let avatarImages: [String]
         let onClose: () -> Void
+        var showBackButton: Bool = true
 
         enum SheetState {
             case collapsed
@@ -933,20 +902,14 @@ struct HousingView: View {
         var body: some View {
             GeometryReader { geometry in
                 ZStack {
-                    // Map (Mapbox)
-                    MapboxMaps.Map(viewport: $housingViewport)
-                        .mapStyle(MapboxMaps.MapStyle.appStyle)
-                        .ornamentOptions(MapboxMaps.OrnamentOptions(scaleBar: MapboxMaps.ScaleBarViewOptions(visibility: .hidden)))
+                    // Globe terrestre (vue complète du globe)
+                    TripsGlobeView()
                         .ignoresSafeArea()
-                        .onAppear {
-                            syncHousingViewport(animated: false)
-                            animateToTrip()
-                        }
                         .opacity(sheetState == .full ? 0 : 1)
                         .animation(.easeInOut(duration: 0.35), value: sheetState)
 
-                    // Back button (only when not full screen list)
-                    if sheetState != .full {
+                    // Back button (only when not full screen list and showBackButton)
+                    if showBackButton && sheetState != .full {
                         VStack {
                             HStack {
                                 Button(action: onClose) {
@@ -978,6 +941,7 @@ struct HousingView: View {
                         } else if sheetState == .partial {
                             Spacer()
                             partialSheet(geometry: geometry)
+                                .frame(maxHeight: geometry.size.height * 0.42)
                                 .transition(.move(edge: .bottom).combined(with: .opacity))
                         }
                     }
@@ -1030,13 +994,16 @@ struct HousingView: View {
         }
 
         private func partialSheet(geometry: GeometryProxy) -> some View {
-            VStack(spacing: 12) {
+            VStack(spacing: 0) {
                 // Drag handle
                 RoundedRectangle(cornerRadius: 2.5)
                     .fill(Color.secondary.opacity(0.4))
                     .frame(width: 36, height: 5)
                     .padding(.top, 10)
+                    .padding(.bottom, 8)
 
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: 12) {
                 // Header - City name centered
                 Text(tripTitle)
                     .font(.app(size: 22, weight: .bold))
@@ -1130,6 +1097,8 @@ struct HousingView: View {
                 }
                 .frame(maxHeight: 220)
                 .padding(.bottom, 20)
+                    }
+                }
             }
             .frame(maxWidth: .infinity)
             .background(Color.white)
