@@ -96,24 +96,18 @@ struct ProfileEditorView: View {
         VStack(spacing: 0) {
             VStack(spacing: 0) {
                 profileStatsRow
-                profileDivider
                 profileNameAndVerificationRow
                 profileLocationRow
-                profileDivider
-                profileAboutSection
-                profileDivider
                 groupsSection
-                profileDivider
                 friendsSection
             }
             .padding(.top, 24)
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 0)
             .padding(.bottom, 120)
         }
         .frame(maxWidth: .infinity)
         .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-        .shadow(color: .black.opacity(0.1), radius: 18, y: -6)
+        .clipShape(RoundedCorner(radius: 36, corners: [.topLeft, .topRight]))
     }
 
     private var profileStatsRow: some View {
@@ -208,33 +202,12 @@ struct ProfileEditorView: View {
         .padding(.bottom, 16)
     }
 
-    private var profileAboutSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("About")
-                .font(.app(size: 18, weight: .bold))
-                .foregroundStyle(.black)
-            Text(profileAbout)
-                .font(.app(size: 14, weight: .regular))
-                .foregroundStyle(.secondary)
-                .lineSpacing(4)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(.vertical, 16)
-    }
-
-    private var profileDivider: some View {
-        Rectangle()
-            .fill(Color(.systemGray4).opacity(0.5))
-            .frame(maxWidth: .infinity)
-            .frame(height: 1)
-    }
-
     private var groupsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Groups you Joined")
                     .font(.app(size: 18, weight: .bold))
-                    .foregroundStyle(Color(.darkGray))
+                    .foregroundStyle(.black)
                 Spacer()
                 Button(action: {
                     showAllGroups = true
@@ -268,7 +241,7 @@ struct ProfileEditorView: View {
             HStack {
                 Text("My Friends")
                     .font(.app(size: 18, weight: .bold))
-                    .foregroundStyle(Color(.darkGray))
+                    .foregroundStyle(.black)
                 Spacer()
                 Button(action: {
                     showAllFriends = true
@@ -394,6 +367,20 @@ struct ProfileEditorView: View {
                 .shadow(color: .black.opacity(0.06), radius: 6, y: 3)
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct RoundedCorner: Shape {
+    let radius: CGFloat
+    let corners: UIRectCorner
+
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(
+            roundedRect: rect,
+            byRoundingCorners: corners,
+            cornerRadii: CGSize(width: radius, height: radius)
+        )
+        return Path(path.cgPath)
     }
 }
 

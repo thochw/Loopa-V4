@@ -36,7 +36,7 @@ struct ChatsListView: View {
             // Enhanced Header
             HStack {
                 Text("Chats")
-                    .font(.app(size: 34, weight: .bold))
+                    .font(.app(size: 24, weight: .bold))
                     .foregroundStyle(.primary)
                 
                 Spacer()
@@ -147,7 +147,7 @@ struct ChatsListView: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .center, spacing: 8) {
                     Text(chat.title)
-                        .font(.app(size: 17, weight: chat.unread ? .semibold : .regular))
+                        .font(.app(size: 15, weight: chat.unread ? .semibold : .regular))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
                     

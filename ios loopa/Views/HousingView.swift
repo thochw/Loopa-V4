@@ -287,7 +287,7 @@ struct HousingView: View {
     private func sectionHeader(title: String, actionText: String, action: @escaping () -> Void) -> some View {
         HStack {
             Text(title)
-                .font(.app(size: 19, weight: .bold))
+                .font(.app(size: 17, weight: .bold))
                 .foregroundStyle(.primary)
             Spacer()
             Button(action: action) {
@@ -714,9 +714,14 @@ struct HousingView: View {
                     .padding(.top, 8)
                     .padding(.bottom, 24)
                 }
-                .navigationTitle("My Upcoming Trips")
+                .navigationTitle("")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
+                    ToolbarItem(placement: .principal) {
+                        Text("My Trips")
+                            .font(.app(size: 20, weight: .bold))
+                            .foregroundStyle(.primary)
+                    }
                     ToolbarItem(placement: .navigationBarLeading) {
                         Button(action: onClose) {
                             Image(systemName: "chevron.left")

@@ -1184,7 +1184,7 @@ struct ExploreView: View {
     private var groupsView: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Nearby Groups")
-                .font(.app(size: 24, weight: .bold))
+                .font(.app(size: 18, weight: .bold))
                 .foregroundStyle(.primary)
                 .padding(.horizontal, 20)
             
@@ -1279,7 +1279,7 @@ struct ExploreView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text("\(filteredUsers.count) Nearby Travelers")
-                    .font(.app(size: 22, weight: .bold))
+                    .font(.app(size: 18, weight: .bold))
                 Spacer()
             }
             .padding(.horizontal, 20)

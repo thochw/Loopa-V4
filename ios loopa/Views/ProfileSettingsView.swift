@@ -54,7 +54,7 @@ struct ProfileSettingsView: View {
                         .frame(width: 36, height: 36)
                 }
                 Spacer()
-                Button(action: {}) {
+                Button(action: { dismiss() }) {
                     Text("Update")
                         .font(.app(size: 16, weight: .semibold))
                         .foregroundStyle(.white)
@@ -64,7 +64,7 @@ struct ProfileSettingsView: View {
                 }
             }
             Text("Edit Profile")
-                .font(.app(size: 32, weight: .bold))
+                .font(.app(size: 26, weight: .bold))
                 .foregroundStyle(.black)
         }
         .padding(.horizontal, 20)
@@ -75,7 +75,7 @@ struct ProfileSettingsView: View {
     private var profilePicturesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Profile Pictures")
-                .font(.app(size: 20, weight: .bold))
+                .font(.app(size: 17, weight: .bold))
                 .foregroundStyle(.black)
 
             ZStack(alignment: .bottomLeading) {
@@ -139,7 +139,7 @@ struct ProfileSettingsView: View {
     private func textFieldSection(title: String, placeholder: String, text: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
-                .font(.app(size: 20, weight: .bold))
+                .font(.app(size: 17, weight: .bold))
                 .foregroundStyle(.black)
             TextField(placeholder, text: text)
                 .padding(.horizontal, 16)
@@ -151,7 +151,7 @@ struct ProfileSettingsView: View {
     private var introSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Introduction")
-                .font(.app(size: 20, weight: .bold))
+                .font(.app(size: 17, weight: .bold))
                 .foregroundStyle(.black)
             TextEditor(text: $introduction)
                 .frame(height: 120)
@@ -166,13 +166,14 @@ struct ProfileSettingsView: View {
                             .padding(.vertical, 16)
                     }
                 }
+                .scrollContentBackground(.hidden)
         }
     }
 
     private var dateFieldSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Date of Birth")
-                .font(.app(size: 20, weight: .bold))
+                .font(.app(size: 17, weight: .bold))
                 .foregroundStyle(.black)
             ZStack {
                 HStack {
@@ -200,7 +201,7 @@ struct ProfileSettingsView: View {
     private var genderPreferenceSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Gender Preference")
-                .font(.app(size: 20, weight: .bold))
+                .font(.app(size: 17, weight: .bold))
                 .foregroundStyle(.black)
             Text("You'll only receive messages from this gender")
                 .font(.app(size: 13, weight: .regular))
@@ -232,7 +233,7 @@ struct ProfileSettingsView: View {
     private var travelLifestyleSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Travel Lifestyle")
-                .font(.app(size: 20, weight: .bold))
+                .font(.app(size: 17, weight: .bold))
                 .foregroundStyle(.black)
 
             Menu {
@@ -262,7 +263,7 @@ struct ProfileSettingsView: View {
     private var nationalitySection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Nationality")
-                .font(.app(size: 20, weight: .bold))
+                .font(.app(size: 17, weight: .bold))
                 .foregroundStyle(.black)
             Menu {
                 Button("🇫🇷 France") { nationality = "France" }
@@ -290,7 +291,7 @@ struct ProfileSettingsView: View {
     private var languagesSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Languages")
-                .font(.app(size: 20, weight: .bold))
+                .font(.app(size: 17, weight: .bold))
                 .foregroundStyle(.black)
             HStack(spacing: 12) {
                 tagChip("English")
@@ -305,7 +306,7 @@ struct ProfileSettingsView: View {
     private var interestsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Interests")
-                .font(.app(size: 20, weight: .bold))
+                .font(.app(size: 17, weight: .bold))
                 .foregroundStyle(.black)
             HStack(spacing: 12) {
                 tagChip("🏂 Adventure Travel")
