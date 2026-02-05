@@ -124,6 +124,7 @@ struct CitySearchView: View {
                     }
                 }
             }
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .onAppear {
                 // Auto-focus search field for better UX
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {

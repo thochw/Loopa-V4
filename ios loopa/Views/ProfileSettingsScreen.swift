@@ -40,12 +40,15 @@ struct ProfileSettingsScreen: View {
                     .background(Color.white, in: Circle())
                     .shadow(color: .black.opacity(0.12), radius: 8, y: 3)
             }
+            .padding(.leading, 20)
 
             Text("Settings")
                 .font(.app(size: 32, weight: .bold))
                 .foregroundStyle(.black)
+                .padding(.leading, 38)
         }
-        .padding(.horizontal, 20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.trailing, 20)
         .padding(.top, 8)
         .padding(.bottom, 6)
     }

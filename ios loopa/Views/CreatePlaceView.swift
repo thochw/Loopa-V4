@@ -129,6 +129,7 @@ struct CreatePlaceView: View {
                     .foregroundStyle(.secondary)
                 }
             }
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .onChange(of: locationSearchText) { oldValue, newValue in
                 if !newValue.isEmpty {
                     searchForLocationSuggestions(query: newValue)

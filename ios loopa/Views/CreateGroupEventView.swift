@@ -164,7 +164,7 @@ struct CreateGroupFlowView: View {
                     .foregroundStyle(Color.appAccent)
                 }
             }
-            .toolbarBackground(Color.white, for: .navigationBar)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         }
         .background(Color.white)
     }

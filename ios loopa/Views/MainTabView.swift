@@ -47,13 +47,76 @@ struct MainTabView: View {
     private let data = AppData.shared
     
     var body: some View {
-        ZStack {
-            // Main Content with smooth transitions
-            if selectedUser != nil {
-                ProfileView(user: selectedUser!, onBack: {
+        TabView(selection: $selectedTab) {
+            ExploreView(
+                variant: .groups,
+                onProfileClick: { user in
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        selectedUser = user
+                    }
+                },
+                onAddGroupClick: { createType in
+                    if let type = createType, type == .group {
+                        preselectedCreateType = .group
+                    }
+                },
+                onJoinGroupChat: { group in
+                    let chat = chatForGroup(group)
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        selectedTab = .chats
+                        selectedChat = chat
+                    }
+                }
+            )
+            .tabItem { Label("Explore", systemImage: "globe.americas") }
+            .tag(AppTab.explore)
+
+            ExploreView(
+                variant: .travelers,
+                onProfileClick: { user in
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        selectedUser = user
+                    }
+                },
+                onAddGroupClick: { createType in
+                    if let type = createType, type == .group {
+                        preselectedCreateType = .group
+                    }
+                },
+                onJoinGroupChat: { _ in }
+            )
+            .tabItem { Label("Friends", systemImage: "person.2") }
+            .tag(AppTab.map)
+
+            HousingView(onMessageRoommate: { roommate in
+                let chat = chatForRoommate(roommate)
+                chatInitialMessage = "Hello 👋"
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    selectedTab = .chats
+                    selectedChat = chat
+                }
+            })
+            .tabItem { Label("Trips", systemImage: "suitcase") }
+            .tag(AppTab.housing)
+
+            ChatsListView { chat in
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    selectedChat = chat
+                }
+            }
+            .tabItem { Label("DMs", systemImage: "bubble.left.and.bubble.right") }
+            .tag(AppTab.chats)
+        }
+        .tint(Color.appAccent)
+        .ignoresSafeArea(.keyboard, edges: .bottom)
+        .fullScreenCover(isPresented: Binding(
+            get: { selectedUser != nil },
+            set: { if !$0 { selectedUser = nil } }
+        )) {
+            if let user = selectedUser {
+                ProfileView(user: user, onBack: {
                     withAnimation(.interactiveSpring(response: 0.45, dampingFraction: 0.9, blendDuration: 0.15)) {
                         selectedUser = nil
-                        // If we came from a chat, go back to it
                         if let chat = chatBeforeProfile {
                             selectedChat = chat
                             chatBeforeProfile = nil
@@ -67,18 +130,22 @@ struct MainTabView: View {
                         selectedChat = chat
                     }
                 })
-                .transition(.move(edge: .trailing).combined(with: .opacity))
-            } else if selectedChat != nil {
-                ChatDetailView(chat: selectedChat!, onBack: {
+            }
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { selectedChat != nil },
+            set: { if !$0 { selectedChat = nil; chatInitialMessage = nil } }
+        )) {
+            if let chat = selectedChat {
+                ChatDetailView(chat: chat, onBack: {
                     withAnimation(.interactiveSpring(response: 0.45, dampingFraction: 0.9, blendDuration: 0.15)) {
                         selectedChat = nil
                         chatInitialMessage = nil
                     }
                 }, initialMessage: chatInitialMessage, onProfileClick: {
-                    if let chat = selectedChat, chat.type == .dm {
+                    if chat.type == .dm {
                         let user = userFromChat(chat)
                         withAnimation(.interactiveSpring(response: 0.45, dampingFraction: 0.9, blendDuration: 0.15)) {
-                            // Save the chat so we can return to it
                             chatBeforeProfile = chat
                             selectedChat = nil
                             chatInitialMessage = nil
@@ -86,25 +153,8 @@ struct MainTabView: View {
                         }
                     }
                 })
-                .transition(.move(edge: .trailing).combined(with: .opacity))
-            } else {
-                contentView(for: selectedTab)
-                    .id(selectedTab) // Force view refresh on tab change
-            }
-            
-            // Bottom Navigation Bar with safe area support
-            if selectedUser == nil && selectedChat == nil {
-                VStack {
-                    Spacer()
-                    bottomNavigationBar
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
-                .ignoresSafeArea(edges: .bottom)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .ignoresSafeArea(.keyboard, edges: .bottom)
         .sheet(item: $preselectedCreateType) { type in
             CreateGroupEventView(
                 showCelebration: $showCelebration,
@@ -119,131 +169,6 @@ struct MainTabView: View {
         .celebrationOverlay(show: $showCelebration)
     }
     
-    @ViewBuilder
-    private func contentView(for tab: AppTab) -> some View {
-        switch tab {
-        case .explore:
-            ExploreView(
-                variant: .groups,
-                onProfileClick: { user in
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        selectedUser = user
-                    }
-                },
-                onAddGroupClick: { createType in
-                    if let type = createType {
-                        if type == .group {
-                            preselectedCreateType = .group
-                        }
-                    }
-                },
-                onJoinGroupChat: { group in
-                    let chat = chatForGroup(group)
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        selectedUser = nil
-                        selectedTab = .chats
-                        selectedChat = chat
-                    }
-                }
-            )
-        case .map:
-            ExploreView(
-                variant: .travelers,
-                onProfileClick: { user in
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        selectedUser = user
-                    }
-                },
-                onAddGroupClick: { createType in
-                    if let type = createType {
-                        if type == .group {
-                            preselectedCreateType = .group
-                        }
-                    }
-                },
-                onJoinGroupChat: { _ in }
-            )
-        case .housing:
-            HousingView(onMessageRoommate: { roommate in
-                let chat = chatForRoommate(roommate)
-                chatInitialMessage = "Hello 👋"
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    selectedChat = chat
-                }
-            })
-        case .chats:
-            ChatsListView { chat in
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    selectedChat = chat
-                }
-            }
-        }
-    }
-    
-    private var bottomNavigationBar: some View {
-        HStack(spacing: 0) {
-            ForEach(AppTab.allCases, id: \.self) { tab in
-                Button(action: {
-                    selectedTab = tab
-                }) {
-                    VStack(spacing: 4) {
-                        ZStack(alignment: .topTrailing) {
-                            tabIcon(for: tab)
-                            
-                            // Notification badge removed
-                        }
-                        
-                        Text(tabLabel(for: tab))
-                            .font(.app(size: 11, weight: selectedTab == tab ? .semibold : .medium))
-                            .foregroundStyle(
-                                selectedTab == tab ? Color.appAccent : Color.black
-                            )
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56) // Increased for text label
-                    .contentShape(Rectangle()) // Full button area is tappable
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 8)
-        .background(
-            .ultraThinMaterial,
-            in: Capsule()
-        )
-        .glassEffect(.regular.interactive(), in: Capsule())
-        .shadow(color: .black.opacity(0.12), radius: 14, y: 6)
-    }
-    
-    private func iconName(for tab: AppTab) -> String {
-        switch tab {
-        case .explore: return "globe.americas"
-        case .map: return "person.2"
-        case .housing: return "suitcase"
-        case .chats: return "bubble.left.and.bubble.right"
-        }
-    }
-    
-    private func tabLabel(for tab: AppTab) -> String {
-        switch tab {
-        case .explore: return "Explore"
-        case .map: return "Friends"
-        case .housing: return "Trips"
-        case .chats: return "DMs"
-        }
-    }
-
-    @ViewBuilder
-    private func tabIcon(for tab: AppTab) -> some View {
-        let isSelected = selectedTab == tab
-        Image(systemName: iconName(for: tab))
-            .font(.system(size: 22, weight: .bold))
-            .symbolVariant(isSelected ? .fill : .none)
-            .foregroundStyle(isSelected ? Color.appAccent : Color.black)
-            .scaleEffect(isSelected ? 1.1 : 1.0)
-    }
-
     private func chatForUser(_ user: User) -> Chat {
         if let existing = data.chats.first(where: {
             $0.type == .dm &&

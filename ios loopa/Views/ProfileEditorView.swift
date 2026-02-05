@@ -481,6 +481,7 @@ private struct AllGroupsListView: View {
                     Button("Close", action: onClose)
                 }
             }
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         }
     }
 }
@@ -534,6 +535,7 @@ private struct AllFriendsListView: View {
                     Button("Close", action: onClose)
                 }
             }
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         }
     }
 }

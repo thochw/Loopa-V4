@@ -733,6 +733,7 @@ struct HousingView: View {
                         .buttonStyle(.plain)
                     }
                 }
+                .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             }
         }
     }
@@ -1273,7 +1274,7 @@ struct HousingView: View {
                                 Text("🏠")
                                     .font(.system(size: 22))
                                 Text("Type of housing")
-                                    .font(.app(size: 20, weight: .bold))
+                                    .font(.app(size: 16, weight: .bold))
                                     .foregroundStyle(.primary)
                             }
                             
@@ -1328,7 +1329,7 @@ struct HousingView: View {
                         // Separator with style
                         HStack {
                             Rectangle()
-                                .fill(Color(.systemGray4))
+                                .fill(Color(hex: "ebebeb"))
                                 .frame(height: 1)
                         }
                         .padding(.vertical, 4)
@@ -1339,7 +1340,7 @@ struct HousingView: View {
                                 Text("💰")
                                     .font(.system(size: 22))
                                 Text("Monthly budget")
-                                    .font(.app(size: 20, weight: .bold))
+                                    .font(.app(size: 16, weight: .bold))
                                     .foregroundStyle(.primary)
                             }
                             
@@ -1353,7 +1354,7 @@ struct HousingView: View {
                         // Separator
                         HStack {
                             Rectangle()
-                                .fill(Color(.systemGray4))
+                                .fill(Color(hex: "ebebeb"))
                                 .frame(height: 1)
                         }
                         .padding(.vertical, 4)
@@ -1364,7 +1365,7 @@ struct HousingView: View {
                                 Text("⭐")
                                     .font(.system(size: 22))
                                 Text("Minimum rating")
-                                    .font(.app(size: 20, weight: .bold))
+                                    .font(.app(size: 16, weight: .bold))
                                     .foregroundStyle(.primary)
                             }
                             
@@ -1447,7 +1448,7 @@ struct HousingView: View {
                         // Separator
                         HStack {
                             Rectangle()
-                                .fill(Color(.systemGray4))
+                                .fill(Color(hex: "ebebeb"))
                                 .frame(height: 1)
                         }
                         .padding(.vertical, 4)
@@ -1458,7 +1459,7 @@ struct HousingView: View {
                                 Text("📅")
                                     .font(.system(size: 22))
                                 Text("Availability")
-                                    .font(.app(size: 20, weight: .bold))
+                                    .font(.app(size: 16, weight: .bold))
                                     .foregroundStyle(.primary)
                             }
                             
@@ -1589,8 +1590,8 @@ struct HousingView: View {
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) {
                         Button(action: { showFilterSheet = false }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 24))
+                            Image(systemName: "xmark")
+                                .font(.system(size: 18, weight: .semibold))
                                 .foregroundStyle(Color.appAccent)
                         }
                     }
@@ -1611,6 +1612,7 @@ struct HousingView: View {
                         }
                     }
                 }
+                .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             }
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
@@ -1621,7 +1623,7 @@ struct HousingView: View {
         private let budgetStep: Double = 50
         
         private var budgetRangeSliderWithHistogram: some View {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
                 // Range slider with two thumbs (no histogram)
                 BudgetRangeSliderView(
                     minValue: $budgetMinValue,
@@ -1633,7 +1635,7 @@ struct HousingView: View {
                 
                 // Min / Max pills below – tappable, editable
                 HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 2) {
                         Text("Minimum")
                             .font(.app(size: 12, weight: .medium))
                             .foregroundStyle(.secondary)
@@ -1645,7 +1647,7 @@ struct HousingView: View {
                         )
                     }
                     Spacer()
-                    VStack(alignment: .trailing, spacing: 6) {
+                    VStack(alignment: .trailing, spacing: 2) {
                         Text("Maximum")
                             .font(.app(size: 12, weight: .medium))
                             .foregroundStyle(.secondary)
@@ -1658,7 +1660,7 @@ struct HousingView: View {
                     }
                 }
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, 0)
             .onChange(of: budgetMinValue) { _, newVal in
                 if !minBudgetFocused { budgetMinInput = "\(Int(newVal))" }
             }
@@ -3917,7 +3919,7 @@ private struct BudgetRangeSliderView: View {
     @State private var dragStartMax: Double?
     
     private let thumbSize: CGFloat = 24
-    private let trackHeight: CGFloat = 6
+    private let trackHeight: CGFloat = 2
     
     private var rangeWidth: Double { range.upperBound - range.lowerBound }
     
@@ -4395,6 +4397,7 @@ private struct RoommateDetailSheet: View {
                     }
                 }
             }
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         }
         .environment(\.colorScheme, .light)
         .presentationDetents([.large])
