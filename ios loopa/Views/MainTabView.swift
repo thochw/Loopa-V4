@@ -96,7 +96,7 @@ struct MainTabView: View {
                     selectedChat = chat
                 }
             })
-            .tabItem { Label("Trips", systemImage: "suitcase") }
+            .tabItem { Label("Trips", systemImage: "safari.fill") }
             .tag(AppTab.housing)
 
             ChatsListView { chat in

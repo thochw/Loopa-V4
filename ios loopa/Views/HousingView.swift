@@ -777,6 +777,7 @@ struct HousingView: View {
         static let styleURL = "mapbox://styles/thochw/cmkbqgty5004901rxgct4a0z6"
         var targetCoordinate: CLLocationCoordinate2D?
         var targetZoom: Double
+        var isRotationActive: Bool
 
         func makeUIView(context: Context) -> MapboxMaps.MapView {
             let styleURI = MapboxMaps.StyleURI(rawValue: Self.styleURL) ?? .standard
@@ -797,6 +798,12 @@ struct HousingView: View {
         }
 
         func updateUIView(_ uiView: MapboxMaps.MapView, context: Context) {
+            if isRotationActive {
+                context.coordinator.startRotation(on: uiView)
+            } else {
+                context.coordinator.stopRotation()
+            }
+
             guard let coordinate = targetCoordinate else { return }
             let last = context.coordinator.lastTarget
             let sameTarget = last?.latitude == coordinate.latitude && last?.longitude == coordinate.longitude
@@ -821,6 +828,34 @@ struct HousingView: View {
             var cancelables = Set<AnyCancelable>()
             var lastTarget: CLLocationCoordinate2D? = nil
             var lastZoom: Double? = nil
+            private var displayLink: CADisplayLink?
+            private var currentLongitude: CLLocationDegrees = 0
+            private weak var mapView: MapboxMaps.MapView?
+
+            func startRotation(on mapView: MapboxMaps.MapView) {
+                self.mapView = mapView
+                if displayLink != nil { return }
+                let center = mapView.cameraState.center
+                currentLongitude = center.longitude
+                let link = CADisplayLink(target: self, selector: #selector(step))
+                link.preferredFramesPerSecond = 30
+                link.add(to: .main, forMode: .common)
+                displayLink = link
+            }
+
+            func stopRotation() {
+                displayLink?.invalidate()
+                displayLink = nil
+            }
+
+            @objc private func step() {
+                guard let mapView else { return }
+                let center = mapView.cameraState.center
+                currentLongitude += 0.08
+                if currentLongitude > 180 { currentLongitude -= 360 }
+                let nextCenter = CLLocationCoordinate2D(latitude: center.latitude, longitude: currentLongitude)
+                mapView.mapboxMap.setCamera(to: MapboxMaps.CameraOptions(center: nextCenter, bearing: 0))
+            }
         }
     }
 
@@ -938,7 +973,11 @@ struct HousingView: View {
             GeometryReader { geometry in
                 ZStack {
                     // Globe terrestre (vue complète du globe)
-                    TripsGlobeView(targetCoordinate: globeTarget, targetZoom: globeZoom)
+                    TripsGlobeView(
+                        targetCoordinate: globeTarget,
+                        targetZoom: globeZoom,
+                        isRotationActive: tripSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isTripSearchFocused
+                    )
                         .offset(y: -98)
                         .ignoresSafeArea()
                         .opacity(sheetState == .full ? 0 : 1)
@@ -996,13 +1035,6 @@ struct HousingView: View {
                     }
                     .animation(.spring(response: 0.5, dampingFraction: 0.85), value: sheetState)
 
-                    // Toggle pill at bottom
-                    VStack {
-                        Spacer()
-                        togglePill
-                            .padding(.bottom, (sheetState == .collapsed ? 40 : 20) + geometry.safeAreaInsets.bottom)
-                    }
-                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: sheetState)
                 }
                 .ignoresSafeArea(.container, edges: .bottom)
             }
@@ -1061,7 +1093,19 @@ struct HousingView: View {
                     .foregroundStyle(.white)
                     .focused($isTripSearchFocused)
                     .onChange(of: tripSearchText) { _, newValue in
-                        tripLocationSearcher.search(query: newValue)
+                        let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if trimmed.isEmpty {
+                            currentDestination = trip.destination
+                            tripCoordinate = nil
+                            tripLocationSearcher.results = []
+                            resolveTripCoordinate { coordinate in
+                                applyTripViewport(coordinate: coordinate, zoomedOut: true)
+                                globeTarget = coordinate
+                                globeZoom = 0.9
+                            }
+                        } else {
+                            tripLocationSearcher.search(query: newValue)
+                        }
                     }
                 Spacer()
                 if !tripSearchText.isEmpty {
@@ -1277,7 +1321,7 @@ struct HousingView: View {
                             sheetState = .partial
                         }
                     }) {
-                        Image(systemName: "chevron.left")
+                        Image(systemName: "chevron.down")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(.primary)
                             .frame(width: 36, height: 36)

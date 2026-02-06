@@ -124,6 +124,7 @@ struct ExploreView: View {
     ]
     
     private let data = AppData.shared
+    private let minExploreZoom: Double = 3.0
     
     private var exploreMapView: some View {
         MapboxMaps.Map(viewport: $exploreViewport) {
@@ -134,6 +135,7 @@ struct ExploreView: View {
                     }
                 }
         }
+        .cameraBounds(MapboxMaps.CameraBoundsOptions(maxZoom: 20, minZoom: minExploreZoom))
         .mapStyle(MapboxMaps.MapStyle.appStyle)
         .ornamentOptions(MapboxMaps.OrnamentOptions(scaleBar: MapboxMaps.ScaleBarViewOptions(visibility: .hidden)))
                 .ignoresSafeArea()
@@ -976,9 +978,10 @@ struct ExploreView: View {
     }
 
     private func syncViewport(animated: Bool) {
+        let clampedZoom = max(mapboxZoom(from: region.span), minExploreZoom)
         let nextViewport = MapboxMaps.Viewport.camera(
             center: region.center,
-            zoom: mapboxZoom(from: region.span),
+            zoom: clampedZoom,
             bearing: 0,
             pitch: 0
         )
