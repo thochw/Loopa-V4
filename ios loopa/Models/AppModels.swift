@@ -8,11 +8,23 @@
 import Foundation
 import CoreLocation
 
+// MARK: - City with recommendation count (Explore + Trips)
+struct CityWithRecommendations: Identifiable, Equatable {
+    let id = UUID()
+    let name: String
+    let coordinate: CLLocationCoordinate2D
+    let recommendationCount: Int
+    let imageUrl: String
+
+    static func == (lhs: CityWithRecommendations, rhs: CityWithRecommendations) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
 // MARK: - Tab Enum
 enum AppTab: String, CaseIterable {
     case explore = "explore"
     case map = "map"
-    case housing = "housing"
     case chats = "chats"
 }
 

@@ -19,8 +19,14 @@ enum HousingTab: String, CaseIterable {
 }
 
 struct HousingView: View {
+    @Binding var hideTabBar: Bool
     var onMessageRoommate: ((Roommate) -> Void)? = nil
-    
+
+    init(hideTabBar: Binding<Bool> = .constant(false), onMessageRoommate: ((Roommate) -> Void)? = nil) {
+        _hideTabBar = hideTabBar
+        self.onMessageRoommate = onMessageRoommate
+    }
+
     @State private var activeTab: HousingTab = .spots
     @State private var showMapView = false
     @State private var selectedMapFilter: String? = nil
@@ -48,16 +54,11 @@ struct HousingView: View {
     private let data = AppData.shared
     
     var body: some View {
-        let defaultTrip = trips.first ?? Trip(
-            destination: "Bali",
-            startDate: Calendar.current.date(from: DateComponents(year: 2026, month: 1, day: 17)) ?? Date(),
-            endDate: Calendar.current.date(from: DateComponents(year: 2026, month: 2, day: 23)) ?? Date(),
-            imageUrl: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80"
-        )
-        RecommendedHousingMapView(
-            trip: defaultTrip,
+        ExploreTripsMapView(
+            cities: data.citiesWithRecommendations,
             spots: housingSpots,
             avatarImages: data.users.map(\.image),
+            hideTabBar: $hideTabBar,
             onClose: {},
             showBackButton: false
         )
@@ -772,48 +773,74 @@ struct HousingView: View {
         }
     }
 
-    /// Vue globe terrestre pour la map Trips (tout le globe visible).
+    /// Vue globe terrestre pour la map Trips (tout le globe visible). Pas de rotation auto ; l'utilisateur peut faire bouger le globe. Pastilles rouges sur les villes avec recommandations.
     private struct TripsGlobeView: UIViewRepresentable {
         static let styleURL = "mapbox://styles/thochw/cmkbqgty5004901rxgct4a0z6"
         var targetCoordinate: CLLocationCoordinate2D?
         var targetZoom: Double
-        var isRotationActive: Bool
+        var cityCoordinates: [CLLocationCoordinate2D]
+
+        private static let fullGlobeCenter = CLLocationCoordinate2D(latitude: 20, longitude: -50)
+        private static let fullGlobeZoom: Double = 0.5
+
+        static func redPillImage(size: CGFloat = 24) -> UIImage {
+            let whiteRingWidth: CGFloat = 4
+            let totalSize = size + whiteRingWidth * 2
+            let renderer = UIGraphicsImageRenderer(size: CGSize(width: totalSize, height: totalSize))
+            return renderer.image { ctx in
+                let rect = CGRect(origin: .zero, size: CGSize(width: totalSize, height: totalSize))
+                let innerRect = CGRect(x: whiteRingWidth, y: whiteRingWidth, width: size, height: size)
+                UIColor.white.setFill()
+                ctx.cgContext.fillEllipse(in: rect)
+                UIColor(red: 1, green: 0.23, blue: 0.36, alpha: 1).setFill()
+                ctx.cgContext.fillEllipse(in: innerRect)
+            }
+        }
 
         func makeUIView(context: Context) -> MapboxMaps.MapView {
             let styleURI = MapboxMaps.StyleURI(rawValue: Self.styleURL) ?? .standard
             let options = MapboxMaps.MapInitOptions(styleURI: styleURI)
             let mapView = MapboxMaps.MapView(frame: .zero, mapInitOptions: options)
             mapView.mapboxMap.setCamera(to: MapboxMaps.CameraOptions(
-                center: CLLocationCoordinate2D(latitude: 20, longitude: -50),
-                zoom: 0.5,
+                center: Self.fullGlobeCenter,
+                zoom: Self.fullGlobeZoom,
                 bearing: 0,
                 pitch: 0
             ))
             try? mapView.mapboxMap.setProjection(MapboxMaps.StyleProjection(name: .globe))
             mapView.ornaments.options.scaleBar.visibility = .hidden
             mapView.mapboxMap.onStyleLoaded.observeNext { _ in
-                try? mapView.mapboxMap.setAtmosphere(MapboxMaps.Atmosphere())
+                var atmosphere = MapboxMaps.Atmosphere()
+                atmosphere.horizonBlend = .constant(0.01) // halo blanc très léger autour du globe
+                try? mapView.mapboxMap.setAtmosphere(atmosphere)
+                context.coordinator.setupAnnotationManagerIfNeeded(mapView: mapView)
             }.store(in: &context.coordinator.cancelables)
             return mapView
         }
 
         func updateUIView(_ uiView: MapboxMaps.MapView, context: Context) {
-            if isRotationActive {
-                context.coordinator.startRotation(on: uiView)
+            context.coordinator.setupAnnotationManagerIfNeeded(mapView: uiView)
+            context.coordinator.updateCityAnnotations(coordinates: cityCoordinates)
+
+            let coordinate: CLLocationCoordinate2D
+            let zoom: Double
+            if let target = targetCoordinate {
+                coordinate = target
+                zoom = targetZoom
             } else {
-                context.coordinator.stopRotation()
+                coordinate = Self.fullGlobeCenter
+                zoom = Self.fullGlobeZoom
             }
 
-            guard let coordinate = targetCoordinate else { return }
             let last = context.coordinator.lastTarget
             let sameTarget = last?.latitude == coordinate.latitude && last?.longitude == coordinate.longitude
-            let sameZoom = context.coordinator.lastZoom == targetZoom
+            let sameZoom = context.coordinator.lastZoom == zoom
             guard !(sameTarget && sameZoom) else { return }
             context.coordinator.lastTarget = coordinate
-            context.coordinator.lastZoom = targetZoom
+            context.coordinator.lastZoom = zoom
             let target = MapboxMaps.CameraOptions(
                 center: coordinate,
-                zoom: targetZoom,
+                zoom: zoom,
                 bearing: 0,
                 pitch: 0
             )
@@ -828,34 +855,714 @@ struct HousingView: View {
             var cancelables = Set<AnyCancelable>()
             var lastTarget: CLLocationCoordinate2D? = nil
             var lastZoom: Double? = nil
-            private var displayLink: CADisplayLink?
-            private var currentLongitude: CLLocationDegrees = 0
+            var lastCoordinates: [CLLocationCoordinate2D] = []
             private weak var mapView: MapboxMaps.MapView?
+            private var pointAnnotationManager: MapboxMaps.PointAnnotationManager?
+            private static let annotationImageName = "loopa_red_pill"
+            private var didAddImage = false
 
-            func startRotation(on mapView: MapboxMaps.MapView) {
+            func setupAnnotationManagerIfNeeded(mapView: MapboxMaps.MapView) {
                 self.mapView = mapView
-                if displayLink != nil { return }
-                let center = mapView.cameraState.center
-                currentLongitude = center.longitude
-                let link = CADisplayLink(target: self, selector: #selector(step))
-                link.preferredFramesPerSecond = 30
-                link.add(to: .main, forMode: .common)
-                displayLink = link
+                guard pointAnnotationManager == nil else { return }
+                if !didAddImage {
+                    let img = TripsGlobeView.redPillImage()
+                    try? mapView.mapboxMap.addImage(img, id: Self.annotationImageName, sdf: false)
+                    didAddImage = true
+                }
+                pointAnnotationManager = mapView.annotations.makePointAnnotationManager()
+                applyAnnotations()
             }
 
-            func stopRotation() {
-                displayLink?.invalidate()
-                displayLink = nil
+            func updateCityAnnotations(coordinates: [CLLocationCoordinate2D]) {
+                lastCoordinates = coordinates
+                applyAnnotations()
             }
 
-            @objc private func step() {
-                guard let mapView else { return }
-                let center = mapView.cameraState.center
-                currentLongitude += 0.08
-                if currentLongitude > 180 { currentLongitude -= 360 }
-                let nextCenter = CLLocationCoordinate2D(latitude: center.latitude, longitude: currentLongitude)
-                mapView.mapboxMap.setCamera(to: MapboxMaps.CameraOptions(center: nextCenter, bearing: 0))
+            private func applyAnnotations() {
+                guard let manager = pointAnnotationManager else { return }
+                if !didAddImage, let mapView = mapView {
+                    let img = TripsGlobeView.redPillImage()
+                    try? mapView.mapboxMap.addImage(img, id: Self.annotationImageName, sdf: false)
+                    didAddImage = true
+                }
+                let img = TripsGlobeView.redPillImage()
+                manager.annotations = lastCoordinates.map { coord in
+                    var ann = MapboxMaps.PointAnnotation(coordinate: coord)
+                    ann.image = .init(image: img, name: Self.annotationImageName)
+                    return ann
+                }
             }
+        }
+    }
+
+    // MARK: - Explore + Trips combined (globe + cities list → city zoom + pills + recommended places)
+    private struct ExploreTripsMapView: View {
+        let cities: [CityWithRecommendations]
+        let spots: [HousingSpot]
+        let avatarImages: [String]
+        @Binding var hideTabBar: Bool
+        let onClose: () -> Void
+        var showBackButton: Bool = true
+
+        enum SheetState { case collapsed, partial, full }
+
+        @State private var selectedCity: CityWithRecommendations? = nil
+        @State private var sheetState: SheetState = .partial
+        @State private var selectedPlaceCategory: String? = nil // "bars" | "restaurants" | "cafes" | "activities" | "housing"
+        @State private var selectedSpotForDetail: HousingSpot? = nil
+        @State private var globeTarget: CLLocationCoordinate2D? = nil
+        @State private var globeZoom: Double = 0.5
+        @State private var searchText: String = ""
+        @StateObject private var tripLocationSearcher = TripLocationSearcher()
+        @FocusState private var isSearchFocused: Bool
+
+        private let placeCategories: [(id: String, emoji: String, label: String)] = [
+            ("bars", "🍹", "Bars"),
+            ("restaurants", "🥪", "Restaurants"),
+            ("cafes", "🍵", "Cafes"),
+            ("activities", "🎡", "Activities"),
+            ("housing", "🏠", "Housing"),
+        ]
+
+        var body: some View {
+            GeometryReader { geometry in
+                ZStack {
+                    TripsGlobeView(
+                        targetCoordinate: globeTarget,
+                        targetZoom: globeZoom,
+                        cityCoordinates: cities.map(\.coordinate)
+                    )
+                    .ignoresSafeArea()
+                    .opacity(sheetState == .full ? 0 : 1)
+                    .animation(.easeInOut(duration: 0.35), value: sheetState)
+
+                    if showBackButton && selectedCity == nil && sheetState != .full {
+                        VStack {
+                            HStack {
+                                Button(action: onClose) {
+                                    Image(systemName: "chevron.left")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundStyle(.primary)
+                                        .frame(width: 36, height: 36)
+                                        .background(Color.white.opacity(0.9), in: Circle())
+                                        .shadow(color: .black.opacity(0.1), radius: 8, y: 2)
+                                }
+                                .buttonStyle(.plain)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
+                            Spacer()
+                        }
+                    }
+
+                    if selectedCity != nil && sheetState != .full {
+                        VStack {
+                            HStack {
+                                Button(action: backToInitialView) {
+                                    Image(systemName: "chevron.left")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundStyle(.primary)
+                                        .frame(width: 36, height: 36)
+                                        .background(Color.white.opacity(0.9), in: Circle())
+                                        .shadow(color: .black.opacity(0.1), radius: 8, y: 2)
+                                }
+                                .buttonStyle(.plain)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.top, max(8, geometry.safeAreaInsets.top - 28))
+                            Spacer()
+                        }
+                        .transition(.opacity.combined(with: .move(edge: .leading)))
+                    }
+
+                    VStack {
+                        if selectedCity == nil {
+                            exploreSearchBar
+                                .padding(.horizontal, 20)
+                                .padding(.top, max(0, geometry.safeAreaInsets.top - 64))
+                            if !tripLocationSearcher.results.isEmpty && isSearchFocused {
+                                exploreSearchResults
+                                    .padding(.horizontal, 20)
+                                    .transition(.opacity.combined(with: .move(edge: .top)))
+                            }
+                        }
+                        Spacer()
+                    }
+                    .animation(.easeInOut(duration: 0.25), value: selectedCity == nil)
+
+                    VStack(spacing: 0) {
+                        if sheetState == .full {
+                            fullScreenSheet(geometry: geometry)
+                        } else if sheetState == .partial {
+                            Spacer()
+                            partialSheet(geometry: geometry)
+                                .frame(maxHeight: geometry.size.height * (selectedCity == nil ? 0.42 : 0.52))
+                        }
+                    }
+                    .animation(.spring(response: 0.5, dampingFraction: 0.85), value: sheetState)
+
+                    VStack {
+                        Spacer()
+                        togglePill
+                            .padding(.bottom, (sheetState == .collapsed ? 40 : 20) + geometry.safeAreaInsets.bottom + 49)
+                    }
+                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: sheetState)
+                    .opacity(sheetState == .partial ? 0 : 1)
+                }
+            }
+            .ignoresSafeArea(edges: .bottom)
+            .sheet(item: $selectedSpotForDetail) { spot in
+                HousingDetailSheet(spot: spot, onClose: { selectedSpotForDetail = nil })
+            }
+            .onChange(of: selectedCity) { _, new in
+                hideTabBar = (new != nil)
+            }
+            .onAppear {
+                hideTabBar = (selectedCity != nil)
+            }
+        }
+
+        private func backToInitialView() {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                selectedCity = nil
+                selectedPlaceCategory = nil
+                sheetState = .partial
+                globeTarget = nil
+                globeZoom = 0.5
+                searchText = ""
+                tripLocationSearcher.results = []
+            }
+            isSearchFocused = false
+        }
+
+        private var togglePill: some View {
+            Button(action: {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                    switch sheetState {
+                    case .collapsed: sheetState = .partial
+                    case .partial: sheetState = .collapsed
+                    case .full: sheetState = .partial
+                    }
+                }
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: sheetState == .full ? "map.fill" : "list.bullet")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text(sheetState == .full ? "Map" : "Show list")
+                        .font(.app(size: 14, weight: .semibold))
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(Color(hex: "222222"), in: Capsule())
+                .shadow(color: .black.opacity(0.2), radius: 10, y: 4)
+            }
+            .buttonStyle(.plain)
+        }
+
+        private var exploreSearchBar: some View {
+            HStack(spacing: 12) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.85))
+                ZStack(alignment: .leading) {
+                    if searchText.isEmpty {
+                        Text("Search for a place")
+                            .font(.app(size: 17, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
+                    TextField("", text: $searchText)
+                        .font(.app(size: 17, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .focused($isSearchFocused)
+                        .onChange(of: searchText) { _, newValue in
+                            let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                            if trimmed.isEmpty {
+                                tripLocationSearcher.results = []
+                            } else {
+                                tripLocationSearcher.search(query: newValue)
+                            }
+                        }
+                }
+                Spacer()
+                if !searchText.isEmpty {
+                    Button(action: {
+                        searchText = ""
+                        tripLocationSearcher.results = []
+                    }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Color.white.opacity(0.9))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 16)
+            .background(
+                ZStack {
+                    Capsule().fill(.ultraThinMaterial)
+                    Capsule().fill(Color.black.opacity(0.45))
+                }
+            )
+            .overlay(
+                Capsule()
+                    .strokeBorder(Color.white.opacity(0.45), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.25), radius: 14, y: 6)
+        }
+
+        private var exploreSearchResults: some View {
+            VStack(spacing: 0) {
+                ForEach(tripLocationSearcher.results, id: \.self) { result in
+                    Button(action: {
+                        let title = result.title
+                        let subtitle = result.subtitle
+                        let query = subtitle.isEmpty ? title : "\(title), \(subtitle)"
+                        searchText = query
+                        isSearchFocused = false
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            selectedCity = nil
+                            tripLocationSearcher.results = []
+                        }
+                        let geocoder = CLGeocoder()
+                        geocoder.geocodeAddressString(query) { placemarks, _ in
+                            guard let coordinate = placemarks?.first?.location?.coordinate else { return }
+                            withAnimation(.easeInOut(duration: 0.8)) {
+                                globeTarget = coordinate
+                                globeZoom = 9
+                            }
+                        }
+                    }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "mappin.circle.fill")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(Color.appAccent)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(result.title)
+                                    .font(.app(size: 15, weight: .medium))
+                                    .foregroundStyle(.primary)
+                                if !result.subtitle.isEmpty {
+                                    Text(result.subtitle)
+                                        .font(.app(size: 12, weight: .medium))
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.plain)
+
+                    if result != tripLocationSearcher.results.last {
+                        Divider()
+                    }
+                }
+            }
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.15), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.25), radius: 14, y: 8)
+        }
+
+        private func partialSheet(geometry: GeometryProxy) -> some View {
+            VStack(spacing: 0) {
+                RoundedRectangle(cornerRadius: 2.5)
+                    .fill(Color.secondary.opacity(0.4))
+                    .frame(width: 36, height: 5)
+                    .padding(.top, 10)
+                    .padding(.bottom, 8)
+
+                ScrollView(.vertical, showsIndicators: false) {
+                    Group {
+                        if selectedCity == nil {
+                            citiesListContent
+                        } else {
+                            cityDetailContent(geometry: geometry)
+                        }
+                    }
+                    .padding(.bottom, geometry.safeAreaInsets.bottom + 56)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .background(.ultraThinMaterial)
+            .overlay(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .shadow(color: .black.opacity(0.22), radius: 30, y: -8)
+            .gesture(
+                DragGesture()
+                    .onEnded { value in
+                        let velocity = value.predictedEndTranslation.height - value.translation.height
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                            if value.translation.height > 50 || velocity > 500 {
+                                sheetState = .collapsed
+                            } else if value.translation.height < -50 || velocity < -500 {
+                                sheetState = .full
+                            }
+                        }
+                    }
+            )
+        }
+
+        private var citiesListContent: some View {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Cities")
+                    .font(.app(size: 22, weight: .bold))
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 4)
+
+                Text("Select a city to see recommendations")
+                    .font(.app(size: 14, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.horizontal, 20)
+
+                VStack(spacing: 0) {
+                    ForEach(cities) { city in
+                        Button(action: {
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                                selectedCity = city
+                                globeTarget = city.coordinate
+                                globeZoom = 9
+                            }
+                        }) {
+                            HStack(spacing: 12) {
+                                AsyncImage(url: URL(string: city.imageUrl)) { phase in
+                                    if let image = phase.image {
+                                        image
+                                            .resizable()
+                                            .aspectRatio(contentMode: .fill)
+                                    } else {
+                                        Rectangle()
+                                            .fill(Color(.systemGray5))
+                                    }
+                                }
+                                .frame(width: 52, height: 52)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(city.name)
+                                        .font(.app(size: 17, weight: .semibold))
+                                        .foregroundStyle(.primary)
+                                    Text("\(city.recommendationCount) recommendations")
+                                        .font(.app(size: 13, weight: .medium))
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 14)
+                        }
+                        .buttonStyle(.plain)
+
+                        if city.id != cities.last?.id {
+                            Divider()
+                                .padding(.leading, 84)
+                        }
+                    }
+                }
+                .background(Color(.systemBackground).opacity(0.6), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .padding(.horizontal, 20)
+                .padding(.bottom, 12)
+            }
+        }
+
+        private func cityDetailContent(geometry: GeometryProxy) -> some View {
+            VStack(spacing: 12) {
+                HStack {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                            selectedCity = nil
+                            selectedPlaceCategory = nil
+                            globeTarget = nil
+                            globeZoom = 0.5
+                        }
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 14, weight: .semibold))
+                            Text("Cities")
+                                .font(.app(size: 14, weight: .semibold))
+                        }
+                        .foregroundStyle(Color.appAccent)
+                    }
+                    .buttonStyle(.plain)
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+
+                if let city = selectedCity {
+                    Text(city.name)
+                        .font(.app(size: 22, weight: .bold))
+                        .foregroundStyle(.primary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.horizontal, 20)
+                }
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(placeCategories, id: \.id) { cat in
+                            Button(action: {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    selectedPlaceCategory = selectedPlaceCategory == cat.id ? nil : cat.id
+                                }
+                            }) {
+                                HStack(spacing: 6) {
+                                    Text(cat.emoji)
+                                    Text(cat.label)
+                                        .font(.app(size: 13, weight: .semibold))
+                                }
+                                .foregroundStyle(selectedPlaceCategory == cat.id ? .white : .primary)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(
+                                    selectedPlaceCategory == cat.id ? Color.appAccent : Color(.systemGray6),
+                                    in: Capsule()
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                }
+
+                HStack {
+                    Text("Recommended")
+                        .font(.app(size: 17, weight: .bold))
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Button(action: {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { sheetState = .full }
+                    }) {
+                        Text("See all")
+                            .font(.app(size: 14, weight: .semibold))
+                            .foregroundStyle(Color.appAccent)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 20)
+
+                ScrollView {
+                    VStack(spacing: 12) {
+                        ForEach(spots) { spot in
+                            recommendedPlaceRow(spot: spot)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                }
+                .frame(maxHeight: min(340, geometry.size.height * 0.42))
+                .padding(.bottom, 12)
+            }
+        }
+
+        private func recommendedPlaceRow(spot: HousingSpot) -> some View {
+            HStack(spacing: 12) {
+                AsyncImage(url: URL(string: spot.image)) { phase in
+                    if let image = phase.image {
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    } else {
+                        Color(.systemGray5)
+                    }
+                }
+                .frame(width: 64, height: 64)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(spot.title)
+                        .font(.app(size: 15, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    Text(spot.type)
+                        .font(.app(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                HStack(spacing: -6) {
+                    ForEach(Array(avatarImages.prefix(3).enumerated()), id: \.offset) { _, imageUrl in
+                        AsyncImage(url: URL(string: imageUrl)) { phase in
+                            if let image = phase.image { image.resizable() } else { Color(.systemGray5) }
+                        }
+                        .frame(width: 26, height: 26)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                    }
+                    Text("\(max(20, Int(spot.rating * 50)))+")
+                        .font(.app(size: 11, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 6)
+                        .background(Color(.systemGray6), in: Capsule())
+                }
+            }
+            .padding(12)
+            .background(Color(.systemGray6).opacity(0.6), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .onTapGesture { selectedSpotForDetail = spot }
+        }
+
+        private func fullScreenSheet(geometry: GeometryProxy) -> some View {
+            VStack(spacing: 0) {
+                HStack {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                            sheetState = .partial
+                        }
+                    }) {
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.primary)
+                            .frame(width: 36, height: 36)
+                            .background(Color(.systemGray6), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    Spacer()
+                    if let city = selectedCity {
+                        Text(city.name)
+                            .font(.app(size: 18, weight: .bold))
+                            .foregroundStyle(.primary)
+                    } else {
+                        Text("Cities")
+                            .font(.app(size: 18, weight: .bold))
+                            .foregroundStyle(.primary)
+                    }
+                    Spacer()
+                    Color.clear.frame(width: 36, height: 36)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 12)
+
+                if selectedCity == nil {
+                    fullScreenCitiesList
+                } else {
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(spacing: 12) {
+                            ForEach(spots) { spot in
+                                recommendedPlaceRow(spot: spot)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 100)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.white)
+            .gesture(
+                DragGesture()
+                    .onEnded { value in
+                        if value.translation.height > 100 {
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { sheetState = .partial }
+                        }
+                    }
+            )
+        }
+
+        private var fullScreenCitiesList: some View {
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Choisis une ville pour découvrir les recommandations")
+                        .font(.app(size: 15, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 8)
+                        .padding(.bottom, 4)
+
+                    ForEach(cities) { city in
+                        cityGuideCard(city: city)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                                    selectedCity = city
+                                    globeTarget = city.coordinate
+                                    globeZoom = 9
+                                    sheetState = .partial
+                                }
+                            }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 100)
+                }
+            }
+        }
+
+        private func cityGuideCard(city: CityWithRecommendations) -> some View {
+            ZStack(alignment: .bottomLeading) {
+                AsyncImage(url: URL(string: city.imageUrl)) { phase in
+                    if let image = phase.image {
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } else {
+                        Rectangle()
+                            .fill(Color(.systemGray4))
+                    }
+                }
+                .frame(height: 220)
+                .frame(maxWidth: .infinity)
+                .clipped()
+
+                LinearGradient(
+                    colors: [.clear, .black.opacity(0.3), .black.opacity(0.85)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(city.name)
+                        .font(.app(size: 26, weight: .bold))
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
+
+                    HStack(spacing: 8) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "list.bullet")
+                                .font(.system(size: 12, weight: .semibold))
+                            Text("\(city.recommendationCount) recommandations")
+                                .font(.app(size: 13, weight: .semibold))
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(.ultraThinMaterial, in: Capsule())
+                    }
+
+                    HStack(spacing: 8) {
+                        Text("Voir les recommandations")
+                            .font(.app(size: 15, weight: .semibold))
+                            .foregroundStyle(.black)
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.black)
+                    }
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .background(Color.white, in: Capsule())
+                }
+                .padding(20)
+            }
+            .frame(height: 220)
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.12), radius: 4, y: 2)
         }
     }
 
@@ -976,7 +1683,7 @@ struct HousingView: View {
                     TripsGlobeView(
                         targetCoordinate: globeTarget,
                         targetZoom: globeZoom,
-                        isRotationActive: tripSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isTripSearchFocused
+                        cityCoordinates: []
                     )
                         .offset(y: -98)
                         .ignoresSafeArea()

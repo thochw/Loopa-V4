@@ -38,6 +38,7 @@ extension Color {
 
 struct MainTabView: View {
     @State private var selectedTab: AppTab = .explore
+    @State private var hideExploreTabBar = false
     @State private var selectedUser: User?
     @State private var selectedChat: Chat?
     @State private var chatInitialMessage: String? = nil
@@ -48,26 +49,18 @@ struct MainTabView: View {
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            ExploreView(
-                variant: .groups,
-                onProfileClick: { user in
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        selectedUser = user
-                    }
-                },
-                onAddGroupClick: { createType in
-                    if let type = createType, type == .group {
-                        preselectedCreateType = .group
-                    }
-                },
-                onJoinGroupChat: { group in
-                    let chat = chatForGroup(group)
+            HousingView(
+                hideTabBar: $hideExploreTabBar,
+                onMessageRoommate: { roommate in
+                    let chat = chatForRoommate(roommate)
+                    chatInitialMessage = "Hello 👋"
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                         selectedTab = .chats
                         selectedChat = chat
                     }
                 }
             )
+            .toolbar(hideExploreTabBar ? .hidden : .visible, for: .tabBar)
             .tabItem { Label("Explore", systemImage: "globe.americas") }
             .tag(AppTab.explore)
 
@@ -87,17 +80,6 @@ struct MainTabView: View {
             )
             .tabItem { Label("Friends", systemImage: "person.2") }
             .tag(AppTab.map)
-
-            HousingView(onMessageRoommate: { roommate in
-                let chat = chatForRoommate(roommate)
-                chatInitialMessage = "Hello 👋"
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    selectedTab = .chats
-                    selectedChat = chat
-                }
-            })
-            .tabItem { Label("Trips", systemImage: "safari.fill") }
-            .tag(AppTab.housing)
 
             ChatsListView { chat in
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
