@@ -775,6 +775,8 @@ struct HousingView: View {
     /// Vue globe terrestre pour la map Trips (tout le globe visible).
     private struct TripsGlobeView: UIViewRepresentable {
         static let styleURL = "mapbox://styles/thochw/cmkbqgty5004901rxgct4a0z6"
+        var targetCoordinate: CLLocationCoordinate2D?
+        var targetZoom: Double
 
         func makeUIView(context: Context) -> MapboxMaps.MapView {
             let styleURI = MapboxMaps.StyleURI(rawValue: Self.styleURL) ?? .standard
@@ -794,7 +796,22 @@ struct HousingView: View {
             return mapView
         }
 
-        func updateUIView(_ uiView: MapboxMaps.MapView, context: Context) {}
+        func updateUIView(_ uiView: MapboxMaps.MapView, context: Context) {
+            guard let coordinate = targetCoordinate else { return }
+            let last = context.coordinator.lastTarget
+            let sameTarget = last?.latitude == coordinate.latitude && last?.longitude == coordinate.longitude
+            let sameZoom = context.coordinator.lastZoom == targetZoom
+            guard !(sameTarget && sameZoom) else { return }
+            context.coordinator.lastTarget = coordinate
+            context.coordinator.lastZoom = targetZoom
+            let target = MapboxMaps.CameraOptions(
+                center: coordinate,
+                zoom: targetZoom,
+                bearing: 0,
+                pitch: 0
+            )
+            uiView.camera.ease(to: target, duration: 1.6, curve: .easeInOut, completion: nil)
+        }
 
         func makeCoordinator() -> Coordinator {
             Coordinator()
@@ -802,6 +819,8 @@ struct HousingView: View {
 
         final class Coordinator {
             var cancelables = Set<AnyCancelable>()
+            var lastTarget: CLLocationCoordinate2D? = nil
+            var lastZoom: Double? = nil
         }
     }
 
@@ -825,6 +844,12 @@ struct HousingView: View {
         @State private var housingViewport: MapboxMaps.Viewport = .camera(center: CLLocationCoordinate2D(latitude: 45.5017, longitude: -73.5673), zoom: 10, bearing: 0, pitch: 0)
         @State private var hasAnimated = false
         @State private var tripCoordinate: CLLocationCoordinate2D? = nil
+        @State private var currentDestination: String
+        @State private var tripSearchText: String
+        @StateObject private var tripLocationSearcher = TripLocationSearcher()
+        @FocusState private var isTripSearchFocused: Bool
+        @State private var globeTarget: CLLocationCoordinate2D? = nil
+        @State private var globeZoom: Double = 0.8
         @State private var sheetState: SheetState = .partial
         @State private var showFilterSheet = false
         @State private var selectedSpotForDetail: HousingSpot? = nil
@@ -899,11 +924,22 @@ struct HousingView: View {
             return "\(Int(budgetMinValue)) - \(maxStr)"
         }
 
+        init(trip: Trip, spots: [HousingSpot], avatarImages: [String], onClose: @escaping () -> Void, showBackButton: Bool = true) {
+            self.trip = trip
+            self.spots = spots
+            self.avatarImages = avatarImages
+            self.onClose = onClose
+            self.showBackButton = showBackButton
+            _currentDestination = State(initialValue: trip.destination)
+            _tripSearchText = State(initialValue: trip.destination)
+        }
+
         var body: some View {
             GeometryReader { geometry in
                 ZStack {
                     // Globe terrestre (vue complète du globe)
-                    TripsGlobeView()
+                    TripsGlobeView(targetCoordinate: globeTarget, targetZoom: globeZoom)
+                        .offset(y: -98)
                         .ignoresSafeArea()
                         .opacity(sheetState == .full ? 0 : 1)
                         .animation(.easeInOut(duration: 0.35), value: sheetState)
@@ -930,6 +966,19 @@ struct HousingView: View {
                         .transition(.opacity.combined(with: .move(edge: .top)))
                     }
 
+                    // Trip search bar
+                    VStack {
+                        tripSearchBar
+                            .padding(.horizontal, 20)
+                            .padding(.top, max(0, geometry.safeAreaInsets.top - 64))
+                        if !tripLocationSearcher.results.isEmpty && isTripSearchFocused {
+                            tripSearchResults
+                                .padding(.horizontal, 20)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
+                        Spacer()
+                    }
+
                     // Bottom sheet or full list
                     VStack(spacing: 0) {
                         if sheetState == .full {
@@ -951,16 +1000,25 @@ struct HousingView: View {
                     VStack {
                         Spacer()
                         togglePill
-                            .padding(.bottom, sheetState == .collapsed ? 40 : 20)
+                            .padding(.bottom, (sheetState == .collapsed ? 40 : 20) + geometry.safeAreaInsets.bottom)
                     }
                     .animation(.spring(response: 0.4, dampingFraction: 0.8), value: sheetState)
                 }
+                .ignoresSafeArea(.container, edges: .bottom)
             }
             .sheet(isPresented: $showFilterSheet) {
                 filterSheet
             }
             .sheet(item: $selectedSpotForDetail) { spot in
                 HousingDetailSheet(spot: spot, onClose: { selectedSpotForDetail = nil })
+            }
+            .onAppear {
+                if globeTarget == nil {
+                    resolveTripCoordinate { coordinate in
+                        globeTarget = coordinate
+                        globeZoom = 0.9
+                    }
+                }
             }
         }
 
@@ -993,6 +1051,98 @@ struct HousingView: View {
             .opacity(sheetState == .partial ? 0 : 1)
         }
 
+        private var tripSearchBar: some View {
+            HStack(spacing: 12) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.85))
+                TextField("Search city or country", text: $tripSearchText)
+                    .font(.app(size: 17, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .focused($isTripSearchFocused)
+                    .onChange(of: tripSearchText) { _, newValue in
+                        tripLocationSearcher.search(query: newValue)
+                    }
+                Spacer()
+                if !tripSearchText.isEmpty {
+                    Button(action: {
+                        tripSearchText = ""
+                        tripLocationSearcher.results = []
+                    }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Color.white.opacity(0.9))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+            .background(
+                ZStack {
+                    Capsule().fill(.ultraThinMaterial)
+                    Capsule().fill(Color.black.opacity(0.45))
+                }
+            )
+            .overlay(
+                Capsule()
+                    .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.25), radius: 14, y: 6)
+        }
+
+        private var tripSearchResults: some View {
+            VStack(spacing: 0) {
+                ForEach(tripLocationSearcher.results, id: \.self) { result in
+                    Button(action: {
+                        let title = result.title
+                        let subtitle = result.subtitle
+                        let destination = subtitle.isEmpty ? title : "\(title), \(subtitle)"
+                        currentDestination = destination
+                        tripSearchText = destination
+                        tripCoordinate = nil
+                        resolveTripCoordinate { coordinate in
+                            applyTripViewport(coordinate: coordinate, zoomedOut: true)
+                        }
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            tripLocationSearcher.results = []
+                        }
+                        isTripSearchFocused = false
+                    }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "mappin.circle.fill")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(Color.appAccent)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(result.title)
+                                    .font(.app(size: 15, weight: .medium))
+                                    .foregroundStyle(.primary)
+                                if !result.subtitle.isEmpty {
+                                    Text(result.subtitle)
+                                        .font(.app(size: 12, weight: .medium))
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.plain)
+
+                    if result != tripLocationSearcher.results.last {
+                        Divider()
+                    }
+                }
+            }
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.15), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.25), radius: 14, y: 8)
+        }
+
         private func partialSheet(geometry: GeometryProxy) -> some View {
             VStack(spacing: 0) {
                 // Drag handle
@@ -1004,13 +1154,6 @@ struct HousingView: View {
 
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 12) {
-                // Header - City name centered
-                Text(tripTitle)
-                    .font(.app(size: 22, weight: .bold))
-                    .foregroundStyle(.primary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.horizontal, 20)
-                
                 // Dates + Filters on same line
                 HStack {
                     HStack(spacing: 8) {
@@ -1100,10 +1243,15 @@ struct HousingView: View {
                     }
                 }
             }
+            .padding(.bottom, geometry.safeAreaInsets.bottom)
             .frame(maxWidth: .infinity)
-            .background(Color.white)
+            .background(.ultraThinMaterial)
+            .overlay(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
+            )
             .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-            .shadow(color: .black.opacity(0.15), radius: 30, y: -8)
+            .shadow(color: .black.opacity(0.22), radius: 30, y: -8)
             .gesture(
                 DragGesture()
                     .onEnded { value in
@@ -1745,7 +1893,7 @@ struct HousingView: View {
         }
 
         private var tripTitle: String {
-            destinationParts.first ?? trip.destination
+            destinationParts.first ?? currentDestination
         }
 
         private var tripSubtitle: String {
@@ -1756,7 +1904,7 @@ struct HousingView: View {
         }
 
         private var destinationParts: [String] {
-            trip.destination.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            currentDestination.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
         }
 
         private var tripDateLabel: String {
@@ -1796,7 +1944,7 @@ struct HousingView: View {
                 return
             }
             let geocoder = CLGeocoder()
-            geocoder.geocodeAddressString(trip.destination) { placemarks, _ in
+            geocoder.geocodeAddressString(currentDestination) { placemarks, _ in
                 let coordinate = placemarks?.first?.location?.coordinate
                     ?? CLLocationCoordinate2D(latitude: -8.4095, longitude: 115.1889)
                 tripCoordinate = coordinate
@@ -1819,6 +1967,8 @@ struct HousingView: View {
                 region.span = targetSpan
             }
             syncHousingViewport(center: targetCenter, span: targetSpan, animated: true)
+            globeTarget = coordinate
+            globeZoom = zoomedOut ? 1.2 : 1.6
         }
 
         private func syncHousingViewport(animated: Bool) {
