@@ -46,6 +46,9 @@ struct ExploreView: View {
     let onAddGroupClick: (CreateType?) -> Void
     let onJoinGroupChat: (Explore) -> Void
     
+    enum SheetState { case partial, full }
+    @State private var sheetState: SheetState = .partial
+    @State private var sheetDrag: CGFloat = 0
     @State private var isSheetOpen = true
     @State private var isSheetExpanded = false
     @StateObject private var locationManager = LocationManager()
@@ -175,9 +178,9 @@ struct ExploreView: View {
                 exploreMapView
                 .onTapGesture {
                     isFollowingUser = false
-                    if variant == .groups && isSheetExpanded {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                            isSheetExpanded = false
+                    if sheetState == .full {
+                        withAnimation(.interpolatingSpring(stiffness: 200, damping: 24)) {
+                            sheetState = .partial
                         }
                     }
                 }
@@ -248,78 +251,70 @@ struct ExploreView: View {
                     Spacer()
                 }
                 
-                // Bottom Sheet (Travelers only)
-                if variant == .travelers && !isTeleported {
-                VStack {
-                    Spacer()
-                    bottomSheet
-                        .frame(height: isSheetOpen ? sheetHeight(for: geometry.size.height) : 0)
-                        .offset(y: isSheetOpen ? 0 : sheetHeight(for: geometry.size.height))
-                        .padding(.horizontal, 16) // Match navigation bar width
-                }
-                .ignoresSafeArea(edges: .bottom)
+                // Bottom Sheet — offset-based, GPU-driven
+                if !isTeleported {
+                    bottomSheet(geometry: geometry)
+                        .frame(height: geometry.size.height + geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom, alignment: .top)
+                        .offset(y: exploreSheetOffsetY(geometry: geometry))
+                        .compositingGroup()
                 }
                 
                 
                 // Floating Action Buttons (Right Side) - Only for Groups variant
-                if variant == .groups {
-                    VStack(spacing: 16) {
-                        // Recenter Map Button (on top)
-                                Button(action: {
-                            if let location = locationManager.location {
+                if variant == .groups && sheetState != .full {
+                    VStack {
+                        Spacer()
+                        VStack(spacing: 16) {
+                            Button(action: {
+                                if let location = locationManager.location {
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    currentCity = homeCity
-                                    selectedSearchPin = nil
-                                    recenterMapOnUser(location.coordinate)
+                                        currentCity = homeCity
+                                        selectedSearchPin = nil
+                                        recenterMapOnUser(location.coordinate)
+                                    }
+                                    updateCityFromLocation(location)
+                                } else {
+                                    pendingUserRecenter = true
+                                    locationManager.requestLocationPermission()
+                                    locationManager.startUpdatingLocation()
+                                    recenterMapOnUser(locationManager.location?.coordinate ?? region.center)
                                 }
-                                updateCityFromLocation(location)
-                            } else {
-                                pendingUserRecenter = true
-                                locationManager.requestLocationPermission()
-                                locationManager.startUpdatingLocation()
-                                recenterMapOnUser(locationManager.location?.coordinate ?? region.center)
+                            }) {
+                                Image(systemName: "location.fill")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundStyle(.black)
+                                    .frame(width: 50, height: 50)
+                                    .background(.regularMaterial, in: Circle())
+                                    .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
                             }
-                        }) {
-                            Image(systemName: "location.fill")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundStyle(.black)
-                                .frame(width: 50, height: 50)
-                                .background(
-                                    .regularMaterial,
-                                    in: Circle()
-                                )
-                                .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
-                        }
-                        
-                        // Add Place Button (below, white on blue) - Opens sheet directly
-                                Button(action: {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                showCreatePlaceSheet = true
+
+                            Button(action: {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    showCreatePlaceSheet = true
+                                }
+                            }) {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 50, height: 50)
+                                    .background(Color.appAccent, in: Circle())
+                                    .shadow(color: Color.appAccent.opacity(0.4), radius: 12, y: 6)
                             }
-                        }) {
-                            Image(systemName: "plus")
-                                .font(.system(size: 20, weight: .bold))
-                                        .foregroundStyle(.white)
-                                .frame(width: 50, height: 50)
-                                .background(
-                                    Color.appAccent,
-                                    in: Circle()
-                                )
-                                .shadow(color: Color.appAccent.opacity(0.4), radius: 12, y: 6)
                         }
+                        .padding(.trailing, 20)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .padding(.bottom, geometry.size.height * 0.38 + 16)
                     }
-                    .padding(.trailing, 20)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .offset(y: 250)
                 }
 
-                if variant == .travelers {
+                // FABs — visible only in partial sheet state
+                if variant == .travelers && sheetState != .full {
                     VStack {
                         Spacer()
                         VStack(spacing: 12) {
                             Button(action: {
                                 if let location = locationManager.location {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                         currentCity = homeCity
                                         selectedSearchPin = nil
                                         recenterMapOnUser(location.coordinate)
@@ -335,13 +330,10 @@ struct ExploreView: View {
                                     .font(.system(size: 18, weight: .semibold))
                                     .foregroundStyle(.black)
                                     .frame(width: 50, height: 50)
-                                    .background(
-                                        .regularMaterial,
-                                        in: Circle()
-                                    )
+                                    .background(.regularMaterial, in: Circle())
                                     .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
                             }
-                            
+
                             Button(action: {
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                     onAddGroupClick(.group)
@@ -351,56 +343,13 @@ struct ExploreView: View {
                                     .font(.system(size: 20, weight: .bold))
                                     .foregroundStyle(.white)
                                     .frame(width: 50, height: 50)
-                                    .background(
-                                        Color.appAccent,
-                                        in: Circle()
-                                    )
+                                    .background(Color.appAccent, in: Circle())
                                     .shadow(color: Color.appAccent.opacity(0.4), radius: 12, y: 6)
                             }
                         }
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                         .padding(.trailing, 20)
-                        .padding(.bottom, isSheetOpen ? sheetHeight(for: geometry.size.height) - 24 : 80)
-                    }
-                }
-                
-                // Show Travelers Button (when sheet is closed)
-                if variant == .travelers && !isSheetOpen {
-                    VStack {
-                        Spacer()
-                        Button(action: {
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                if isTeleported {
-                                    if let location = locationManager.location {
-                                        selectedSearchPin = nil
-                                        region.center = adjustedCenter(location.coordinate)
-                                    } else {
-                                        selectedSearchPin = nil
-                                        region.center = adjustedCenter(CLLocationCoordinate2D(latitude: 45.5017, longitude: -73.5673))
-                                    }
-                                    currentCity = homeCity
-                                }
-                                isSheetExpanded = false
-                                isSheetOpen = true
-                            }
-                        }) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "list.bullet")
-                                    .font(.system(size: 16, weight: .semibold))
-                                Text("Show Travelers")
-                                    .font(.app(size: 15, weight: .semibold))
-                            }
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                            .background(
-                                Color(hex: "222222"),
-                                in: Capsule()
-                            )
-                            .shadow(color: .black.opacity(0.2), radius: 12, y: 4)
-                        }
-                        .padding(.bottom, 80)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .padding(.bottom, geometry.size.height * 0.38 + 16)
                     }
                 }
             }
@@ -1031,6 +980,7 @@ struct ExploreView: View {
             }
             isSheetExpanded = false
             isSheetOpen = true
+            sheetState = .partial
         }
     }
     
@@ -1047,93 +997,96 @@ struct ExploreView: View {
         .buttonStyle(.plain)
     }
     
-    private var bottomSheet: some View {
-        VStack(spacing: 0) {
-            // Enhanced Drag Handle
+    private func bottomSheet(geometry: GeometryProxy) -> some View {
+        let frac = exploreSheetFraction(geometry: geometry)
+        let topPad = 10 + frac * (geometry.safeAreaInsets.top - 2)
+
+        return VStack(spacing: 0) {
+            // Drag handle — top padding interpolates with sheet position
             RoundedRectangle(cornerRadius: 2.5)
-                .fill(Color.secondary.opacity(0.4))
+                .fill(Color(.systemGray3))
                 .frame(width: 36, height: 5)
-                .padding(.top, 12)
+                .padding(.top, topPad)
                 .padding(.bottom, 4)
-            
-            ScrollView {
+
+            // Close button — fades in/out progressively
+            HStack {
+                Button(action: {
+                    withAnimation(.interpolatingSpring(stiffness: 200, damping: 24)) {
+                        sheetState = .partial
+                    }
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                }) {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.primary)
+                        .frame(width: 32, height: 32)
+                        .background(Color(.systemGray5), in: Circle())
+                }
+                .buttonStyle(.plain)
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .frame(height: 36 * frac)
+            .opacity(frac)
+            .clipped()
+
+            ScrollView(.vertical, showsIndicators: false) {
                 ZStack(alignment: .top) {
                     if let joinItem = selectedJoinItem {
                         joinBottomSheetContent(item: joinItem)
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     } else if variant == .groups {
-                    groupsContent
+                        groupsContent
                             .transition(.move(edge: .leading).combined(with: .opacity))
-                } else {
+                    } else {
                         friendsSheetContent
                             .transition(.move(edge: .trailing).combined(with: .opacity))
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .top)
                 .animation(.spring(response: 0.35, dampingFraction: 0.85), value: selectedJoinItem?.id)
+                .padding(.bottom, geometry.safeAreaInsets.bottom + 56)
             }
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 10)
-                    .onChanged { value in
-                        if variant == .groups,
-                           value.translation.height < -10,
-                           !isSheetExpanded,
-                           selectedJoinItem == nil {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                isSheetExpanded = true
-                            }
-                        }
-                    }
-            )
-            .padding(.top, 4)
+            .scrollDisabled(sheetState != .full)
         }
-        .background(Color.white)
-        .clipShape(UnevenRoundedRectangle(
-            cornerRadii: .init(
-                topLeading: 28,
-                bottomLeading: 24,
-                bottomTrailing: 24,
-                topTrailing: 28
-            ),
-            style: .continuous
-        ))
-        .shadow(color: .black.opacity(0.15), radius: 30, y: -8)
-        .padding(.bottom, 100) // Space for navigation bar
-        .gesture(
-            DragGesture()
+        .frame(maxWidth: .infinity)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .shadow(color: .black.opacity(0.15), radius: 20, y: -6)
+        .contentShape(Rectangle())
+        .highPriorityGesture(
+            DragGesture(minimumDistance: 6, coordinateSpace: .global)
                 .onChanged { value in
-                    // Smooth drag feedback
+                    var t = Transaction()
+                    t.animation = nil
+                    withTransaction(t) {
+                        sheetDrag = value.translation.height
+                    }
                 }
                 .onEnded { value in
-                    if variant == .groups {
-                        if value.translation.height > 120 {
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                if isSheetExpanded {
-                                    isSheetExpanded = false
-                                } else {
-                                    isSheetOpen = false
-                                }
-                            }
-                        } else if value.translation.height < -120 {
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                isSheetOpen = true
-                                isSheetExpanded = true
-                            }
-                        } else {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                isSheetOpen = true
-                            }
-                        }
-                    } else {
-                    if value.translation.height > 100 {
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                            isSheetOpen = false
-                        }
-                    } else {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            isSheetOpen = true
-                            }
-                        }
+                    let velocity = value.predictedEndTranslation.height - value.translation.height
+                    let speed = abs(velocity)
+
+                    let oldState = sheetState
+                    var newState = sheetState
+
+                    if value.translation.height < -50 || velocity < -500 {
+                        newState = .full
+                    } else if (value.translation.height > 50 || velocity > 500) && sheetState == .full {
+                        newState = .partial
+                    }
+
+                    let stiffness: Double = speed > 800 ? 280 : 200
+                    let damping: Double = speed > 800 ? 28 : 24
+
+                    withAnimation(.interpolatingSpring(stiffness: stiffness, damping: damping)) {
+                        sheetDrag = 0
+                        sheetState = newState
+                    }
+
+                    if newState != oldState {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     }
                 }
         )
@@ -1148,6 +1101,32 @@ struct ExploreView: View {
             return variant == .groups ? screenHeight * 0.75 : screenHeight * 0.80
         }
         return variant == .groups ? screenHeight * 0.50 : screenHeight * 0.55
+    }
+
+    /// Offset-based sheet positioning with rubber-banding (matches Explore tab)
+    private func exploreSheetOffsetY(geometry: GeometryProxy) -> CGFloat {
+        let partialH = geometry.size.height * 0.38
+        let partialY = geometry.size.height - partialH
+        let fullY: CGFloat = -geometry.safeAreaInsets.top
+        let baseY: CGFloat = sheetState == .full ? fullY : partialY
+        let rawY = baseY + sheetDrag
+
+        if rawY < fullY {
+            return fullY - (fullY - rawY) * 0.15       // rubber-band top
+        } else if rawY > partialY {
+            return partialY + (rawY - partialY) * 0.15 // rubber-band bottom
+        }
+        return rawY
+    }
+
+    /// 0 = partial, 1 = fully expanded. Tracks live drag position.
+    private func exploreSheetFraction(geometry: GeometryProxy) -> CGFloat {
+        let partialH = geometry.size.height * 0.38
+        let partialY = geometry.size.height - partialH
+        let fullY: CGFloat = -geometry.safeAreaInsets.top
+        let currentY = exploreSheetOffsetY(geometry: geometry)
+        let fraction = 1.0 - (currentY - fullY) / max(1, partialY - fullY)
+        return min(1, max(0, fraction))
     }
     
     private var groupsContent: some View {

@@ -908,6 +908,7 @@ struct HousingView: View {
 
         @State private var selectedCity: CityWithRecommendations? = nil
         @State private var sheetState: SheetState = .partial
+        @State private var sheetDrag: CGFloat = 0
         @State private var selectedPlaceCategory: String? = nil // "bars" | "restaurants" | "cafes" | "activities" | "housing"
         @State private var selectedSpotForDetail: HousingSpot? = nil
         @State private var globeTarget: CLLocationCoordinate2D? = nil
@@ -933,8 +934,6 @@ struct HousingView: View {
                         cityCoordinates: cities.map(\.coordinate)
                     )
                     .ignoresSafeArea()
-                    .opacity(sheetState == .full ? 0 : 1)
-                    .animation(.easeInOut(duration: 0.35), value: sheetState)
 
                     if showBackButton && selectedCity == nil && sheetState != .full {
                         VStack {
@@ -992,24 +991,12 @@ struct HousingView: View {
                     }
                     .animation(.easeInOut(duration: 0.25), value: selectedCity == nil)
 
-                    VStack(spacing: 0) {
-                        if sheetState == .full {
-                            fullScreenSheet(geometry: geometry)
-                        } else if sheetState == .partial {
-                            Spacer()
-                            partialSheet(geometry: geometry)
-                                .frame(maxHeight: geometry.size.height * (selectedCity == nil ? 0.42 : 0.52))
-                        }
-                    }
-                    .animation(.spring(response: 0.5, dampingFraction: 0.85), value: sheetState)
+                    // MARK: - Liquid Glass bottom sheet (offset-based, GPU-driven)
+                    partialSheet(geometry: geometry)
+                        .frame(height: geometry.size.height + geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom, alignment: .top)
+                        .offset(y: sheetOffsetY(geometry: geometry))
+                        .compositingGroup()  // flatten material + children into one composited layer
 
-                    VStack {
-                        Spacer()
-                        togglePill
-                            .padding(.bottom, (sheetState == .collapsed ? 40 : 20) + geometry.safeAreaInsets.bottom + 49)
-                    }
-                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: sheetState)
-                    .opacity(sheetState == .partial ? 0 : 1)
                 }
             }
             .ignoresSafeArea(edges: .bottom)
@@ -1022,6 +1009,32 @@ struct HousingView: View {
             .onAppear {
                 hideTabBar = (selectedCity != nil)
             }
+        }
+
+        /// Computes the sheet's Y offset with rubber-banding at edges.
+        private func sheetOffsetY(geometry: GeometryProxy) -> CGFloat {
+            let partialH = geometry.size.height * (selectedCity == nil ? 0.32 : 0.48)
+            let partialY = geometry.size.height - partialH
+            let fullY: CGFloat = -geometry.safeAreaInsets.top
+            let baseY: CGFloat = sheetState == .full ? fullY : partialY
+            let rawY = baseY + sheetDrag
+
+            if rawY < fullY {
+                return fullY - (fullY - rawY) * 0.15       // rubber-band top
+            } else if rawY > partialY {
+                return partialY + (rawY - partialY) * 0.15 // rubber-band bottom
+            }
+            return rawY
+        }
+
+        /// 0 = partial position, 1 = fully expanded. Tracks live drag.
+        private func sheetFraction(geometry: GeometryProxy) -> CGFloat {
+            let partialH = geometry.size.height * (selectedCity == nil ? 0.32 : 0.48)
+            let partialY = geometry.size.height - partialH
+            let fullY: CGFloat = -geometry.safeAreaInsets.top
+            let currentY = sheetOffsetY(geometry: geometry)
+            let fraction = 1.0 - (currentY - fullY) / max(1, partialY - fullY)
+            return min(1, max(0, fraction))
         }
 
         private func backToInitialView() {
@@ -1101,17 +1114,9 @@ struct HousingView: View {
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 16)
-            .background(
-                ZStack {
-                    Capsule().fill(.ultraThinMaterial)
-                    Capsule().fill(Color.black.opacity(0.45))
-                }
-            )
-            .overlay(
-                Capsule()
-                    .strokeBorder(Color.white.opacity(0.45), lineWidth: 1)
-            )
-            .shadow(color: .black.opacity(0.25), radius: 14, y: 6)
+            .background(.ultraThinMaterial, in: Capsule())
+            .environment(\.colorScheme, .dark)
+            .shadow(color: .black.opacity(0.2), radius: 12, y: 4)
         }
 
         private var exploreSearchResults: some View {
@@ -1163,20 +1168,43 @@ struct HousingView: View {
                 }
             }
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.15), lineWidth: 1)
-            )
-            .shadow(color: .black.opacity(0.25), radius: 14, y: 8)
+            .environment(\.colorScheme, .dark)
+            .shadow(color: .black.opacity(0.2), radius: 12, y: 6)
         }
 
         private func partialSheet(geometry: GeometryProxy) -> some View {
-            VStack(spacing: 0) {
+            let frac = sheetFraction(geometry: geometry)
+            let topPad = 10 + frac * (geometry.safeAreaInsets.top - 2)  // 10 → safeArea+8
+
+            return VStack(spacing: 0) {
+                // Drag handle — always visible, top padding interpolates
                 RoundedRectangle(cornerRadius: 2.5)
-                    .fill(Color.secondary.opacity(0.4))
+                    .fill(Color.white.opacity(0.4))
                     .frame(width: 36, height: 5)
-                    .padding(.top, 10)
-                    .padding(.bottom, 8)
+                    .padding(.top, topPad)
+                    .padding(.bottom, 4)
+
+                // Close button — fades in/out with fraction
+                HStack {
+                    Button(action: {
+                        withAnimation(.interpolatingSpring(stiffness: 200, damping: 24)) {
+                            sheetState = .partial
+                        }
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    }) {
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.85))
+                            .frame(width: 32, height: 32)
+                            .background(Color.white.opacity(0.12), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .frame(height: 36 * frac)  // collapses to 0 when partial
+                .opacity(frac)
+                .clipped()
 
                 ScrollView(.vertical, showsIndicators: false) {
                     Group {
@@ -1188,25 +1216,54 @@ struct HousingView: View {
                     }
                     .padding(.bottom, geometry.safeAreaInsets.bottom + 56)
                 }
+                .scrollDisabled(sheetState != .full) // Lock scroll when partial — prevents drag/scroll conflict
             }
             .frame(maxWidth: .infinity)
-            .background(.ultraThinMaterial)
-            .overlay(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
-            )
+            .environment(\.colorScheme, .dark)
+            .background {
+                ZStack {
+                    Color.black.opacity(0.85)
+                    Rectangle().fill(.ultraThinMaterial)
+                }
+            }
             .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-            .shadow(color: .black.opacity(0.22), radius: 30, y: -8)
-            .gesture(
-                DragGesture()
+            .shadow(color: .black.opacity(0.2), radius: 20, y: -6)
+            .contentShape(Rectangle())
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 6, coordinateSpace: .global)
+                    .onChanged { value in
+                        // Explicit no-animation transaction: prevents any implicit animation
+                        // and updates the offset directly for 1:1 finger tracking
+                        var t = Transaction()
+                        t.animation = nil
+                        withTransaction(t) {
+                            sheetDrag = value.translation.height
+                        }
+                    }
                     .onEnded { value in
                         let velocity = value.predictedEndTranslation.height - value.translation.height
-                        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
-                            if value.translation.height > 50 || velocity > 500 {
-                                sheetState = .collapsed
-                            } else if value.translation.height < -50 || velocity < -500 {
-                                sheetState = .full
-                            }
+                        let speed = abs(velocity)
+
+                        let oldState = sheetState
+                        var newState = sheetState
+
+                        if value.translation.height < -50 || velocity < -500 {
+                            newState = .full
+                        } else if (value.translation.height > 50 || velocity > 500) && sheetState == .full {
+                            newState = .partial
+                        }
+
+                        // interpolatingSpring: uses real physics simulation = more natural deceleration
+                        let stiffness: Double = speed > 800 ? 280 : 200
+                        let damping: Double = speed > 800 ? 28 : 24
+
+                        withAnimation(.interpolatingSpring(stiffness: stiffness, damping: damping)) {
+                            sheetDrag = 0
+                            sheetState = newState
+                        }
+
+                        if newState != oldState {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         }
                     }
             )
@@ -1273,7 +1330,7 @@ struct HousingView: View {
                         }
                     }
                 }
-                .background(Color(.systemBackground).opacity(0.6), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .padding(.horizontal, 20)
                 .padding(.bottom, 12)
             }
@@ -1328,7 +1385,7 @@ struct HousingView: View {
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 10)
                                 .background(
-                                    selectedPlaceCategory == cat.id ? Color.appAccent : Color(.systemGray6),
+                                    selectedPlaceCategory == cat.id ? Color.appAccent : Color.white.opacity(0.12),
                                     in: Capsule()
                                 )
                             }
@@ -1425,7 +1482,7 @@ struct HousingView: View {
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(.primary)
                             .frame(width: 36, height: 36)
-                            .background(Color(.systemGray6), in: Circle())
+                            .background(Color.white.opacity(0.12), in: Circle())
                     }
                     .buttonStyle(.plain)
                     Spacer()
@@ -1460,7 +1517,8 @@ struct HousingView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.white)
+            .environment(\.colorScheme, .dark)
+            .background(Color.black)
             .gesture(
                 DragGesture()
                     .onEnded { value in
@@ -1593,6 +1651,7 @@ struct HousingView: View {
         @State private var globeTarget: CLLocationCoordinate2D? = nil
         @State private var globeZoom: Double = 0.8
         @State private var sheetState: SheetState = .partial
+        @State private var sheetDrag: CGFloat = 0   // real-time drag offset for Liquid Glass-smooth tracking
         @State private var showFilterSheet = false
         @State private var selectedSpotForDetail: HousingSpot? = nil
         
@@ -1896,9 +1955,9 @@ struct HousingView: View {
 
         private func partialSheet(geometry: GeometryProxy) -> some View {
             VStack(spacing: 0) {
-                // Drag handle
+                // Drag handle (Liquid Glass style)
                 RoundedRectangle(cornerRadius: 2.5)
-                    .fill(Color.secondary.opacity(0.4))
+                    .fill(Color.white.opacity(0.35))
                     .frame(width: 36, height: 5)
                     .padding(.top, 10)
                     .padding(.bottom, 8)
@@ -1996,22 +2055,23 @@ struct HousingView: View {
             }
             .padding(.bottom, geometry.safeAreaInsets.bottom)
             .frame(maxWidth: .infinity)
+            .environment(\.colorScheme, .dark)
             .background(.ultraThinMaterial)
-            .overlay(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
-            )
             .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-            .shadow(color: .black.opacity(0.22), radius: 30, y: -8)
+            .shadow(color: .black.opacity(0.2), radius: 20, y: -6)
             .gesture(
                 DragGesture()
+                    .onChanged { value in
+                        sheetDrag = value.translation.height
+                    }
                     .onEnded { value in
                         let velocity = value.predictedEndTranslation.height - value.translation.height
-                        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
-                            if value.translation.height > 50 || velocity > 500 {
-                                sheetState = .collapsed
-                            } else if value.translation.height < -50 || velocity < -500 {
+                        withAnimation(.spring(response: 0.45, dampingFraction: 0.88)) {
+                            sheetDrag = 0
+                            if value.translation.height < -50 || velocity < -500 {
                                 sheetState = .full
+                            } else if (value.translation.height > 50 || velocity > 500) && sheetState == .full {
+                                sheetState = .partial
                             }
                         }
                     }
