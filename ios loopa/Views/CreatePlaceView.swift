@@ -853,7 +853,7 @@ struct CreatePlaceView: View {
     }
 }
 
-// Reuse SearchCompleter from ExploreView
+// Reuse SearchCompleter from FriendsGroupsView
 private final class SearchCompleter: NSObject, ObservableObject, MKLocalSearchCompleterDelegate {
     @Published var results: [MKLocalSearchCompletion] = []
     private let completer = MKLocalSearchCompleter()

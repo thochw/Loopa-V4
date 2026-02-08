@@ -49,7 +49,7 @@ struct MainTabView: View {
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            HousingView(
+            ExploreView(
                 hideTabBar: $hideExploreTabBar,
                 onMessageRoommate: { roommate in
                     let chat = chatForRoommate(roommate)
@@ -64,7 +64,7 @@ struct MainTabView: View {
             .tabItem { Label("Explore", systemImage: "globe.americas") }
             .tag(AppTab.explore)
 
-            ExploreView(
+            FriendsGroupsView(
                 variant: .travelers,
                 onProfileClick: { user in
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
