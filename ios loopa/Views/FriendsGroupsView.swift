@@ -305,7 +305,7 @@ struct FriendsGroupsView: View {
                         }
                         .padding(.trailing, 20)
                         .frame(maxWidth: .infinity, alignment: .trailing)
-                        .padding(.bottom, geometry.size.height * 0.38 + 16)
+                        .padding(.bottom, geometry.size.height * 0.58 + 16)
                     }
                 }
 
@@ -351,7 +351,7 @@ struct FriendsGroupsView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .trailing)
                         .padding(.trailing, 20)
-                        .padding(.bottom, geometry.size.height * 0.38 + 16)
+                        .padding(.bottom, geometry.size.height * 0.58 + 16)
                     }
                 }
             }

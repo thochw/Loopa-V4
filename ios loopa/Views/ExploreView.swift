@@ -1005,6 +1005,11 @@ struct ExploreView: View {
             }
             .onChange(of: selectedCity) { _, new in
                 hideTabBar = (new != nil)
+                if new != nil {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                        sheetState = .partial
+                    }
+                }
             }
             .onAppear {
                 hideTabBar = (selectedCity != nil)
@@ -1256,8 +1261,10 @@ struct ExploreView: View {
             .environment(\.colorScheme, .dark)
             .background {
                 ZStack {
-                    Color.black.opacity(0.85)
+                    Color.black.opacity(0.92)
                     Rectangle().fill(.ultraThinMaterial)
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
@@ -1271,10 +1278,21 @@ struct ExploreView: View {
                         var t = Transaction()
                         t.animation = nil
                         withTransaction(t) {
-                            sheetDrag = value.translation.height
+                            if selectedCity != nil && value.translation.height < 0 {
+                                sheetDrag = 0
+                            } else {
+                                sheetDrag = value.translation.height
+                            }
                         }
                     }
                     .onEnded { value in
+                        if selectedCity != nil {
+                            withAnimation(.interpolatingSpring(stiffness: 200, damping: 24)) {
+                                sheetDrag = 0
+                                sheetState = .partial
+                            }
+                            return
+                        }
                         let velocity = value.predictedEndTranslation.height - value.translation.height
                         let speed = abs(velocity)
 
@@ -1284,6 +1302,9 @@ struct ExploreView: View {
                         if value.translation.height < -50 || velocity < -500 {
                             newState = .full
                         } else if (value.translation.height > 50 || velocity > 500) && sheetState == .full {
+                            newState = .partial
+                        }
+                        if selectedCity != nil {
                             newState = .partial
                         }
 
@@ -1436,14 +1457,6 @@ struct ExploreView: View {
                         .font(.app(size: 17, weight: .bold))
                         .foregroundStyle(.primary)
                     Spacer()
-                    Button(action: {
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { sheetState = .full }
-                    }) {
-                        Text("See all")
-                            .font(.app(size: 14, weight: .semibold))
-                            .foregroundStyle(Color.appAccent)
-                    }
-                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 20)
 
