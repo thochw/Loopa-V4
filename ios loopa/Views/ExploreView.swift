@@ -946,7 +946,6 @@ struct ExploreView: View {
                                 selectedCity = nil
                                 selectedPlaceCategory = nil
                                 globeTarget = city.coordinate
-                                globeZoom = 9
                                 sheetState = .partial
                             }
                         }
@@ -1482,6 +1481,113 @@ struct ExploreView: View {
             }
         }
 
+        private struct CityInsight {
+            let country: String
+            let blurb: String
+            let vibe: String
+            let bestFor: String
+        }
+
+        private func cityInsight(for city: CityWithRecommendations) -> CityInsight {
+            switch city.name.lowercased() {
+            case "bali":
+                return CityInsight(
+                    country: "Indonesia",
+                    blurb: "Island destination known for temples, beaches, and rice terraces.",
+                    vibe: "Relaxed tropical vibe",
+                    bestFor: "Surf, wellness, sunsets"
+                )
+            case "montreal":
+                return CityInsight(
+                    country: "Canada",
+                    blurb: "Creative city mixing French charm, food culture, and festivals.",
+                    vibe: "Urban and cultural",
+                    bestFor: "Nightlife, food, neighborhoods"
+                )
+            case "barcelona":
+                return CityInsight(
+                    country: "Spain",
+                    blurb: "Mediterranean city with Gaudi architecture and beach energy.",
+                    vibe: "Sunny and social",
+                    bestFor: "Architecture, tapas, beach"
+                )
+            case "new york":
+                return CityInsight(
+                    country: "United States",
+                    blurb: "Fast-paced metropolis with iconic skyline and diverse districts.",
+                    vibe: "Dynamic and nonstop",
+                    bestFor: "Food, culture, city life"
+                )
+            case "paris":
+                return CityInsight(
+                    country: "France",
+                    blurb: "Classic European capital with monuments, cafes, and style.",
+                    vibe: "Elegant and walkable",
+                    bestFor: "Museums, cafes, landmarks"
+                )
+            default:
+                return CityInsight(
+                    country: "Destination",
+                    blurb: "A great city to explore with curated recommendations.",
+                    vibe: "Local favorites",
+                    bestFor: "Food, places, experiences"
+                )
+            }
+        }
+
+        private func markerCityOverviewCard(city: CityWithRecommendations) -> some View {
+            let insight = cityInsight(for: city)
+
+            return ZStack(alignment: .bottomLeading) {
+                cityImageView(for: city, fallback: Color(.systemGray4))
+                    .frame(height: 124)
+                    .frame(maxWidth: .infinity)
+                    .clipped()
+
+                LinearGradient(
+                    colors: [Color.black.opacity(0.05), Color.black.opacity(0.7)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(insight.country.uppercased())
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.88))
+                        .kerning(0.7)
+
+                    Text(insight.blurb)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    HStack(spacing: 8) {
+                        Text(insight.vibe)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Color.white.opacity(0.2), in: Capsule())
+
+                        Text(insight.bestFor)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Color.white.opacity(0.2), in: Capsule())
+                    }
+                }
+                .padding(12)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.22), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.18), radius: 8, y: 4)
+        }
+
         private func markerCitySheet(geometry: GeometryProxy, city: CityWithRecommendations) -> some View {
             VStack {
                 Spacer()
@@ -1505,8 +1611,6 @@ struct ExploreView: View {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                                 selectedMarkerCity = nil
                                 selectedPlaceCategory = nil
-                                globeTarget = nil
-                                globeZoom = 0.5
                             }
                         }) {
                             Image(systemName: "xmark")
@@ -1520,11 +1624,15 @@ struct ExploreView: View {
                     .padding(.horizontal, 20)
                     .padding(.bottom, 8)
 
+                    markerCityOverviewCard(city: city)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 4)
+
                     markerCityDetailContent(geometry: geometry, city: city)
                         .padding(.bottom, 14)
                 }
                 .frame(width: min(geometry.size.width - 28, 560), alignment: .center)
-                .frame(height: geometry.size.height * 0.33, alignment: .top)
+                .frame(height: geometry.size.height * 0.43, alignment: .top)
                 .environment(\.colorScheme, .light)
                 .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
                 .glassEffect(
@@ -1554,16 +1662,7 @@ struct ExploreView: View {
                             }
                         }) {
                             ZStack(alignment: .bottomLeading) {
-                                AsyncImage(url: URL(string: city.imageUrl)) { phase in
-                                    if let image = phase.image {
-                                        image
-                                            .resizable()
-                                            .aspectRatio(contentMode: .fill)
-                                    } else {
-                                        Rectangle()
-                                            .fill(Color(.systemGray5))
-                                    }
-                                }
+                                cityImageView(for: city, fallback: Color(.systemGray5))
                                 .frame(height: 170)
                                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
 
@@ -1869,16 +1968,7 @@ struct ExploreView: View {
 
         private func cityGuideCard(city: CityWithRecommendations) -> some View {
             ZStack(alignment: .bottomLeading) {
-                AsyncImage(url: URL(string: city.imageUrl)) { phase in
-                    if let image = phase.image {
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } else {
-                        Rectangle()
-                            .fill(Color(.systemGray4))
-                    }
-                }
+                cityImageView(for: city, fallback: Color(.systemGray4))
                 .frame(height: 220)
                 .frame(maxWidth: .infinity)
                 .clipped()
@@ -1930,6 +2020,38 @@ struct ExploreView: View {
                     .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
             )
             .shadow(color: .black.opacity(0.12), radius: 4, y: 2)
+        }
+
+        @ViewBuilder
+        private func cityImageView(for city: CityWithRecommendations, fallback: Color) -> some View {
+            let rawName = city.imageUrl
+            if rawName.hasPrefix("http://") || rawName.hasPrefix("https://") {
+                AsyncImage(url: URL(string: rawName)) { phase in
+                    if let image = phase.image {
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } else {
+                        Rectangle()
+                            .fill(fallback)
+                    }
+                }
+            } else {
+                Image(cityAssetName(from: rawName))
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            }
+        }
+
+        private func cityAssetName(from rawName: String) -> String {
+            switch rawName {
+            case "logan-armstrong":
+                return "logan-armstrong-hVhfqhDYciU-unsplash-edited-MOBILE-HEADER"
+            case "stock-photo-skyline":
+                return "stock-photo-skyline-of-paris-with-eiffel-tower-at-sunset-in-paris-france-eiffel-tower-is-one-of-the-most-752725282"
+            default:
+                return rawName
+            }
         }
     }
 

@@ -14,10 +14,11 @@ class AppData {
     
     /// Cities with number of recommendations (for Explore + Trips combined view)
     let citiesWithRecommendations: [CityWithRecommendations] = [
-        CityWithRecommendations(name: "Bali", coordinate: CLLocationCoordinate2D(latitude: -8.4095, longitude: 115.1889), recommendationCount: 24, imageUrl: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80"),
-        CityWithRecommendations(name: "Montreal", coordinate: CLLocationCoordinate2D(latitude: 45.5017, longitude: -73.5673), recommendationCount: 18, imageUrl: "https://images.unsplash.com/photo-1551884170-09fb70a3a2ed?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80"),
-        CityWithRecommendations(name: "Paris", coordinate: CLLocationCoordinate2D(latitude: 48.8566, longitude: 2.3522), recommendationCount: 31, imageUrl: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80"),
-        CityWithRecommendations(name: "Barcelona", coordinate: CLLocationCoordinate2D(latitude: 41.3851, longitude: 2.1734), recommendationCount: 15, imageUrl: "https://images.unsplash.com/photo-1583422409516-2895a77efded?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80"),
+        CityWithRecommendations(name: "Bali", coordinate: CLLocationCoordinate2D(latitude: -8.4095, longitude: 115.1889), recommendationCount: 24, imageUrl: "bali"),
+        CityWithRecommendations(name: "Montreal", coordinate: CLLocationCoordinate2D(latitude: 45.5017, longitude: -73.5673), recommendationCount: 18, imageUrl: "centre-ville-de-montreal"),
+        CityWithRecommendations(name: "Paris", coordinate: CLLocationCoordinate2D(latitude: 48.8566, longitude: 2.3522), recommendationCount: 31, imageUrl: "stock-photo-skyline"),
+        CityWithRecommendations(name: "Barcelona", coordinate: CLLocationCoordinate2D(latitude: 41.3851, longitude: 2.1734), recommendationCount: 15, imageUrl: "logan-armstrong"),
+        CityWithRecommendations(name: "New York", coordinate: CLLocationCoordinate2D(latitude: 40.7128, longitude: -74.0060), recommendationCount: 27, imageUrl: "nyc"),
         CityWithRecommendations(name: "Lisbon", coordinate: CLLocationCoordinate2D(latitude: 38.7223, longitude: -9.1393), recommendationCount: 12, imageUrl: "https://images.unsplash.com/photo-1555881400-74d7acaacd8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80"),
         CityWithRecommendations(name: "Tokyo", coordinate: CLLocationCoordinate2D(latitude: 35.6762, longitude: 139.6503), recommendationCount: 22, imageUrl: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80"),
     ]
