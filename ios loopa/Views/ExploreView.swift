@@ -917,6 +917,7 @@ struct ExploreView: View {
         @State private var selectedMarkerCity: CityWithRecommendations? = nil
         @State private var sheetState: SheetState = .partial
         @State private var sheetDrag: CGFloat = 0
+        @State private var showCityPicker = false
         @State private var selectedPlaceCategory: String? = nil // "bars" | "restaurants" | "cafes" | "activities" | "housing"
         @State private var selectedSpotForDetail: HousingSpot? = nil
         @State private var globeTarget: CLLocationCoordinate2D? = nil
@@ -993,14 +994,22 @@ struct ExploreView: View {
                         }
                         .overlay(alignment: .top) {
                             if let city = selectedCity {
-                                Text(city.name)
-                                    .font(.system(size: 15, weight: .bold))
-                                    .foregroundStyle(.black)
+                                Button(action: { showCityPicker = true }) {
+                                    HStack(spacing: 6) {
+                                        Text(city.name)
+                                            .font(.system(size: 15, weight: .bold))
+                                            .foregroundStyle(.black)
+                                        Image(systemName: "chevron.down")
+                                            .font(.system(size: 12, weight: .semibold))
+                                            .foregroundStyle(.black.opacity(0.7))
+                                    }
                                     .padding(.horizontal, 14)
                                     .frame(height: 36)
                                     .background(Color.white.opacity(0.9), in: Capsule())
                                     .shadow(color: .black.opacity(0.1), radius: 8, y: 2)
-                                    .padding(.top, max(6, geometry.safeAreaInsets.top - 46))
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.top, max(6, geometry.safeAreaInsets.top - 46))
                             }
                         }
                         .transition(.opacity.combined(with: .move(edge: .leading)))
@@ -1036,6 +1045,9 @@ struct ExploreView: View {
             .ignoresSafeArea(edges: .bottom)
             .sheet(item: $selectedSpotForDetail) { spot in
                 HousingDetailSheet(spot: spot, onClose: { selectedSpotForDetail = nil })
+            }
+            .sheet(isPresented: $showCityPicker) {
+                cityPickerSheet
             }
             .onChange(of: selectedCity) { _, new in
                 hideTabBar = (new != nil || selectedMarkerCity != nil)
@@ -1093,6 +1105,73 @@ struct ExploreView: View {
                 tripLocationSearcher.results = []
             }
             isSearchFocused = false
+        }
+
+        private var cityPickerSheet: some View {
+            NavigationStack {
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: 0) {
+                        Text("Choisis une ville")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.top, 8)
+                            .padding(.bottom, 16)
+
+                        ForEach(cities) { city in
+                            Button(action: {
+                                withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                                    selectedCity = city
+                                    globeTarget = city.coordinate
+                                    globeZoom = 9
+                                    showCityPicker = false
+                                }
+                            }) {
+                                HStack(spacing: 14) {
+                                    cityImageView(for: city, fallback: Color(.systemGray5))
+                                        .frame(width: 52, height: 52)
+                                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(city.name)
+                                            .font(.system(size: 17, weight: .semibold))
+                                            .foregroundStyle(.primary)
+                                        Text("\(city.recommendationCount) recommandations")
+                                            .font(.system(size: 13, weight: .medium))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(.tertiary)
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    .padding(.bottom, 24)
+                }
+                .background(Color(.systemGroupedBackground))
+                .navigationTitle("Changer de ville")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Fermer") {
+                            showCityPicker = false
+                        }
+                        .font(.system(size: 16, weight: .medium))
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
 
         private var togglePill: some View {
@@ -1228,71 +1307,118 @@ struct ExploreView: View {
             let frac = sheetFraction(geometry: geometry)
             let topPad = 10 + frac * (geometry.safeAreaInsets.top - 2)  // 10 → safeArea+8
 
-            return VStack(spacing: 0) {
-                // Drag handle — always visible, top padding interpolates
-                RoundedRectangle(cornerRadius: 2.5)
-                    .fill(Color.white.opacity(0.4))
-                    .frame(width: 36, height: 5)
-                    .padding(.top, topPad)
-                    .padding(.bottom, 4)
-
-                // Close button — fades in/out with fraction
-                HStack {
-                    Button(action: {
+            let sheetDragGesture = DragGesture(minimumDistance: 6, coordinateSpace: .global)
+                .onChanged { value in
+                    guard abs(value.translation.height) > abs(value.translation.width) else { return }
+                    var t = Transaction()
+                    t.animation = nil
+                    withTransaction(t) {
+                        if selectedCity != nil && value.translation.height < 0 {
+                            sheetDrag = 0
+                        } else {
+                            sheetDrag = value.translation.height
+                        }
+                    }
+                }
+                .onEnded { value in
+                    guard abs(value.translation.height) > abs(value.translation.width) else {
+                        sheetDrag = 0
+                        return
+                    }
+                    if selectedCity != nil {
                         withAnimation(.interpolatingSpring(stiffness: 200, damping: 24)) {
+                            sheetDrag = 0
                             sheetState = .partial
                         }
+                        return
+                    }
+                    let velocity = value.predictedEndTranslation.height - value.translation.height
+                    let speed = abs(velocity)
+                    let oldState = sheetState
+                    var newState = sheetState
+                    if value.translation.height < -50 || velocity < -500 {
+                        newState = .full
+                    } else if (value.translation.height > 50 || velocity > 500) && sheetState == .full {
+                        newState = .partial
+                    }
+                    let stiffness: Double = speed > 800 ? 280 : 200
+                    let damping: Double = speed > 800 ? 28 : 24
+                    withAnimation(.interpolatingSpring(stiffness: stiffness, damping: damping)) {
+                        sheetDrag = 0
+                        sheetState = newState
+                    }
+                    if newState != oldState {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    }) {
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.85))
-                            .frame(width: 32, height: 32)
-                            .background(Color.white.opacity(0.12), in: Circle())
                     }
-                    .buttonStyle(.plain)
-                    Spacer()
                 }
-                .padding(.horizontal, 16)
-                .frame(height: 36 * frac)  // collapses to 0 when partial
-                .opacity(frac)
-                .offset(y: -6)
-                .clipped()
 
-                if selectedCity == nil {
-                    // Collapsed: show title/subtitle. Expanded: show search bar merged in sheet.
-                    VStack(spacing: 6) {
-                        Text("Cities")
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundStyle(.primary)
-                            .frame(maxWidth: .infinity, alignment: .center)
+            return VStack(spacing: 0) {
+                // Header area only: drag handle + title/search — sheet drag applies here so list can scroll
+                VStack(spacing: 0) {
+                    RoundedRectangle(cornerRadius: 2.5)
+                        .fill(Color.white.opacity(0.4))
+                        .frame(width: 36, height: 5)
+                        .padding(.top, topPad)
+                        .padding(.bottom, 4)
+
+                    HStack {
+                        Button(action: {
+                            withAnimation(.interpolatingSpring(stiffness: 200, damping: 24)) {
+                                sheetState = .partial
+                            }
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        }) {
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(.white.opacity(0.85))
+                                .frame(width: 32, height: 32)
+                                .background(Color.white.opacity(0.12), in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                        Spacer()
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 4)
-                    .frame(height: 60 * (1 - frac))
-                    .opacity(1 - frac)
+                    .padding(.horizontal, 16)
+                    .frame(height: 36 * frac)
+                    .opacity(frac)
+                    .offset(y: -6)
                     .clipped()
 
-                    exploreSearchBar
+                    if selectedCity == nil {
+                        VStack(spacing: 6) {
+                            Text("Cities")
+                                .font(.system(size: 22, weight: .bold))
+                                .foregroundStyle(.primary)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                        }
                         .padding(.horizontal, 20)
-                        .frame(height: 62 * frac)
-                        .opacity(frac)
-                        .allowsHitTesting(frac > 0.5)
+                        .padding(.top, 4)
+                        .frame(height: 60 * (1 - frac))
+                        .opacity(1 - frac)
                         .clipped()
 
-                    if frac > 0.5 && !tripLocationSearcher.results.isEmpty && isSearchFocused {
-                        exploreSearchResults
+                        exploreSearchBar
                             .padding(.horizontal, 20)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
+                            .frame(height: 62 * frac)
+                            .opacity(frac)
+                            .allowsHitTesting(frac > 0.5)
+                            .clipped()
+
+                        if frac > 0.5 && !tripLocationSearcher.results.isEmpty && isSearchFocused {
+                            exploreSearchResults
+                                .padding(.horizontal, 20)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
                     }
                 }
+                .contentShape(Rectangle())
+                .highPriorityGesture(sheetDragGesture)
 
                 if selectedCity == nil {
                     ScrollView(.vertical, showsIndicators: false) {
                         citiesListContent
                             .padding(.bottom, geometry.safeAreaInsets.bottom + 56)
                     }
-                    .scrollDisabled(sheetState != .full) // Lock scroll when partial — prevents drag/scroll conflict
+                    .scrollDisabled(sheetState == .collapsed) // Allow scroll when sheet is open (partial or full)
                 } else {
                     cityDetailContent(geometry: geometry)
                         .padding(.bottom, 14)
@@ -1320,65 +1446,6 @@ struct ExploreView: View {
                     )
             )
             .shadow(color: .black.opacity(0.2), radius: 20, y: -6)
-            .contentShape(Rectangle())
-            .highPriorityGesture(
-                DragGesture(minimumDistance: 6, coordinateSpace: .global)
-                    .onChanged { value in
-                        guard abs(value.translation.height) > abs(value.translation.width) else { return }
-                        // Explicit no-animation transaction: prevents any implicit animation
-                        // and updates the offset directly for 1:1 finger tracking
-                        var t = Transaction()
-                        t.animation = nil
-                        withTransaction(t) {
-                            if selectedCity != nil && value.translation.height < 0 {
-                                sheetDrag = 0
-                            } else {
-                                sheetDrag = value.translation.height
-                            }
-                        }
-                    }
-                    .onEnded { value in
-                        guard abs(value.translation.height) > abs(value.translation.width) else {
-                            sheetDrag = 0
-                            return
-                        }
-                        if selectedCity != nil {
-                            withAnimation(.interpolatingSpring(stiffness: 200, damping: 24)) {
-                                sheetDrag = 0
-                                sheetState = .partial
-                            }
-                            return
-                        }
-                        let velocity = value.predictedEndTranslation.height - value.translation.height
-                        let speed = abs(velocity)
-
-                        let oldState = sheetState
-                        var newState = sheetState
-
-                        if value.translation.height < -50 || velocity < -500 {
-                            newState = .full
-                        } else if (value.translation.height > 50 || velocity > 500) && sheetState == .full {
-                            newState = .partial
-                        }
-                        if selectedCity != nil {
-                            newState = .partial
-                        }
-
-                        // interpolatingSpring: uses real physics simulation = more natural deceleration
-                        let stiffness: Double = speed > 800 ? 280 : 200
-                        let damping: Double = speed > 800 ? 28 : 24
-
-                        withAnimation(.interpolatingSpring(stiffness: stiffness, damping: damping)) {
-                            sheetDrag = 0
-                            sheetState = newState
-                        }
-
-                        if newState != oldState {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        }
-                    },
-                including: selectedCity != nil ? .none : .all
-            )
         }
 
         private func markerCityFilteredSpots(for city: CityWithRecommendations) -> [HousingSpot] {
@@ -1414,9 +1481,7 @@ struct ExploreView: View {
         }
 
         private func markerCityDetailContent(geometry: GeometryProxy, city: CityWithRecommendations) -> some View {
-            let filtered = markerCityFilteredSpots(for: city)
-
-            return VStack(spacing: 8) {
+            VStack(spacing: 12) {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
                         ForEach(placeCategories, id: \.id) { cat in
@@ -1450,34 +1515,29 @@ struct ExploreView: View {
                 .padding(.top, 10)
                 .padding(.bottom, 2)
 
-                if filtered.isEmpty {
-                    VStack(spacing: 6) {
-                        Text("No spots yet in \(city.name)")
+                Button(action: {
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                        selectedMarkerCity = nil
+                        selectedCity = city
+                        globeTarget = city.coordinate
+                        globeZoom = 9
+                        sheetState = .full
+                    }
+                }) {
+                    HStack(spacing: 8) {
+                        Text("Explore this city")
+                            .font(.system(size: 16, weight: .semibold))
+                        Image(systemName: "arrow.right")
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                        Text("Try another filter")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(.secondary.opacity(0.85))
                     }
+                    .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 120)
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 12) {
-                            ForEach(filtered) { spot in
-                                recommendedPlaceRow(
-                                    spot: spot,
-                                    cardWidth: min(geometry.size.width - 72, 370)
-                                )
-                            }
-                        }
-                        .scrollTargetLayout()
-                        .padding(.horizontal, 20)
-                    }
-                    .scrollTargetBehavior(.viewAligned)
-                    .padding(.top, 2)
-                    .frame(height: 152)
+                    .padding(.vertical, 14)
+                    .background(Color.appAccent, in: Capsule())
                 }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 20)
+                .padding(.top, 4)
             }
         }
 
@@ -1650,6 +1710,33 @@ struct ExploreView: View {
             .ignoresSafeArea(edges: .bottom)
         }
 
+        /// Counts spots near the city by category (housing, food, drinks, etc.) for the card recap.
+        private func citySpotCounts(for city: CityWithRecommendations) -> [(id: String, emoji: String, label: String, count: Int)] {
+            let cityLocation = CLLocation(latitude: city.coordinate.latitude, longitude: city.coordinate.longitude)
+            let nearby = spots.filter { spot in
+                CLLocation(latitude: spot.lat, longitude: spot.lng).distance(from: cityLocation) <= 120_000
+            }
+            func categoryId(for type: String) -> String? {
+                let raw = type.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                if raw.contains("restaurant") { return "restaurants" }
+                if raw.contains("cafe") { return "cafes" }
+                if raw.contains("bar") { return "bars" }
+                if raw.contains("activity") { return "activities" }
+                if raw.contains("room") || raw.contains("place") || raw.contains("housing") { return "housing" }
+                return "housing"
+            }
+            var counts: [String: Int] = [:]
+            for spot in nearby {
+                if let id = categoryId(for: spot.type) {
+                    counts[id, default: 0] += 1
+                }
+            }
+            return placeCategories.compactMap { cat in
+                let n = counts[cat.id] ?? 0
+                return (cat.id, cat.emoji, cat.label, n)
+            }.filter { $0.count > 0 }
+        }
+
         private var citiesListContent: some View {
             VStack(alignment: .leading, spacing: 12) {
                 VStack(spacing: 14) {
@@ -1661,46 +1748,7 @@ struct ExploreView: View {
                                 globeZoom = 9
                             }
                         }) {
-                            ZStack(alignment: .bottomLeading) {
-                                cityImageView(for: city, fallback: Color(.systemGray5))
-                                .frame(height: 170)
-                                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-
-                                LinearGradient(
-                                    colors: [Color.black.opacity(0.65), Color.black.opacity(0.0)],
-                                    startPoint: .bottom,
-                                    endPoint: .top
-                                )
-                                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-
-                                VStack(alignment: .leading, spacing: 10) {
-                                    Text(city.name.uppercased())
-                                        .font(.system(size: 30, weight: .black))
-                                        .foregroundStyle(.white)
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.6)
-
-                                    HStack(spacing: 10) {
-                                        HStack(spacing: 6) {
-                                            Text("🏡")
-                                            Text("\(max(10, city.recommendationCount))+ spots")
-                                                .font(.system(size: 12, weight: .semibold))
-                                        }
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 6)
-                                        .background(Color.white.opacity(0.9), in: Capsule())
-
-                                        Capsule()
-                                            .fill(Color.white.opacity(0.6))
-                                            .frame(width: 90, height: 24)
-
-                                        Capsule()
-                                            .fill(Color.white.opacity(0.6))
-                                            .frame(width: 90, height: 24)
-                                    }
-                                }
-                                .padding(16)
-                            }
+                            cityCardView(city: city)
                         }
                         .buttonStyle(.plain)
                     }
@@ -1708,6 +1756,82 @@ struct ExploreView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 12)
             }
+        }
+
+        private func cityCardView(city: CityWithRecommendations) -> some View {
+            let counts = citySpotCounts(for: city)
+            let total = counts.map(\.count).reduce(0, +)
+
+            return ZStack(alignment: .bottomLeading) {
+                cityImageView(for: city, fallback: Color(.systemGray5))
+                    .frame(height: 170)
+                    .frame(maxWidth: .infinity)
+                    .clipped()
+
+                LinearGradient(
+                    colors: [Color.black.opacity(0.6), Color.black.opacity(0.0)],
+                    startPoint: .bottom,
+                    endPoint: .top
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(city.name)
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                        .shadow(color: .black.opacity(0.35), radius: 2, y: 1)
+
+                    if total > 0 {
+                        Text("\(total) lieux sauvegardés")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.95))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(.ultraThinMaterial, in: Capsule())
+                            .overlay(Capsule().strokeBorder(Color.white.opacity(0.25), lineWidth: 1))
+
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(Array(counts.enumerated()), id: \.offset) { _, item in
+                                    HStack(spacing: 5) {
+                                        Text(item.emoji)
+                                            .font(.system(size: 12))
+                                        Text("\(item.count)")
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundStyle(.white)
+                                        Text(item.label)
+                                            .font(.system(size: 12, weight: .medium))
+                                            .foregroundStyle(.white.opacity(0.9))
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
+                                    )
+                                }
+                            }
+                            .padding(.trailing, 4)
+                        }
+                        .frame(height: 36)
+                    } else {
+                        HStack(spacing: 6) {
+                            Text("\(city.recommendationCount) recommandations")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(.white)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .overlay(Capsule().strokeBorder(Color.white.opacity(0.25), lineWidth: 1))
+                    }
+                }
+                .padding(16)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
 
         private func cityDetailContent(geometry: GeometryProxy) -> some View {
