@@ -779,12 +779,13 @@ struct ExploreView: View {
         var targetCoordinate: CLLocationCoordinate2D?
         var targetZoom: Double
         var cities: [CityWithRecommendations]
+        var cameraBottomPadding: CGFloat = 0
         var onCityTap: ((CityWithRecommendations) -> Void)?
 
         private static let fullGlobeCenter = CLLocationCoordinate2D(latitude: 20, longitude: -50)
         private static let fullGlobeZoom: Double = 0.5
 
-        static func redPillImage(size: CGFloat = 24) -> UIImage {
+        static func redPillImage(size: CGFloat = 18) -> UIImage {
             let whiteRingWidth: CGFloat = 4
             let totalSize = size + whiteRingWidth * 2
             let renderer = UIGraphicsImageRenderer(size: CGSize(width: totalSize, height: totalSize))
@@ -804,6 +805,7 @@ struct ExploreView: View {
             let mapView = MapboxMaps.MapView(frame: .zero, mapInitOptions: options)
             mapView.mapboxMap.setCamera(to: MapboxMaps.CameraOptions(
                 center: Self.fullGlobeCenter,
+                padding: UIEdgeInsets(top: 0, left: 0, bottom: cameraBottomPadding, right: 0),
                 zoom: Self.fullGlobeZoom,
                 bearing: 0,
                 pitch: 0
@@ -812,7 +814,9 @@ struct ExploreView: View {
             mapView.ornaments.options.scaleBar.visibility = .hidden
             mapView.mapboxMap.onStyleLoaded.observeNext { _ in
                 var atmosphere = MapboxMaps.Atmosphere()
-                atmosphere.horizonBlend = .constant(0.01) // halo blanc très léger autour du globe
+                atmosphere.horizonBlend = .constant(0.05) // halo lumineux très léger autour de la planète
+                atmosphere.spaceColor = .constant(MapboxMaps.StyleColor(UIColor(red: 8/255.0, green: 15/255.0, blue: 42/255.0, alpha: 1))) // bleu nuit intense
+                atmosphere.starIntensity = .constant(0.7) // espace plus vivant
                 try? mapView.mapboxMap.setAtmosphere(atmosphere)
                 context.coordinator.setupAnnotationManagerIfNeeded(mapView: mapView)
             }.store(in: &context.coordinator.cancelables)
@@ -842,6 +846,7 @@ struct ExploreView: View {
             context.coordinator.lastZoom = zoom
             let target = MapboxMaps.CameraOptions(
                 center: coordinate,
+                padding: UIEdgeInsets(top: 0, left: 0, bottom: cameraBottomPadding, right: 0),
                 zoom: zoom,
                 bearing: 0,
                 pitch: 0
@@ -920,6 +925,7 @@ struct ExploreView: View {
         @State private var showCityPicker = false
         @State private var selectedPlaceCategory: String? = nil // "bars" | "restaurants" | "cafes" | "activities" | "housing"
         @State private var selectedSpotForDetail: HousingSpot? = nil
+        @State private var markerBlurbExpanded: Bool = false
         @State private var globeTarget: CLLocationCoordinate2D? = nil
         @State private var globeZoom: Double = 0.5
         @State private var searchText: String = ""
@@ -941,6 +947,7 @@ struct ExploreView: View {
                         targetCoordinate: globeTarget,
                         targetZoom: globeZoom,
                         cities: cities,
+                        cameraBottomPadding: geometry.size.height / 4,
                         onCityTap: { city in
                             withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
                                 selectedMarkerCity = city
@@ -1059,6 +1066,7 @@ struct ExploreView: View {
             }
             .onChange(of: selectedMarkerCity) { _, new in
                 hideTabBar = (selectedCity != nil || new != nil)
+                markerBlurbExpanded = false
             }
             .onAppear {
                 hideTabBar = (selectedCity != nil || selectedMarkerCity != nil)
@@ -1203,16 +1211,16 @@ struct ExploreView: View {
             HStack(spacing: 12) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.85))
+                    .foregroundStyle(.black)
                 ZStack(alignment: .leading) {
                     if searchText.isEmpty {
                         Text("Search for a place")
                             .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.black)
                     }
                     TextField("", text: $searchText)
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.black)
                         .focused($isSearchFocused)
                         .onChange(of: searchText) { _, newValue in
                             let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1231,7 +1239,7 @@ struct ExploreView: View {
                     }) {
                         Image(systemName: "xmark")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(Color.white.opacity(0.9))
+                            .foregroundStyle(.black)
                     }
                     .buttonStyle(.plain)
                 }
@@ -1239,15 +1247,15 @@ struct ExploreView: View {
             .padding(.horizontal, 18)
             .padding(.vertical, 16)
             .glassEffect(
-                .regular.tint(.black),
+                .regular.tint(Color.white.opacity(0.92)),
                 in: Capsule()
             )
             .overlay(
                 Capsule()
-                    .strokeBorder(Color.white.opacity(0.14), lineWidth: 1)
+                    .strokeBorder(Color.black.opacity(0.08), lineWidth: 1)
             )
-            .environment(\.colorScheme, .dark)
-            .shadow(color: .black.opacity(0.2), radius: 12, y: 4)
+            .environment(\.colorScheme, .light)
+            .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
         }
 
         private var exploreSearchResults: some View {
@@ -1356,7 +1364,7 @@ struct ExploreView: View {
                 // Header area only: drag handle + title/search — sheet drag applies here so list can scroll
                 VStack(spacing: 0) {
                     RoundedRectangle(cornerRadius: 2.5)
-                        .fill(Color.white.opacity(0.4))
+                        .fill(Color.black.opacity(0.2))
                         .frame(width: 36, height: 5)
                         .padding(.top, topPad)
                         .padding(.bottom, 4)
@@ -1370,9 +1378,9 @@ struct ExploreView: View {
                         }) {
                             Image(systemName: "chevron.down")
                                 .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(.white.opacity(0.85))
+                                .foregroundStyle(.primary)
                                 .frame(width: 32, height: 32)
-                                .background(Color.white.opacity(0.12), in: Circle())
+                                .background(Color.black.opacity(0.06), in: Circle())
                         }
                         .buttonStyle(.plain)
                         Spacer()
@@ -1432,18 +1440,15 @@ struct ExploreView: View {
                 height: selectedCity != nil ? geometry.size.height * 0.33 : nil,
                 alignment: .top
             )
-            .environment(\.colorScheme, selectedCity != nil ? .light : .dark)
+            .environment(\.colorScheme, .light)
             .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
             .glassEffect(
-                .regular.tint(selectedCity != nil ? Color.gray.opacity(0.22) : .black),
+                .regular.tint(Color.white.opacity(0.92)),
                 in: RoundedRectangle(cornerRadius: 28, style: .continuous)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .strokeBorder(
-                        selectedCity != nil ? Color.black.opacity(0.12) : Color.white.opacity(0.14),
-                        lineWidth: 1
-                    )
+                    .strokeBorder(Color.black.opacity(0.08), lineWidth: 1)
             )
             .shadow(color: .black.opacity(0.2), radius: 20, y: -6)
         }
@@ -1482,39 +1487,6 @@ struct ExploreView: View {
 
         private func markerCityDetailContent(geometry: GeometryProxy, city: CityWithRecommendations) -> some View {
             VStack(spacing: 12) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(placeCategories, id: \.id) { cat in
-                            Button(action: {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    selectedPlaceCategory = selectedPlaceCategory == cat.id ? nil : cat.id
-                                }
-                            }) {
-                                HStack(spacing: 6) {
-                                    Text(cat.emoji)
-                                    Text(cat.label)
-                                        .font(.system(size: 15, weight: .semibold))
-                                }
-                                .foregroundStyle(.primary)
-                                .padding(.horizontal, 18)
-                                .padding(.vertical, 12)
-                                .background(Color.white, in: Capsule())
-                                .overlay(
-                                    Capsule()
-                                        .strokeBorder(
-                                            selectedPlaceCategory == cat.id ? Color.appAccent : Color.clear,
-                                            lineWidth: 2
-                                        )
-                                )
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                }
-                .padding(.top, 10)
-                .padding(.bottom, 2)
-
                 Button(action: {
                     withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
                         selectedMarkerCity = nil
@@ -1595,57 +1567,73 @@ struct ExploreView: View {
             }
         }
 
-        private func markerCityOverviewCard(city: CityWithRecommendations) -> some View {
+        /// Image URLs for the marker city sheet: main city image + nearby spot images (max 8).
+        private func markerCityImageUrls(for city: CityWithRecommendations) -> [String] {
+            var urls = [city.imageUrl]
+            let cityLocation = CLLocation(latitude: city.coordinate.latitude, longitude: city.coordinate.longitude)
+            let nearby = spots.filter { spot in
+                CLLocation(latitude: spot.lat, longitude: spot.lng).distance(from: cityLocation) <= 120_000
+            }
+            for spot in nearby {
+                if urls.count >= 12 { break }
+                if !urls.contains(spot.image) { urls.append(spot.image) }
+            }
+            return urls
+        }
+
+        private func markerCitySquareImage(url: String, fallback: Color) -> some View {
+            Group {
+                if url.hasPrefix("http://") || url.hasPrefix("https://") {
+                    AsyncImage(url: URL(string: url)) { phase in
+                        if let image = phase.image {
+                            image.resizable().aspectRatio(contentMode: .fill)
+                        } else {
+                            Rectangle().fill(fallback)
+                        }
+                    }
+                } else {
+                    Image(cityAssetName(from: url))
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                }
+            }
+            .frame(width: 140, height: 140)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+
+        private func markerCityPhotoStripAndBlurb(city: CityWithRecommendations) -> some View {
             let insight = cityInsight(for: city)
+            let imageUrls = markerCityImageUrls(for: city)
 
-            return ZStack(alignment: .bottomLeading) {
-                cityImageView(for: city, fallback: Color(.systemGray4))
-                    .frame(height: 124)
-                    .frame(maxWidth: .infinity)
-                    .clipped()
-
-                LinearGradient(
-                    colors: [Color.black.opacity(0.05), Color.black.opacity(0.7)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
+            return VStack(alignment: .leading, spacing: 12) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(imageUrls, id: \.self) { url in
+                            markerCitySquareImage(url: url, fallback: Color(.systemGray4))
+                        }
+                    }
+                    .padding(.trailing, 20)
+                }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(insight.country.uppercased())
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.88))
-                        .kerning(0.7)
-
                     Text(insight.blurb)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .lineLimit(2)
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(markerBlurbExpanded ? nil : 2)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    HStack(spacing: 8) {
-                        Text(insight.vibe)
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(Color.white.opacity(0.2), in: Capsule())
-
-                        Text(insight.bestFor)
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(Color.white.opacity(0.2), in: Capsule())
+                    Button(action: { withAnimation(.easeInOut(duration: 0.2)) { markerBlurbExpanded.toggle() } }) {
+                        Text(markerBlurbExpanded ? "Show less" : "Show more")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.primary)
                     }
+                    .buttonStyle(.plain)
                 }
-                .padding(12)
             }
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.22), lineWidth: 1)
-            )
-            .shadow(color: .black.opacity(0.18), radius: 8, y: 4)
+        }
+
+        private func markerCityOverviewCard(city: CityWithRecommendations) -> some View {
+            markerCityPhotoStripAndBlurb(city: city)
         }
 
         private func markerCitySheet(geometry: GeometryProxy, city: CityWithRecommendations) -> some View {
@@ -1654,7 +1642,7 @@ struct ExploreView: View {
 
                 VStack(spacing: 0) {
                     RoundedRectangle(cornerRadius: 2.5)
-                        .fill(Color.white.opacity(0.4))
+                        .fill(Color.black.opacity(0.2))
                         .frame(width: 36, height: 5)
                         .padding(.top, 10)
                         .padding(.bottom, 8)
@@ -1677,7 +1665,7 @@ struct ExploreView: View {
                                 .font(.system(size: 13, weight: .bold))
                                 .foregroundStyle(.primary)
                                 .frame(width: 28, height: 28)
-                                .background(Color.white.opacity(0.75), in: Circle())
+                                .background(Color.black.opacity(0.06), in: Circle())
                         }
                         .buttonStyle(.plain)
                     }
@@ -1696,12 +1684,12 @@ struct ExploreView: View {
                 .environment(\.colorScheme, .light)
                 .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
                 .glassEffect(
-                    .regular.tint(Color.gray.opacity(0.22)),
+                    .regular.tint(Color.white.opacity(0.92)),
                     in: RoundedRectangle(cornerRadius: 28, style: .continuous)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .strokeBorder(Color.black.opacity(0.12), lineWidth: 1)
+                        .strokeBorder(Color.black.opacity(0.08), lineWidth: 1)
                 )
                 .shadow(color: .black.opacity(0.2), radius: 20, y: -6)
                 .padding(.bottom, 12)
