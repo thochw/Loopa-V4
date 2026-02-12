@@ -926,6 +926,9 @@ struct ExploreView: View {
         @State private var selectedPlaceCategory: String? = nil // "bars" | "restaurants" | "cafes" | "activities" | "housing"
         @State private var selectedSpotForDetail: HousingSpot? = nil
         @State private var markerBlurbExpanded: Bool = false
+        @State private var markerSheetDrag: CGFloat = 0
+        @State private var expandedMarkerCity: CityWithRecommendations? = nil
+        @State private var markerSheetDetent: PresentationDetent = .fraction(0.43)
         @State private var globeTarget: CLLocationCoordinate2D? = nil
         @State private var globeZoom: Double = 0.5
         @State private var searchText: String = ""
@@ -953,6 +956,8 @@ struct ExploreView: View {
                                 selectedMarkerCity = city
                                 selectedCity = nil
                                 selectedPlaceCategory = nil
+                                expandedMarkerCity = nil
+                                markerSheetDrag = 0
                                 globeTarget = city.coordinate
                                 sheetState = .partial
                             }
@@ -1037,9 +1042,8 @@ struct ExploreView: View {
                     }
                     .animation(.easeInOut(duration: 0.25), value: sheetState)
 
-                    if let markerCity = selectedMarkerCity {
-                        markerCitySheet(geometry: geometry, city: markerCity)
-                    } else {
+                    // Marker city sheet presented natively (same animation as "Choisir une ville")
+                    if selectedMarkerCity == nil {
                         // MARK: - Liquid Glass bottom sheet (offset-based, GPU-driven)
                         partialSheet(geometry: geometry)
                             .frame(height: geometry.size.height + geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom, alignment: .top)
@@ -1056,6 +1060,17 @@ struct ExploreView: View {
             .sheet(isPresented: $showCityPicker) {
                 cityPickerSheet
             }
+            .sheet(item: $selectedMarkerCity) { city in
+                markerCitySheetContent(city: city, selectedDetent: $markerSheetDetent) {
+                    selectedMarkerCity = nil
+                } onExplore: {
+                    selectedMarkerCity = nil
+                    selectedCity = city
+                    globeTarget = city.coordinate
+                    globeZoom = 9
+                    sheetState = .full
+                }
+            }
             .onChange(of: selectedCity) { _, new in
                 hideTabBar = (new != nil || selectedMarkerCity != nil)
                 if new != nil {
@@ -1067,6 +1082,13 @@ struct ExploreView: View {
             .onChange(of: selectedMarkerCity) { _, new in
                 hideTabBar = (selectedCity != nil || new != nil)
                 markerBlurbExpanded = false
+                markerSheetDrag = 0
+                if new != nil {
+                    markerSheetDetent = markerSheetClosedDetent
+                }
+                if new == nil {
+                    expandedMarkerCity = nil
+                }
             }
             .onAppear {
                 hideTabBar = (selectedCity != nil || selectedMarkerCity != nil)
@@ -1246,16 +1268,10 @@ struct ExploreView: View {
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 16)
-            .glassEffect(
-                .regular.tint(Color.white.opacity(0.92)),
-                in: Capsule()
-            )
-            .overlay(
-                Capsule()
-                    .strokeBorder(Color.black.opacity(0.08), lineWidth: 1)
-            )
+            .glassEffect(.regular.tint(Color.white.opacity(0.85)), in: Capsule())
+            .overlay(Capsule().strokeBorder(Color.white.opacity(0.3), lineWidth: 0.5))
             .environment(\.colorScheme, .light)
-            .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
+            .shadow(color: .black.opacity(0.08), radius: 12, y: 4)
         }
 
         private var exploreSearchResults: some View {
@@ -1306,9 +1322,10 @@ struct ExploreView: View {
                     }
                 }
             }
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .environment(\.colorScheme, .dark)
-            .shadow(color: .black.opacity(0.2), radius: 12, y: 6)
+            .glassEffect(.regular.tint(Color.white.opacity(0.85)), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.white.opacity(0.3), lineWidth: 0.5))
+            .environment(\.colorScheme, .light)
+            .shadow(color: .black.opacity(0.12), radius: 12, y: 6)
         }
 
         private func partialSheet(geometry: GeometryProxy) -> some View {
@@ -1442,15 +1459,9 @@ struct ExploreView: View {
             )
             .environment(\.colorScheme, .light)
             .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-            .glassEffect(
-                .regular.tint(Color.white.opacity(0.92)),
-                in: RoundedRectangle(cornerRadius: 28, style: .continuous)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .strokeBorder(Color.black.opacity(0.08), lineWidth: 1)
-            )
-            .shadow(color: .black.opacity(0.2), radius: 20, y: -6)
+            .glassEffect(.regular.tint(Color.white.opacity(0.85)), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Color.white.opacity(0.3), lineWidth: 0.5))
+            .shadow(color: .black.opacity(0.15), radius: 20, y: -6)
         }
 
         private func markerCityFilteredSpots(for city: CityWithRecommendations) -> [HousingSpot] {
@@ -1567,14 +1578,17 @@ struct ExploreView: View {
             }
         }
 
-        /// Image URLs for the marker city sheet: main city image + nearby spot images (max 8).
-        private func markerCityImageUrls(for city: CityWithRecommendations) -> [String] {
-            var urls = [city.imageUrl]
+        private func nearbySpots(for city: CityWithRecommendations) -> [HousingSpot] {
             let cityLocation = CLLocation(latitude: city.coordinate.latitude, longitude: city.coordinate.longitude)
-            let nearby = spots.filter { spot in
+            return spots.filter { spot in
                 CLLocation(latitude: spot.lat, longitude: spot.lng).distance(from: cityLocation) <= 120_000
             }
-            for spot in nearby {
+        }
+
+        /// Image URLs for the marker city sheet: main city image + nearby spot images (max 12).
+        private func markerCityImageUrls(for city: CityWithRecommendations) -> [String] {
+            var urls = [city.imageUrl]
+            for spot in nearbySpots(for: city) {
                 if urls.count >= 12 { break }
                 if !urls.contains(spot.image) { urls.append(spot.image) }
             }
@@ -1636,66 +1650,577 @@ struct ExploreView: View {
             markerCityPhotoStripAndBlurb(city: city)
         }
 
-        private func markerCitySheet(geometry: GeometryProxy, city: CityWithRecommendations) -> some View {
-            VStack {
-                Spacer()
+        private let markerSheetClosedDetent = PresentationDetent.fraction(0.43)
 
-                VStack(spacing: 0) {
-                    RoundedRectangle(cornerRadius: 2.5)
-                        .fill(Color.black.opacity(0.2))
-                        .frame(width: 36, height: 5)
-                        .padding(.top, 10)
-                        .padding(.bottom, 8)
+        /// Marker city sheet — contenu différent selon fermé ou ouvert
+        private func markerCitySheetContent(
+            city: CityWithRecommendations,
+            selectedDetent: Binding<PresentationDetent>,
+            onClose: @escaping () -> Void,
+            onExplore: @escaping () -> Void
+        ) -> some View {
+            Group {
+                if selectedDetent.wrappedValue == markerSheetClosedDetent {
+                    markerCitySheetClosedContent(city: city, onClose: onClose, onExplore: onExplore)
+                } else {
+                    markerCitySheetExpandedContent(city: city, onClose: onClose, onExplore: onExplore)
+                }
+            }
+            .background(Color(.systemGroupedBackground))
+            .presentationDetents([markerSheetClosedDetent, .large], selection: selectedDetent)
+            .presentationDragIndicator(.visible)
+        }
 
-                    HStack {
-                        Text(city.name)
-                            .font(.system(size: 16, weight: .bold))
+        /// Contenu quand la sheet est fermée (detent 0.43)
+        private func markerCitySheetClosedContent(
+            city: CityWithRecommendations,
+            onClose: @escaping () -> Void,
+            onExplore: @escaping () -> Void
+        ) -> some View {
+            let facts = markerCityFacts(for: city)
+            let images = markerCityImageUrls(for: city)
+
+            return VStack(spacing: 0) {
+                // Header: Share | Titre | Close
+                HStack {
+                    Button(action: {}) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(.primary)
-                        Text("\(city.recommendationCount) spots")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Button(action: {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                selectedMarkerCity = nil
-                                selectedPlaceCategory = nil
+                            .frame(width: 44, height: 44)
+                            .background(Color(.systemGray5), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+
+                    Text(city.name)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+
+                    Button(action: onClose) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(.primary)
+                            .frame(width: 44, height: 44)
+                            .background(Color(.systemGray5), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+                .padding(.bottom, 16)
+
+                // Boutons Itinéraire | Télécharger
+                HStack(spacing: 12) {
+                    Button(action: onExplore) {
+                        VStack(spacing: 6) {
+                            Image(systemName: "arrow.turn.up.right")
+                                .font(.system(size: 18, weight: .bold))
+                            Text("Itinéraire")
+                                .font(.system(size: 15, weight: .bold))
+                        }
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 68)
+                        .background(Color.blue, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(action: {}) {
+                        VStack(spacing: 6) {
+                            Image(systemName: "arrow.down.circle")
+                                .font(.system(size: 18, weight: .bold))
+                            Text("Télécharger")
+                                .font(.system(size: 15, weight: .bold))
+                        }
+                        .foregroundStyle(.blue)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 68)
+                        .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 16)
+
+                // Statistiques (Population, Altitude, Superficie, Densité)
+                HStack(spacing: 12) {
+                    ForEach(Array(facts.enumerated()), id: \.offset) { _, fact in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(fact.label)
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                            HStack(spacing: 6) {
+                                Image(systemName: fact.icon)
+                                    .font(.system(size: 13, weight: .semibold))
+                                Text(fact.value)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
                             }
-                        }) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundStyle(.primary)
-                                .frame(width: 28, height: 28)
-                                .background(Color.black.opacity(0.06), in: Circle())
+                            .foregroundStyle(.primary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 16)
+
+                // Galerie images avec overlay capsule
+                ZStack(alignment: .bottom) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(images, id: \.self) { imageUrl in
+                                markerCitySheetImageThumb(url: imageUrl)
+                                    .frame(width: 140, height: 100)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                    }
+                    .frame(height: 100)
+
+                    // Overlay capsule (+, ☆, ...)
+                    HStack(spacing: 16) {
+                        Button(action: {}) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(.white)
+                        }
+                        .buttonStyle(.plain)
+                        Button(action: {}) {
+                            Image(systemName: "star")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(.white)
+                        }
+                        .buttonStyle(.plain)
+                        Button(action: {}) {
+                            Image(systemName: "ellipsis")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(.white)
                         }
                         .buttonStyle(.plain)
                     }
                     .padding(.horizontal, 20)
-                    .padding(.bottom, 8)
-
-                    markerCityOverviewCard(city: city)
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 4)
-
-                    markerCityDetailContent(geometry: geometry, city: city)
-                        .padding(.bottom, 14)
+                    .padding(.vertical, 10)
+                    .background(Color.black.opacity(0.35), in: Capsule())
+                    .padding(.bottom, 12)
                 }
-                .frame(width: min(geometry.size.width - 28, 560), alignment: .center)
-                .frame(height: geometry.size.height * 0.43, alignment: .top)
-                .environment(\.colorScheme, .light)
-                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                .glassEffect(
-                    .regular.tint(Color.white.opacity(0.92)),
-                    in: RoundedRectangle(cornerRadius: 28, style: .continuous)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .strokeBorder(Color.black.opacity(0.08), lineWidth: 1)
-                )
-                .shadow(color: .black.opacity(0.2), radius: 20, y: -6)
-                .padding(.bottom, 12)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .padding(.bottom, 8)
+
+                Spacer(minLength: 0)
             }
-            .ignoresSafeArea(edges: .bottom)
+            .frame(maxWidth: .infinity)
+        }
+
+        private func markerCitySheetImageThumb(url: String) -> some View {
+            Group {
+                if url.hasPrefix("http://") || url.hasPrefix("https://") {
+                    AsyncImage(url: URL(string: url)) { phase in
+                        if let image = phase.image {
+                            image.resizable().aspectRatio(contentMode: .fill)
+                        } else {
+                            Color(.systemGray4)
+                                .overlay(ProgressView())
+                        }
+                    }
+                } else {
+                    Color(.systemGray4)
+                }
+            }
+        }
+
+        /// Contenu quand la sheet est ouverte (detent large)
+        private func markerCitySheetExpandedContent(
+            city: CityWithRecommendations,
+            onClose: @escaping () -> Void,
+            onExplore: @escaping () -> Void
+        ) -> some View {
+            VStack(spacing: 0) {
+                HStack {
+                    Button(action: {}) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(.primary)
+                            .frame(width: 44, height: 44)
+                            .background(Color(.systemGray5), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    Spacer()
+                    Text(city.name)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Button(action: onClose) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(.primary)
+                            .frame(width: 44, height: 44)
+                            .background(Color(.systemGray5), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+                .padding(.bottom, 16)
+
+                ScrollView(.vertical, showsIndicators: false) {
+                    markerCityExpandedInlineContent(city: city, onExplore: onExplore)
+                }
+            }
+        }
+
+        private func markerCityExpandedInlineContent(city: CityWithRecommendations, onExplore: @escaping () -> Void) -> some View {
+            let facts = markerCityFacts(for: city)
+            let images = markerCityImageUrls(for: city)
+            let guides = Array((nearbySpots(for: city).isEmpty ? spots : nearbySpots(for: city)).prefix(4))
+
+            return VStack(alignment: .leading, spacing: 24) {
+                HStack(spacing: 12) {
+                    Button(action: onExplore) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "arrow.turn.up.right")
+                                .font(.system(size: 16, weight: .bold))
+                            Text("Itinéraire")
+                                .font(.system(size: 16, weight: .bold))
+                        }
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                        .background(Color.blue, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(action: {}) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "arrow.down.circle")
+                                .font(.system(size: 16, weight: .bold))
+                            Text("Télécharger")
+                                .font(.system(size: 16, weight: .bold))
+                        }
+                        .foregroundStyle(Color.blue)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                        .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                HStack(spacing: 12) {
+                    ForEach(Array(facts.enumerated()), id: \.offset) { _, fact in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(fact.label)
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                            HStack(spacing: 6) {
+                                Image(systemName: fact.icon)
+                                    .font(.system(size: 14, weight: .semibold))
+                                Text(fact.value)
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
+                            }
+                            .foregroundStyle(.primary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(images, id: \.self) { imageUrl in
+                            markerCitySquareImage(url: imageUrl, fallback: Color(.systemGray4))
+                        }
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Informations")
+                        .font(.system(size: 20, weight: .bold))
+                    Text(markerCityLongDescription(for: city))
+                        .font(.system(size: 15, weight: .regular))
+                        .foregroundStyle(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let wikiURL = markerCityWikipediaURL(for: city) {
+                        Link("Plus d'infos sur Wikipédia", destination: wikiURL)
+                            .font(.system(size: 14, weight: .medium))
+                    }
+                }
+
+                if !guides.isEmpty {
+                    Text("Guides")
+                        .font(.system(size: 20, weight: .bold))
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
+                        ForEach(guides) { spot in
+                            markerCityGuideCard(spot: spot)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 40)
+        }
+
+        private func markerCityExpandedSheet(city: CityWithRecommendations) -> some View {
+            let facts = markerCityFacts(for: city)
+            let images = markerCityImageUrls(for: city)
+            let guides = Array((nearbySpots(for: city).isEmpty ? spots : nearbySpots(for: city)).prefix(4))
+
+            return VStack(spacing: 0) {
+                RoundedRectangle(cornerRadius: 2.5)
+                    .fill(Color.black.opacity(0.22))
+                    .frame(width: 44, height: 6)
+                    .padding(.top, 8)
+                    .padding(.bottom, 12)
+
+                HStack {
+                    Button(action: {}) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(.primary)
+                            .frame(width: 48, height: 48)
+                            .background(Color(.systemGray5), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+
+                    Button(action: { expandedMarkerCity = nil }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(.primary)
+                            .frame(width: 48, height: 48)
+                            .background(Color(.systemGray5), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 18)
+
+                Text(city.name)
+                    .font(.system(size: 56, weight: .bold))
+                    .foregroundStyle(.primary)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                    .padding(.top, 2)
+                    .padding(.bottom, 20)
+
+                HStack(spacing: 12) {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                            expandedMarkerCity = nil
+                            selectedMarkerCity = nil
+                            selectedCity = city
+                            globeTarget = city.coordinate
+                            globeZoom = 9
+                            sheetState = .full
+                        }
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "arrow.turn.up.right")
+                                .font(.system(size: 18, weight: .bold))
+                            Text("Itinéraire")
+                                .font(.system(size: 18, weight: .bold))
+                        }
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 76)
+                        .background(Color.blue, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(action: {}) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "arrow.down.circle")
+                                .font(.system(size: 18, weight: .bold))
+                            Text("Télécharger")
+                                .font(.system(size: 18, weight: .bold))
+                        }
+                        .foregroundStyle(Color.blue)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 76)
+                        .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
+
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 24) {
+                        HStack(spacing: 12) {
+                            ForEach(Array(facts.enumerated()), id: \.offset) { _, fact in
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(fact.label)
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(.secondary)
+                                    HStack(spacing: 6) {
+                                        Image(systemName: fact.icon)
+                                            .font(.system(size: 15, weight: .semibold))
+                                        Text(fact.value)
+                                            .font(.system(size: 17, weight: .semibold))
+                                            .lineLimit(1)
+                                            .minimumScaleFactor(0.7)
+                                    }
+                                    .foregroundStyle(.primary)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 12) {
+                                ForEach(images, id: \.self) { imageUrl in
+                                    markerCitySquareImage(url: imageUrl, fallback: Color(.systemGray4))
+                                }
+                            }
+                            .padding(.trailing, 20)
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Informations")
+                                .font(.system(size: 24, weight: .bold))
+                            Text(markerCityLongDescription(for: city))
+                                .font(.system(size: 16, weight: .regular))
+                                .foregroundStyle(.primary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            if let wikiURL = markerCityWikipediaURL(for: city) {
+                                Link("Plus d’infos sur Wikipédia", destination: wikiURL)
+                                    .font(.system(size: 15, weight: .medium))
+                            }
+                        }
+
+                        if !guides.isEmpty {
+                            Text("Guides")
+                                .font(.system(size: 24, weight: .bold))
+
+                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
+                                ForEach(guides) { spot in
+                                    markerCityGuideCard(spot: spot)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 40)
+                }
+            }
+            .background(Color(.systemGray6))
+            .environment(\.colorScheme, .light)
+        }
+
+        private func markerCityGuideCard(spot: HousingSpot) -> some View {
+            VStack(alignment: .leading, spacing: 8) {
+                AsyncImage(url: URL(string: spot.image)) { phase in
+                    if let image = phase.image {
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    } else {
+                        Color(.systemGray5)
+                    }
+                }
+                .frame(height: 132)
+                .frame(maxWidth: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                Text(spot.title)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+
+                Text(recommendationCategory(for: spot.type).label)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+
+        private func markerCityFacts(for city: CityWithRecommendations) -> [(icon: String, label: String, value: String)] {
+            switch city.name.lowercased() {
+            case "paris":
+                return [
+                    ("person.3.fill", "Population", "2 148 271"),
+                    ("arrow.up.right", "Altitude", "28 m"),
+                    ("square.dashed", "Superficie", "2 853 km²"),
+                    ("square.grid.3x3.fill", "Densité", "753 /km²"),
+                ]
+            case "lisbon":
+                return [
+                    ("person.3.fill", "Population", "545 796"),
+                    ("arrow.up.right", "Altitude", "2 m"),
+                    ("square.dashed", "Superficie", "100 km²"),
+                    ("square.grid.3x3.fill", "Densité", "5 458 /km²"),
+                ]
+            case "montreal":
+                return [
+                    ("person.3.fill", "Population", "1 780 000"),
+                    ("arrow.up.right", "Altitude", "233 m"),
+                    ("square.dashed", "Superficie", "431 km²"),
+                    ("square.grid.3x3.fill", "Densité", "4 129 /km²"),
+                ]
+            case "new york":
+                return [
+                    ("person.3.fill", "Population", "8 804 190"),
+                    ("arrow.up.right", "Altitude", "10 m"),
+                    ("square.dashed", "Superficie", "1 214 km²"),
+                    ("square.grid.3x3.fill", "Densité", "7 252 /km²"),
+                ]
+            case "tokyo":
+                return [
+                    ("person.3.fill", "Population", "13 960 000"),
+                    ("arrow.up.right", "Altitude", "40 m"),
+                    ("square.dashed", "Superficie", "2 194 km²"),
+                    ("square.grid.3x3.fill", "Densité", "6 363 /km²"),
+                ]
+            case "barcelona":
+                return [
+                    ("person.3.fill", "Population", "1 636 732"),
+                    ("arrow.up.right", "Altitude", "12 m"),
+                    ("square.dashed", "Superficie", "101 km²"),
+                    ("square.grid.3x3.fill", "Densité", "16 206 /km²"),
+                ]
+            case "bali":
+                return [
+                    ("person.3.fill", "Population", "4 225 000"),
+                    ("arrow.up.right", "Altitude", "0 m"),
+                    ("square.dashed", "Superficie", "5 780 km²"),
+                    ("square.grid.3x3.fill", "Densité", "731 /km²"),
+                ]
+            default:
+                return [
+                    ("person.3.fill", "Population", "n/a"),
+                    ("arrow.up.right", "Altitude", "n/a"),
+                    ("square.dashed", "Superficie", "n/a"),
+                    ("square.grid.3x3.fill", "Densité", "n/a"),
+                ]
+            }
+        }
+
+        private func markerCityLongDescription(for city: CityWithRecommendations) -> String {
+            switch city.name.lowercased() {
+            case "paris":
+                return "Paris est la capitale de la France et une ville mondiale majeure. Son patrimoine, ses quartiers et sa culture en font une destination incontournable."
+            case "lisbon":
+                return "Lisbonne est bâtie sur sept collines au bord du Tage. La ville combine architecture historique, gastronomie locale et vie nocturne animée."
+            case "montreal":
+                return "Montréal est une métropole bilingue réputée pour ses festivals, sa scène culinaire et ses quartiers créatifs."
+            case "new york":
+                return "New York est l’un des centres culturels et économiques les plus influents du monde, avec une énergie urbaine unique."
+            case "tokyo":
+                return "Tokyo mêle tradition et innovation, entre temples historiques, quartiers modernes et gastronomie de référence."
+            case "barcelona":
+                return "Barcelone est une ville méditerranéenne vibrante, connue pour son architecture, ses plages et son ambiance conviviale."
+            default:
+                return "A great city to explore with curated recommendations."
+            }
+        }
+
+        private func markerCityWikipediaURL(for city: CityWithRecommendations) -> URL? {
+            let name = city.name.replacingOccurrences(of: " ", with: "_")
+            return URL(string: "https://fr.wikipedia.org/wiki/\(name)")
         }
 
         /// Counts spots near the city by category (housing, food, drinks, etc.) for the card recap.
