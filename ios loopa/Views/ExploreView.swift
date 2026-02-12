@@ -1459,8 +1459,8 @@ struct ExploreView: View {
             )
             .environment(\.colorScheme, .light)
             .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-            .glassEffect(.regular.tint(Color.white.opacity(0.85)), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Color.white.opacity(0.3), lineWidth: 0.5))
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Color.black.opacity(0.08), lineWidth: 1))
             .shadow(color: .black.opacity(0.15), radius: 20, y: -6)
         }
 
@@ -1713,49 +1713,33 @@ struct ExploreView: View {
                 .padding(.top, 12)
                 .padding(.bottom, 16)
 
-                // Boutons Itinéraire | Télécharger
-                HStack(spacing: 12) {
-                    Button(action: onExplore) {
-                        VStack(spacing: 6) {
-                            Image(systemName: "arrow.turn.up.right")
-                                .font(.system(size: 18, weight: .bold))
-                            Text("Itinéraire")
-                                .font(.system(size: 15, weight: .bold))
-                        }
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 68)
-                        .background(Color.blue, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                // CTA Explore this city
+                Button(action: onExplore) {
+                    HStack(spacing: 8) {
+                        Text("Explore this city")
+                            .font(.system(size: 16, weight: .semibold))
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 14, weight: .semibold))
                     }
-                    .buttonStyle(.plain)
-
-                    Button(action: {}) {
-                        VStack(spacing: 6) {
-                            Image(systemName: "arrow.down.circle")
-                                .font(.system(size: 18, weight: .bold))
-                            Text("Télécharger")
-                                .font(.system(size: 15, weight: .bold))
-                        }
-                        .foregroundStyle(.blue)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 68)
-                        .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Color.appAccent, in: Capsule())
                 }
+                .buttonStyle(.plain)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 16)
 
-                // Statistiques (Population, Altitude, Superficie, Densité)
+                // Lieux enregistrés (Restaurants, Housing, Bars, Activities) – centrés, annotations en noir
                 HStack(spacing: 12) {
                     ForEach(Array(facts.enumerated()), id: \.offset) { _, fact in
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .center, spacing: 4) {
                             Text(fact.label)
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(.secondary)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(.black)
                             HStack(spacing: 6) {
-                                Image(systemName: fact.icon)
-                                    .font(.system(size: 13, weight: .semibold))
+                                Text(fact.emoji)
+                                    .font(.system(size: 16))
                                 Text(fact.value)
                                     .font(.system(size: 14, weight: .semibold))
                                     .lineLimit(1)
@@ -1763,57 +1747,30 @@ struct ExploreView: View {
                             }
                             .foregroundStyle(.primary)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(maxWidth: .infinity)
                     }
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 16)
 
-                // Galerie images avec overlay capsule
-                ZStack(alignment: .bottom) {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 10) {
-                            ForEach(images, id: \.self) { imageUrl in
-                                markerCitySheetImageThumb(url: imageUrl)
-                                    .frame(width: 140, height: 100)
-                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            }
+                // Galerie images (sous les annotations, photos plus grandes)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(images, id: \.self) { imageUrl in
+                            markerCitySheetImageThumb(url: imageUrl)
+                                .frame(width: 200, height: 150)
+                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                         }
-                        .padding(.horizontal, 20)
-                    }
-                    .frame(height: 100)
-
-                    // Overlay capsule (+, ☆, ...)
-                    HStack(spacing: 16) {
-                        Button(action: {}) {
-                            Image(systemName: "plus")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(.white)
-                        }
-                        .buttonStyle(.plain)
-                        Button(action: {}) {
-                            Image(systemName: "star")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(.white)
-                        }
-                        .buttonStyle(.plain)
-                        Button(action: {}) {
-                            Image(systemName: "ellipsis")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(.white)
-                        }
-                        .buttonStyle(.plain)
                     }
                     .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                    .background(Color.black.opacity(0.35), in: Capsule())
-                    .padding(.bottom, 12)
                 }
-                .padding(.bottom, 8)
+                .frame(height: 150)
+                .padding(.bottom, 16)
 
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity)
+            .padding(.top, 28)
         }
 
         private func markerCitySheetImageThumb(url: String) -> some View {
@@ -1828,7 +1785,9 @@ struct ExploreView: View {
                         }
                     }
                 } else {
-                    Color(.systemGray4)
+                    Image(cityAssetName(from: url))
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
                 }
             }
         }
@@ -1879,45 +1838,29 @@ struct ExploreView: View {
             let guides = Array((nearbySpots(for: city).isEmpty ? spots : nearbySpots(for: city)).prefix(4))
 
             return VStack(alignment: .leading, spacing: 24) {
-                HStack(spacing: 12) {
-                    Button(action: onExplore) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "arrow.turn.up.right")
-                                .font(.system(size: 16, weight: .bold))
-                            Text("Itinéraire")
-                                .font(.system(size: 16, weight: .bold))
-                        }
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(Color.blue, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                Button(action: onExplore) {
+                    HStack(spacing: 8) {
+                        Text("Explore this city")
+                            .font(.system(size: 16, weight: .semibold))
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 14, weight: .semibold))
                     }
-                    .buttonStyle(.plain)
-
-                    Button(action: {}) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "arrow.down.circle")
-                                .font(.system(size: 16, weight: .bold))
-                            Text("Télécharger")
-                                .font(.system(size: 16, weight: .bold))
-                        }
-                        .foregroundStyle(Color.blue)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Color.appAccent, in: Capsule())
                 }
+                .buttonStyle(.plain)
 
                 HStack(spacing: 12) {
                     ForEach(Array(facts.enumerated()), id: \.offset) { _, fact in
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .center, spacing: 4) {
                             Text(fact.label)
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(.secondary)
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(.black)
                             HStack(spacing: 6) {
-                                Image(systemName: fact.icon)
-                                    .font(.system(size: 14, weight: .semibold))
+                                Text(fact.emoji)
+                                    .font(.system(size: 16))
                                 Text(fact.value)
                                     .font(.system(size: 15, weight: .semibold))
                                     .lineLimit(1)
@@ -1925,7 +1868,7 @@ struct ExploreView: View {
                             }
                             .foregroundStyle(.primary)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(maxWidth: .infinity)
                     }
                 }
 
@@ -1938,14 +1881,14 @@ struct ExploreView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Informations")
+                    Text("Information")
                         .font(.system(size: 20, weight: .bold))
                     Text(markerCityLongDescription(for: city))
                         .font(.system(size: 15, weight: .regular))
                         .foregroundStyle(.primary)
                         .fixedSize(horizontal: false, vertical: true)
                     if let wikiURL = markerCityWikipediaURL(for: city) {
-                        Link("Plus d'infos sur Wikipédia", destination: wikiURL)
+                        Link("More on Wikipedia", destination: wikiURL)
                             .font(.system(size: 14, weight: .medium))
                     }
                 }
@@ -2007,8 +1950,7 @@ struct ExploreView: View {
                     .padding(.top, 2)
                     .padding(.bottom, 20)
 
-                HStack(spacing: 12) {
-                    Button(action: {
+                Button(action: {
                         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
                             expandedMarkerCity = nil
                             selectedMarkerCity = nil
@@ -2019,46 +1961,31 @@ struct ExploreView: View {
                         }
                     }) {
                         HStack(spacing: 8) {
-                            Image(systemName: "arrow.turn.up.right")
-                                .font(.system(size: 18, weight: .bold))
-                            Text("Itinéraire")
-                                .font(.system(size: 18, weight: .bold))
+                            Text("Explore this city")
+                                .font(.system(size: 16, weight: .semibold))
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 14, weight: .semibold))
                         }
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 76)
-                        .background(Color.blue, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                        .padding(.vertical, 14)
+                        .background(Color.appAccent, in: Capsule())
                     }
                     .buttonStyle(.plain)
-
-                    Button(action: {}) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "arrow.down.circle")
-                                .font(.system(size: 18, weight: .bold))
-                            Text("Télécharger")
-                                .font(.system(size: 18, weight: .bold))
-                        }
-                        .foregroundStyle(Color.blue)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 76)
-                        .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 20)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
 
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 24) {
                         HStack(spacing: 12) {
                             ForEach(Array(facts.enumerated()), id: \.offset) { _, fact in
-                                VStack(alignment: .leading, spacing: 4) {
+                                VStack(alignment: .center, spacing: 4) {
                                     Text(fact.label)
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundStyle(.secondary)
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundStyle(.black)
                                     HStack(spacing: 6) {
-                                        Image(systemName: fact.icon)
-                                            .font(.system(size: 15, weight: .semibold))
+                                        Text(fact.emoji)
+                                            .font(.system(size: 18))
                                         Text(fact.value)
                                             .font(.system(size: 17, weight: .semibold))
                                             .lineLimit(1)
@@ -2066,7 +1993,7 @@ struct ExploreView: View {
                                     }
                                     .foregroundStyle(.primary)
                                 }
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .frame(maxWidth: .infinity)
                             }
                         }
 
@@ -2080,14 +2007,14 @@ struct ExploreView: View {
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Informations")
+                            Text("Information")
                                 .font(.system(size: 24, weight: .bold))
                             Text(markerCityLongDescription(for: city))
                                 .font(.system(size: 16, weight: .regular))
                                 .foregroundStyle(.primary)
                                 .fixedSize(horizontal: false, vertical: true)
                             if let wikiURL = markerCityWikipediaURL(for: city) {
-                                Link("Plus d’infos sur Wikipédia", destination: wikiURL)
+                                Link("More on Wikipedia", destination: wikiURL)
                                     .font(.system(size: 15, weight: .medium))
                             }
                         }
@@ -2138,81 +2065,54 @@ struct ExploreView: View {
             .background(Color.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
 
-        private func markerCityFacts(for city: CityWithRecommendations) -> [(icon: String, label: String, value: String)] {
-            switch city.name.lowercased() {
-            case "paris":
-                return [
-                    ("person.3.fill", "Population", "2 148 271"),
-                    ("arrow.up.right", "Altitude", "28 m"),
-                    ("square.dashed", "Superficie", "2 853 km²"),
-                    ("square.grid.3x3.fill", "Densité", "753 /km²"),
-                ]
-            case "lisbon":
-                return [
-                    ("person.3.fill", "Population", "545 796"),
-                    ("arrow.up.right", "Altitude", "2 m"),
-                    ("square.dashed", "Superficie", "100 km²"),
-                    ("square.grid.3x3.fill", "Densité", "5 458 /km²"),
-                ]
-            case "montreal":
-                return [
-                    ("person.3.fill", "Population", "1 780 000"),
-                    ("arrow.up.right", "Altitude", "233 m"),
-                    ("square.dashed", "Superficie", "431 km²"),
-                    ("square.grid.3x3.fill", "Densité", "4 129 /km²"),
-                ]
-            case "new york":
-                return [
-                    ("person.3.fill", "Population", "8 804 190"),
-                    ("arrow.up.right", "Altitude", "10 m"),
-                    ("square.dashed", "Superficie", "1 214 km²"),
-                    ("square.grid.3x3.fill", "Densité", "7 252 /km²"),
-                ]
-            case "tokyo":
-                return [
-                    ("person.3.fill", "Population", "13 960 000"),
-                    ("arrow.up.right", "Altitude", "40 m"),
-                    ("square.dashed", "Superficie", "2 194 km²"),
-                    ("square.grid.3x3.fill", "Densité", "6 363 /km²"),
-                ]
-            case "barcelona":
-                return [
-                    ("person.3.fill", "Population", "1 636 732"),
-                    ("arrow.up.right", "Altitude", "12 m"),
-                    ("square.dashed", "Superficie", "101 km²"),
-                    ("square.grid.3x3.fill", "Densité", "16 206 /km²"),
-                ]
-            case "bali":
-                return [
-                    ("person.3.fill", "Population", "4 225 000"),
-                    ("arrow.up.right", "Altitude", "0 m"),
-                    ("square.dashed", "Superficie", "5 780 km²"),
-                    ("square.grid.3x3.fill", "Densité", "731 /km²"),
-                ]
-            default:
-                return [
-                    ("person.3.fill", "Population", "n/a"),
-                    ("arrow.up.right", "Altitude", "n/a"),
-                    ("square.dashed", "Superficie", "n/a"),
-                    ("square.grid.3x3.fill", "Densité", "n/a"),
-                ]
+        private func markerCityFacts(for city: CityWithRecommendations) -> [(emoji: String, label: String, value: String)] {
+            let cityLocation = CLLocation(latitude: city.coordinate.latitude, longitude: city.coordinate.longitude)
+            let nearby = spots.filter { spot in
+                CLLocation(latitude: spot.lat, longitude: spot.lng).distance(from: cityLocation) <= 120_000
             }
+            func categoryId(for type: String) -> String? {
+                let raw = type.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                if raw.contains("restaurant") { return "restaurants" }
+                if raw.contains("cafe") { return "cafes" }
+                if raw.contains("bar") { return "bars" }
+                if raw.contains("activity") { return "activities" }
+                if raw.contains("room") || raw.contains("place") || raw.contains("housing") { return "housing" }
+                return "housing"
+            }
+            var counts: [String: Int] = [:]
+            for spot in nearby {
+                if let id = categoryId(for: spot.type) {
+                    counts[id, default: 0] += 1
+                }
+            }
+            let restaurants = counts["restaurants", default: 0] + counts["cafes", default: 0]
+            let logements = counts["housing", default: 0]
+            let bars = counts["bars", default: 0]
+            let activites = counts["activities", default: 0]
+            return [
+                ("🍴", "Restaurants", "\(restaurants)"),
+                ("🏠", "Housing", "\(logements)"),
+                ("🍹", "Bars", "\(bars)"),
+                ("🎯", "Activities", "\(activites)"),
+            ]
         }
 
         private func markerCityLongDescription(for city: CityWithRecommendations) -> String {
             switch city.name.lowercased() {
             case "paris":
-                return "Paris est la capitale de la France et une ville mondiale majeure. Son patrimoine, ses quartiers et sa culture en font une destination incontournable."
+                return "Paris is the capital of France and a major global city. Its heritage, neighbourhoods and culture make it an unmissable destination."
             case "lisbon":
-                return "Lisbonne est bâtie sur sept collines au bord du Tage. La ville combine architecture historique, gastronomie locale et vie nocturne animée."
+                return "Lisbon is built on seven hills along the Tagus. The city combines historic architecture, local cuisine and lively nightlife."
             case "montreal":
-                return "Montréal est une métropole bilingue réputée pour ses festivals, sa scène culinaire et ses quartiers créatifs."
+                return "Montreal is a bilingual metropolis known for its festivals, food scene and creative neighbourhoods."
             case "new york":
-                return "New York est l’un des centres culturels et économiques les plus influents du monde, avec une énergie urbaine unique."
+                return "New York is one of the world's most influential cultural and economic centres, with a unique urban energy."
             case "tokyo":
-                return "Tokyo mêle tradition et innovation, entre temples historiques, quartiers modernes et gastronomie de référence."
+                return "Tokyo blends tradition and innovation, from historic temples to modern districts and world-class cuisine."
             case "barcelona":
-                return "Barcelone est une ville méditerranéenne vibrante, connue pour son architecture, ses plages et son ambiance conviviale."
+                return "Barcelona is a vibrant Mediterranean city known for its architecture, beaches and welcoming atmosphere."
+            case "bali":
+                return "Bali is an island destination famous for its temples, beaches, rice terraces and wellness culture."
             default:
                 return "A great city to explore with curated recommendations."
             }
@@ -2220,7 +2120,7 @@ struct ExploreView: View {
 
         private func markerCityWikipediaURL(for city: CityWithRecommendations) -> URL? {
             let name = city.name.replacingOccurrences(of: " ", with: "_")
-            return URL(string: "https://fr.wikipedia.org/wiki/\(name)")
+            return URL(string: "https://en.wikipedia.org/wiki/\(name)")
         }
 
         /// Counts spots near the city by category (housing, food, drinks, etc.) for the card recap.
@@ -2266,83 +2166,32 @@ struct ExploreView: View {
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 12)
                 .padding(.bottom, 12)
             }
         }
 
         private func cityCardView(city: CityWithRecommendations) -> some View {
-            let counts = citySpotCounts(for: city)
-            let total = counts.map(\.count).reduce(0, +)
-
-            return ZStack(alignment: .bottomLeading) {
+            ZStack {
                 cityImageView(for: city, fallback: Color(.systemGray5))
                     .frame(height: 170)
                     .frame(maxWidth: .infinity)
                     .clipped()
 
                 LinearGradient(
-                    colors: [Color.black.opacity(0.6), Color.black.opacity(0.0)],
-                    startPoint: .bottom,
-                    endPoint: .top
+                    colors: [Color.black.opacity(0.4), Color.black.opacity(0.0), Color.black.opacity(0.5)],
+                    startPoint: .top,
+                    endPoint: .bottom
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
 
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(city.name)
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                        .shadow(color: .black.opacity(0.35), radius: 2, y: 1)
-
-                    if total > 0 {
-                        Text("\(total) lieux sauvegardés")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.95))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(.ultraThinMaterial, in: Capsule())
-                            .overlay(Capsule().strokeBorder(Color.white.opacity(0.25), lineWidth: 1))
-
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(Array(counts.enumerated()), id: \.offset) { _, item in
-                                    HStack(spacing: 5) {
-                                        Text(item.emoji)
-                                            .font(.system(size: 12))
-                                        Text("\(item.count)")
-                                            .font(.system(size: 13, weight: .semibold))
-                                            .foregroundStyle(.white)
-                                        Text(item.label)
-                                            .font(.system(size: 12, weight: .medium))
-                                            .foregroundStyle(.white.opacity(0.9))
-                                    }
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
-                                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                            .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
-                                    )
-                                }
-                            }
-                            .padding(.trailing, 4)
-                        }
-                        .frame(height: 36)
-                    } else {
-                        HStack(spacing: 6) {
-                            Text("\(city.recommendationCount) recommandations")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(.white)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(.ultraThinMaterial, in: Capsule())
-                        .overlay(Capsule().strokeBorder(Color.white.opacity(0.25), lineWidth: 1))
-                    }
-                }
-                .padding(16)
+                Text(city.name.uppercased())
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .multilineTextAlignment(.center)
+                    .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
             }
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
