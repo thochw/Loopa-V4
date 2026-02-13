@@ -796,12 +796,13 @@ struct ExploreView: View {
             "housing": "🏠",
         ]
 
+        /// Couleurs des pins = fond pastel des pills (meta.tint.opacity(0.18) sur blanc)
         private static let categoryColors: [String: UIColor] = [
-            "bars":        UIColor(red: 1.00, green: 0.58, blue: 0.00, alpha: 1), // orange
-            "restaurants": UIColor(red: 0.96, green: 0.26, blue: 0.40, alpha: 1), // rose/rouge
-            "cafes":       UIColor(red: 0.72, green: 0.53, blue: 0.38, alpha: 1), // marron/warm
-            "activities":  UIColor(red: 0.35, green: 0.56, blue: 1.00, alpha: 1), // bleu
-            "housing":     UIColor(red: 0.30, green: 0.78, blue: 0.47, alpha: 1), // vert
+            "bars":        UIColor(red: 254/255.0, green: 234/255.0, blue: 216/255.0, alpha: 1), // #feead8
+            "restaurants": UIColor(red: 1, green: 217/255.0, blue: 224/255.0, alpha: 1),         // #ffd9e0
+            "cafes":       UIColor(red: 218/255.0, green: 245/255.0, blue: 225/255.0, alpha: 1), // #daf5e1
+            "activities":  UIColor(red: 247/255.0, green: 218/255.0, blue: 249/255.0, alpha: 1), // #f7daf9
+            "housing":     UIColor(red: 0.88, green: 0.92, blue: 1.00, alpha: 1),               // pastel blue (Housing)
         ]
 
         private static func spotCategoryId(for type: String) -> String {
@@ -1071,6 +1072,20 @@ struct ExploreView: View {
         @State private var searchText: String = ""
         @StateObject private var tripLocationSearcher = TripLocationSearcher()
         @FocusState private var isSearchFocused: Bool
+        @Namespace private var segmentNamespace
+        @State private var showCityDetailFilterSheet = false
+        // Spot filters
+        @State private var spotMinRecommendations: Int = 1
+        // Housing filters
+        @State private var cityDetailBudgetMin: Int = 0
+        @State private var cityDetailBudgetMax: Int = 2500
+        @State private var cityDetailHousingType: String = "All"
+        @State private var cityDetailAvailableFrom: Date? = nil
+        @State private var cityDetailScrollMinY: CGFloat = 0
+        @State private var cityDetailMinRating: Int? = nil // nil = All, 1...5 = minimum stars
+        @State private var housingFilterSearchText: String = ""
+        @State private var cityDetailAvailabilityNow: Bool? = nil // nil = no filter, true = Now, false = Later
+        @State private var showAddPinSheet = false
 
         private let placeCategories: [(id: String, emoji: String, label: String)] = [
             ("bars", "🍹", "Bars"),
@@ -1198,9 +1213,33 @@ struct ExploreView: View {
                             .compositingGroup()  // flatten material + children into one composited layer
                     }
 
+                    // Bouton + au-dessus de la bottom sheet, à droite (ajouter un pin) — visible quand une ville est sélectionnée
+                    if selectedCity != nil {
+                        VStack {
+                            Spacer()
+                            HStack {
+                                Spacer()
+                                Button(action: { showAddPinSheet = true }) {
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 22, weight: .semibold))
+                                        .foregroundStyle(.white)
+                                        .frame(width: 48, height: 48)
+                                        .background(Color.appAccent, in: Circle())
+                                        .shadow(color: Color.appAccent.opacity(0.4), radius: 8, y: 4)
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.trailing, 20)
+                                .padding(.bottom, geometry.size.height * 0.53 - 24)
+                            }
+                        }
+                        .allowsHitTesting(true)
+                    }
                 }
             }
             .ignoresSafeArea(edges: .bottom)
+            .sheet(isPresented: $showAddPinSheet) {
+                addPinPlaceholderSheet
+            }
             .sheet(item: $selectedSpotForDetail) { spot in
                 HousingDetailSheet(spot: spot, onClose: { selectedSpotForDetail = nil })
             }
@@ -1217,6 +1256,9 @@ struct ExploreView: View {
                     globeZoom = 9
                     sheetState = .full
                 }
+            }
+            .sheet(isPresented: $showCityDetailFilterSheet) {
+                cityDetailFilterSheetContent
             }
             .onChange(of: selectedCity) { _, new in
                 hideTabBar = (new != nil || selectedMarkerCity != nil)
@@ -1244,7 +1286,7 @@ struct ExploreView: View {
 
         /// Computes the sheet's Y offset with rubber-banding at edges.
         private func sheetOffsetY(geometry: GeometryProxy) -> CGFloat {
-            let partialH = geometry.size.height * (selectedCity == nil ? 0.32 : 0.33)
+            let partialH = geometry.size.height * (selectedCity == nil ? 0.32 : 0.40)
             let floatingBottomGap: CGFloat = selectedCity != nil ? 12 : 0
             let partialY = geometry.size.height - partialH - floatingBottomGap
             let fullY: CGFloat = -geometry.safeAreaInsets.top
@@ -1261,7 +1303,7 @@ struct ExploreView: View {
 
         /// 0 = partial position, 1 = fully expanded. Tracks live drag.
         private func sheetFraction(geometry: GeometryProxy) -> CGFloat {
-            let partialH = geometry.size.height * (selectedCity == nil ? 0.32 : 0.33)
+            let partialH = geometry.size.height * (selectedCity == nil ? 0.32 : 0.40)
             let floatingBottomGap: CGFloat = selectedCity != nil ? 12 : 0
             let partialY = geometry.size.height - partialH - floatingBottomGap
             let fullY: CGFloat = -geometry.safeAreaInsets.top
@@ -1284,11 +1326,44 @@ struct ExploreView: View {
             isSearchFocused = false
         }
 
+        private var addPinPlaceholderSheet: some View {
+            NavigationStack {
+                VStack(spacing: 20) {
+                    Image(systemName: "mappin.circle.fill")
+                        .font(.system(size: 56))
+                        .foregroundStyle(Color.appAccent)
+                    Text("Add a place on the map")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .multilineTextAlignment(.center)
+                    Text("Tap on the map to drop a pin, or add details below.")
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                    Spacer(minLength: 0)
+                }
+                .padding(.top, 40)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(.systemGroupedBackground))
+                .navigationTitle("Add a pin")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Close") {
+                            showAddPinSheet = false
+                        }
+                        .foregroundStyle(Color.appAccent)
+                    }
+                }
+            }
+        }
+
         private var cityPickerSheet: some View {
             NavigationStack {
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 0) {
-                        Text("Choisis une ville")
+                        Text("Choose a city")
                             .font(.system(size: 15, weight: .medium))
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .center)
@@ -1313,7 +1388,7 @@ struct ExploreView: View {
                                         Text(city.name)
                                             .font(.system(size: 17, weight: .semibold))
                                             .foregroundStyle(.primary)
-                                        Text("\(city.recommendationCount) recommandations")
+                                        Text("\(city.recommendationCount) recommendations")
                                             .font(.system(size: 13, weight: .medium))
                                             .foregroundStyle(.secondary)
                                     }
@@ -1336,11 +1411,11 @@ struct ExploreView: View {
                     .padding(.bottom, 24)
                 }
                 .background(Color(.systemGroupedBackground))
-                .navigationTitle("Changer de ville")
+                .navigationTitle("Change city")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Fermer") {
+                        Button("Close") {
                             showCityPicker = false
                         }
                         .font(.system(size: 16, weight: .medium))
@@ -1601,7 +1676,7 @@ struct ExploreView: View {
                 alignment: .center
             )
             .frame(
-                height: selectedCity != nil ? geometry.size.height * 0.33 : nil,
+                height: selectedCity != nil ? geometry.size.height * 0.40 : nil,
                 alignment: .top
             )
             .environment(\.colorScheme, .light)
@@ -2343,131 +2418,197 @@ struct ExploreView: View {
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
 
-        /// Pills de catégories visibles selon le tab actif
+        /// Pills de catégories visibles selon le tab actif (en Housing, on n’affiche pas la pill Housing)
         private var visiblePlaceCategories: [(id: String, emoji: String, label: String)] {
             if cityDetailTab == .housing {
-                return placeCategories.filter { $0.id == "housing" }
-            } else {
-                return placeCategories.filter { $0.id != "housing" }
+                return [] // pas de pill en mode Housing
             }
+            return placeCategories.filter { $0.id != "housing" }
         }
 
-        /// Spots filtrés selon le tab actif et la catégorie sélectionnée
+        /// Spots filtrés selon le tab actif, la catégorie et les filtres (recos / budget, type, date)
         private var cityDetailFilteredSpots: [HousingSpot] {
             guard let city = selectedCity else { return [] }
             let allNearby = markerCityFilteredSpots(for: city)
+            let byTab: [HousingSpot]
             if cityDetailTab == .housing {
-                return allNearby.filter { spot in
+                byTab = allNearby.filter { spot in
                     let t = spot.type.lowercased()
                     return t.contains("room") || t.contains("place") || t.contains("housing") || t.contains("entire") || t.contains("private")
                 }
             } else {
-                // Spots = tout sauf housing
                 let filtered = allNearby.filter { spot in
                     let t = spot.type.lowercased()
                     return !(t.contains("room") || t.contains("place") || t.contains("housing") || t.contains("entire") || t.contains("private"))
                 }
-                return filtered.isEmpty ? allNearby : filtered
+                byTab = filtered.isEmpty ? allNearby : filtered
+            }
+            // Apply Spot filters: minimum number of recommendations
+            if cityDetailTab == .spots {
+                return byTab.filter { recommendationAvatars(for: $0).count >= spotMinRecommendations }
+            }
+            // Apply Housing filters: budget, type, minimum rating
+            return byTab.filter { spot in
+                if spot.price < cityDetailBudgetMin || spot.price > cityDetailBudgetMax { return false }
+                switch cityDetailHousingType {
+                case "Room":
+                    if !spot.type.lowercased().contains("room") { return false }
+                case "Entire place":
+                    if !(spot.type.lowercased().contains("entire") || spot.type.lowercased().contains("place")) { return false }
+                default: break
+                }
+                if let minR = cityDetailMinRating, Int(spot.rating) < minR { return false }
+                if let now = cityDetailAvailabilityNow {
+                    if now {
+                        if !spot.isAvailableNow { return false }
+                    } else {
+                        if spot.isAvailableNow { return false }
+                        if let from = cityDetailAvailableFrom, let avail = spot.availableDate, avail > from { return false } // pas dispo avant la date choisie
+                    }
+                }
+                return true
+            }
+        }
+
+        private struct ScrollContentMinYKey: PreferenceKey {
+            static var defaultValue: CGFloat { 0 }
+            static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+        }
+
+        private func cityDetailPillsView() -> some View {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(visiblePlaceCategories, id: \.id) { cat in
+                        Button(action: {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                selectedPlaceCategory = selectedPlaceCategory == cat.id ? nil : cat.id
+                            }
+                        }) {
+                            HStack(spacing: 5) {
+                                Text(cat.emoji)
+                                    .font(.system(size: 13))
+                                Text(cat.label)
+                                    .font(.system(size: 13, weight: .semibold))
+                            }
+                            .foregroundStyle(.primary)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(Color.white, in: Capsule())
+                            .overlay(
+                                Capsule()
+                                    .strokeBorder(
+                                        selectedPlaceCategory == cat.id ? Color.appAccent : Color.clear,
+                                        lineWidth: 2
+                                    )
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 20)
             }
         }
 
         private func cityDetailContent(geometry: GeometryProxy) -> some View {
-            VStack(spacing: 8) {
-                // Toggle discret centré + filtre à droite
-                ZStack(alignment: .center) {
-                    HStack(spacing: 4) {
-                        ForEach(CityDetailTab.allCases, id: \.self) { tab in
-                            Button(action: {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                    cityDetailTab = tab
-                                    selectedPlaceCategory = nil
+            let contentWidth = geometry.size.width - 40
+            let showStickyPills = !visiblePlaceCategories.isEmpty && cityDetailScrollMinY < -52
+            return ZStack(alignment: .top) {
+                ScrollView(.vertical, showsIndicators: true) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        // Toggle Spot / Housing + filtre (disparaissent au scroll)
+                        ZStack(alignment: .center) {
+                            HStack(spacing: 0) {
+                                ForEach(CityDetailTab.allCases, id: \.self) { tab in
+                                    Button(action: {
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                            cityDetailTab = tab
+                                            selectedPlaceCategory = nil
+                                        }
+                                    }) {
+                                        Text(tab.rawValue)
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundStyle(cityDetailTab == tab ? .white : Color(.systemGray))
+                                            .padding(.horizontal, 14)
+                                            .padding(.vertical, 6)
+                                            .background(
+                                                Group {
+                                                    if cityDetailTab == tab {
+                                                        Capsule()
+                                                            .fill(Color.appAccent)
+                                                            .matchedGeometryEffect(id: "segment", in: segmentNamespace)
+                                                    }
+                                                }
+                                            )
+                                    }
+                                    .buttonStyle(.plain)
                                 }
-                            }) {
-                                Text(tab.rawValue)
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundStyle(cityDetailTab == tab ? .primary : .tertiary)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 6)
-                                    .background(
-                                        cityDetailTab == tab
-                                            ? Color(.systemGray6)
-                                            : Color.clear,
-                                        in: Capsule()
-                                    )
                             }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(2)
-                    .background(Color(.systemGray6).opacity(0.5), in: Capsule())
+                            .padding(2)
+                            .background(Color(.systemGray5).opacity(0.5), in: Capsule())
+                            .overlay(Capsule().strokeBorder(Color.black.opacity(0.08), lineWidth: 1))
 
-                    HStack {
-                        Spacer(minLength: 0)
-                        Button(action: { /* TODO: filtres */ }) {
-                            Image(systemName: "line.3.horizontal.decrease.circle")
-                                .font(.system(size: 20, weight: .regular))
-                                .foregroundStyle(.tertiary)
-                                .symbolRenderingMode(.hierarchical)
+                            HStack {
+                                Spacer(minLength: 0)
+                                Button(action: { showCityDetailFilterSheet = true }) {
+                                    Image(systemName: "slider.horizontal.3")
+                                        .font(.system(size: 20, weight: .medium))
+                                        .foregroundStyle(Color(.systemGray))
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.trailing, 20)
+                            }
                         }
-                        .buttonStyle(.plain)
-                        .padding(.trailing, 20)
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
 
-                // Pills de catégories
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(visiblePlaceCategories, id: \.id) { cat in
-                    Button(action: {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    selectedPlaceCategory = selectedPlaceCategory == cat.id ? nil : cat.id
-                                }
-                            }) {
-                                HStack(spacing: 6) {
-                                    Text(cat.emoji)
-                                    Text(cat.label)
-                                        .font(.system(size: 15, weight: .semibold))
-                                }
-                                .foregroundStyle(.primary)
-                                .padding(.horizontal, 18)
-                                .padding(.vertical, 12)
-                                .background(Color.white, in: Capsule())
-                                .overlay(
-                                    Capsule()
-                                        .strokeBorder(
-                                            selectedPlaceCategory == cat.id ? Color.appAccent : Color.clear,
-                                            lineWidth: 2
-                                        )
+                        // Pills dans le scroll (Bars, Restaurants, etc.)
+                        if !visiblePlaceCategories.isEmpty {
+                            cityDetailPillsView()
+                                .padding(.top, 4)
+                                .padding(.bottom, 0)
+                        }
+
+                        // Liste de lieux empilés verticalement
+                        VStack(spacing: 10) {
+                            ForEach(cityDetailFilteredSpots) { spot in
+                                recommendedPlaceRow(
+                                    spot: spot,
+                                    cardWidth: contentWidth
                                 )
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 4)
+                        .padding(.bottom, 20)
                     }
-                    .buttonStyle(.plain)
-                }
-            }
-                    .padding(.horizontal, 20)
-        }
-                .padding(.top, 4)
-                .padding(.bottom, 2)
-
-                // Liste de spots
-                ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                        ForEach(cityDetailFilteredSpots) { spot in
-                            recommendedPlaceRow(
-                                spot: spot,
-                                cardWidth: min(geometry.size.width - 72, 370)
+                    .background(
+                        GeometryReader { g in
+                            Color.clear.preference(
+                                key: ScrollContentMinYKey.self,
+                                value: g.frame(in: .named("cityDetailScroll")).minY
                             )
                         }
-                    }
-                    .scrollTargetLayout()
-                    .padding(.horizontal, 20)
+                    )
                 }
-                .scrollTargetBehavior(.viewAligned)
-                .padding(.top, 2)
-                .frame(height: 152)
-                .padding(.bottom, 12)
+                .coordinateSpace(name: "cityDetailScroll")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .onPreferenceChange(ScrollContentMinYKey.self) { cityDetailScrollMinY = $0 }
+
+                // Header sticky : pills seules quand on a scrollé (toggle + filtre disparus)
+                if showStickyPills {
+                    cityDetailPillsView()
+                        .padding(.vertical, 10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.white)
+                        .overlay(
+                            Rectangle()
+                                .fill(Color.black.opacity(0.08))
+                                .frame(height: 1),
+                            alignment: .bottom
+                        )
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
 
         private func recommendedPlaceRow(spot: HousingSpot, cardWidth: CGFloat? = nil) -> some View {
@@ -2548,6 +2689,403 @@ struct ExploreView: View {
                     .stroke(Color.black.opacity(0.04), lineWidth: 1)
             )
             .onTapGesture { selectedSpotForDetail = spot }
+        }
+
+        private var cityDetailFilterSheetContent: some View {
+            NavigationStack {
+                Group {
+                    if cityDetailTab == .spots {
+                        spotFilterContent
+                            .navigationTitle("Filters")
+                            .navigationBarTitleDisplayMode(.inline)
+                            .toolbar {
+                                ToolbarItem(placement: .cancellationAction) {
+                                    Button("Cancel") {
+                                        showCityDetailFilterSheet = false
+                                    }
+                                    .foregroundStyle(Color.appAccent)
+                                }
+                                ToolbarItem(placement: .confirmationAction) {
+                                    Button("Show \(cityDetailFilteredSpots.count) results") {
+                                        showCityDetailFilterSheet = false
+                                    }
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundStyle(Color.appAccent)
+                                }
+                            }
+                    } else {
+                        housingFilterContent
+                            .navigationBarHidden(true)
+                    }
+                }
+            }
+        }
+
+        private var spotFilterContent: some View {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 8) {
+                            Text("👥")
+                                .font(.system(size: 22))
+                            Text("Number of recommendations")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundStyle(.primary)
+                        }
+                        Text("Show only spots recommended by at least this many people.")
+                            .font(.system(size: 14, weight: .regular))
+                            .foregroundStyle(.secondary)
+                        HStack(spacing: 10) {
+                            ForEach([1, 2, 3], id: \.self) { count in
+                                let label = count == 3 ? "3+" : "\(count)"
+                                let isSelected = spotMinRecommendations == count
+                                Button(action: {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        spotMinRecommendations = count
+                                    }
+                                }) {
+                                    Text("\(label)")
+                                        .font(.system(size: 15, weight: .semibold))
+                                        .foregroundStyle(isSelected ? .white : .primary)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 12)
+                                        .background(
+                                            isSelected ? Color.appAccent : Color(.systemGray6),
+                                            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.systemGray6).opacity(0.5), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .padding(20)
+            }
+        }
+
+        private var housingFilterContent: some View {
+            let budgetMinDouble = Binding(
+                get: { Double(cityDetailBudgetMin) },
+                set: { cityDetailBudgetMin = Int(min(2500, max(0, $0))) }
+            )
+            let budgetMaxDouble = Binding(
+                get: { Double(cityDetailBudgetMax) },
+                set: { cityDetailBudgetMax = Int(min(2500, max(0, $0))) }
+            )
+            return VStack(spacing: 0) {
+                // Header : Close (X) | Find your place | Reset
+                HStack(spacing: 12) {
+                    Button(action: { showCityDetailFilterSheet = false }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 36, height: 36)
+                            .background(Color.appAccent, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(Color(.systemGray))
+                        TextField("Find your place", text: $housingFilterSearchText)
+                            .font(.system(size: 16, weight: .regular))
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .frame(maxWidth: .infinity)
+
+                    Button("Reset") {
+                        cityDetailBudgetMin = 0
+                        cityDetailBudgetMax = 2500
+                        cityDetailHousingType = "All"
+                        cityDetailMinRating = nil
+                        cityDetailAvailabilityNow = nil
+                        cityDetailAvailableFrom = nil
+                        housingFilterSearchText = ""
+                    }
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Color.appAccent)
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        // Type of housing — selected = black outline, white background
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "house.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(.primary)
+                                Text("Type of housing")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundStyle(.primary)
+                            }
+                            Text("What kind of place are you looking for?")
+                                .font(.system(size: 14, weight: .regular))
+                                .foregroundStyle(.secondary)
+                            HStack(spacing: 0) {
+                                ForEach([("All", "All types"), ("Room", "Room"), ("Entire place", "Entire place")], id: \.0) { value, label in
+                                    let isSelected = cityDetailHousingType == value
+                                    Button(action: {
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                            cityDetailHousingType = value
+                                        }
+                                    }) {
+                                        Text(label)
+                                            .font(.system(size: 14, weight: .bold))
+                                            .foregroundStyle(.primary)
+                                            .multilineTextAlignment(.center)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 12)
+                                            .background(
+                                                isSelected ? Color.white : Color.clear,
+                                                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                            )
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                    .strokeBorder(isSelected ? Color(hex: "222222") : Color.clear, lineWidth: 2)
+                                            )
+                                    }
+                                    .buttonStyle(.plain)
+                                    if value == "Room" {
+                                        Rectangle()
+                                            .fill(Color(.systemGray4))
+                                            .frame(width: 1)
+                                            .padding(.vertical, 8)
+                                    }
+                                }
+                            }
+                            .padding(4)
+                            .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        }
+
+                        // Monthly budget — slider + min/max pills
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "dollarsign.circle.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(.primary)
+                                Text("Monthly budget")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundStyle(.primary)
+                            }
+                            Text("Select your budget range.")
+                                .font(.system(size: 14, weight: .regular))
+                                .foregroundStyle(.secondary)
+                            BudgetRangeSliderView(
+                                minValue: budgetMinDouble,
+                                maxValue: budgetMaxDouble,
+                                range: 0...2500,
+                                step: 50
+                            )
+                            .frame(height: 44)
+                            HStack(spacing: 12) {
+                                Text("\(cityDetailBudgetMin) $CA")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundStyle(.primary)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 10)
+                                    .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                Spacer()
+                                Text(cityDetailBudgetMax >= 2500 ? "2,500+ $CA" : "\(cityDetailBudgetMax) $CA")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundStyle(.primary)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 10)
+                                    .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            }
+                        }
+
+                        // Minimum rating — All (red) + 1+ à 5+ avec étoiles
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "star.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(.yellow)
+                                Text("Minimum rating")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundStyle(.primary)
+                            }
+                            Text("Only show highly-rated places.")
+                                .font(.system(size: 14, weight: .regular))
+                                .foregroundStyle(.secondary)
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 10) {
+                                    Button(action: {
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                            cityDetailMinRating = nil
+                                        }
+                                    }) {
+                                        VStack(spacing: 6) {
+                                            Image(systemName: "sparkles")
+                                                .font(.system(size: 20))
+                                            Text("All")
+                                                .font(.system(size: 13, weight: .semibold))
+                                        }
+                                        .foregroundStyle(cityDetailMinRating == nil ? .white : .primary)
+                                        .frame(width: 60, height: 70)
+                                        .background(
+                                            cityDetailMinRating == nil ? Color.appAccent : Color.white,
+                                            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        )
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                                .strokeBorder(cityDetailMinRating == nil ? Color.clear : Color(.systemGray5), lineWidth: 1)
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+                                    ForEach(1...5, id: \.self) { rating in
+                                        let isSelected = cityDetailMinRating == rating
+                                        Button(action: {
+                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                                cityDetailMinRating = rating
+                                            }
+                                        }) {
+                                            VStack(spacing: 6) {
+                                                HStack(spacing: 2) {
+                                                    ForEach(0..<rating, id: \.self) { _ in
+                                                        Image(systemName: "star.fill")
+                                                            .font(.system(size: 10))
+                                                            .foregroundStyle(isSelected ? .white : .yellow)
+                                                    }
+                                                }
+                                                Text("\(rating)+")
+                                                    .font(.system(size: 13, weight: .semibold))
+                                            }
+                                            .foregroundStyle(isSelected ? .white : .primary)
+                                            .frame(width: 60, height: 70)
+                                            .background(
+                                                isSelected ? Color.appAccent : Color.white,
+                                                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            )
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                                    .strokeBorder(isSelected ? Color.clear : Color(.systemGray5), lineWidth: 1)
+                                            )
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                            }
+                        }
+
+                        // Availability — When do you need the place? (Now / Later)
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "calendar")
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(.primary)
+                                Text("Availability")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundStyle(.primary)
+                            }
+                            Text("When do you need the place?")
+                                .font(.system(size: 14, weight: .regular))
+                                .foregroundStyle(.secondary)
+                            VStack(spacing: 10) {
+                                Button(action: {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        cityDetailAvailabilityNow = true
+                                    }
+                                }) {
+                                    HStack(spacing: 12) {
+                                        Text("💃")
+                                            .font(.system(size: 22))
+                                        Text("Now")
+                                            .font(.system(size: 16, weight: .medium))
+                                            .foregroundStyle(.primary)
+                                        Spacer(minLength: 0)
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 14)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(Color.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                            .strokeBorder(cityDetailAvailabilityNow == true ? Color.appAccent : Color(.systemGray4), lineWidth: cityDetailAvailabilityNow == true ? 2 : 1)
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                                Button(action: {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        cityDetailAvailabilityNow = false
+                                        if cityDetailAvailableFrom == nil {
+                                            cityDetailAvailableFrom = Date()
+                                        }
+                                    }
+                                }) {
+                                    HStack(spacing: 12) {
+                                        Image(systemName: "calendar")
+                                            .font(.system(size: 20))
+                                            .foregroundStyle(.primary)
+                                        Text("Later")
+                                            .font(.system(size: 16, weight: .medium))
+                                            .foregroundStyle(.primary)
+                                        Spacer(minLength: 0)
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 14)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(Color.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                            .strokeBorder(cityDetailAvailabilityNow == false ? Color.appAccent : Color(.systemGray4), lineWidth: cityDetailAvailabilityNow == false ? 2 : 1)
+                                    )
+                                }
+                                .buttonStyle(.plain)
+
+                                // Calendrier quand "Later" est sélectionné
+                                if cityDetailAvailabilityNow == false {
+                                    DatePicker(
+                                        "Date",
+                                        selection: Binding(
+                                            get: { cityDetailAvailableFrom ?? Date() },
+                                            set: { cityDetailAvailableFrom = $0 }
+                                        ),
+                                        in: Date()...,
+                                        displayedComponents: .date
+                                    )
+                                    .datePickerStyle(.graphical)
+                                    .tint(Color.appAccent)
+                                    .padding(.top, 8)
+                                }
+                            }
+                        }
+                    }
+                    .padding(20)
+                    .padding(.bottom, 100)
+                }
+
+                // Bouton sticky en bas : Show X results
+                VStack(spacing: 0) {
+                    Rectangle()
+                        .fill(Color(.systemGray6))
+                        .frame(height: 1)
+                    Button(action: { showCityDetailFilterSheet = false }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 17, weight: .semibold))
+                            Text("Show \(cityDetailFilteredSpots.count) results")
+                                .font(.system(size: 17, weight: .semibold))
+                        }
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color(hex: "222222"), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                }
+                .background(Color.white)
+            }
         }
 
         private func recommendationCategory(for type: String) -> (label: String, icon: String, tint: Color) {
@@ -2646,7 +3184,7 @@ struct ExploreView: View {
         private var fullScreenCitiesList: some View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("Choisis une ville pour découvrir les recommandations")
+                    Text("Choose a city to discover recommendations")
                         .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .center)
@@ -2695,7 +3233,7 @@ struct ExploreView: View {
                         HStack(spacing: 6) {
                             Image(systemName: "list.bullet")
                                 .font(.system(size: 12, weight: .semibold))
-                            Text("\(city.recommendationCount) recommandations")
+                            Text("\(city.recommendationCount) recommendations")
                                 .font(.system(size: 13, weight: .semibold))
                         }
                         .foregroundStyle(.white)
@@ -2705,7 +3243,7 @@ struct ExploreView: View {
                     }
 
                     HStack(spacing: 8) {
-                        Text("Voir les recommandations")
+                        Text("See recommendations")
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(.black)
                         Image(systemName: "arrow.right")
