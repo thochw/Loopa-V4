@@ -268,12 +268,12 @@ struct ExploreView: View {
                         Text("🌍 \(trip.destination)")
                             .font(.app(size: 17, weight: .bold))
                             .foregroundStyle(.white)
-                        Spacer()
+                    Spacer()
                         Text(dateLabel.uppercased())
                             .font(.app(size: 12, weight: .semibold))
                             .foregroundStyle(.white.opacity(0.9))
-                    }
-
+                }
+                
                     Spacer()
 
                     HStack(spacing: 8) {
@@ -367,7 +367,7 @@ struct ExploreView: View {
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                } else {
+                            } else {
                     Color(.systemGray5)
                 }
             }
@@ -394,7 +394,7 @@ struct ExploreView: View {
                     .foregroundStyle(Color.appAccent)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(
+                                .background(
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
                             .strokeBorder(Color.appAccent.opacity(0.6), lineWidth: 1.2)
                     )
@@ -596,7 +596,7 @@ struct ExploreView: View {
                     Button(action: createTrip) {
                         Text("Add trip")
                             .font(.app(size: 16, weight: .semibold))
-                            .foregroundStyle(.white)
+                                        .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                             .background(canCreate ? Color.appAccent : Color(.systemGray4), in: Capsule())
@@ -700,7 +700,7 @@ struct ExploreView: View {
                             image
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
-                        } else {
+                                } else {
                             Color(.systemGray5)
                         }
                     }
@@ -773,17 +773,109 @@ struct ExploreView: View {
         }
     }
 
-    /// Vue globe terrestre pour la map Trips (tout le globe visible). Pas de rotation auto ; l'utilisateur peut faire bouger le globe. Pastilles rouges sur les villes avec recommandations.
+    /// Vue globe terrestre pour la map Trips. Pastilles rouges = villes. Petits pins jaunes avec emoji = spots par catégorie (🍹🍴🍵🎡🏠).
     private struct TripsGlobeView: UIViewRepresentable {
         static let styleURL = "mapbox://styles/thochw/cmkbqgty5004901rxgct4a0z6"
         var targetCoordinate: CLLocationCoordinate2D?
         var targetZoom: Double
         var cities: [CityWithRecommendations]
+        var spots: [HousingSpot] = []
         var cameraBottomPadding: CGFloat = 0
         var onCityTap: ((CityWithRecommendations) -> Void)?
+        var onSpotTap: ((HousingSpot) -> Void)?
 
         private static let fullGlobeCenter = CLLocationCoordinate2D(latitude: 20, longitude: -50)
         private static let fullGlobeZoom: Double = 0.5
+
+        /// Catégories, emojis et couleurs pour les pins
+        private static let categoryEmojis: [String: String] = [
+            "bars": "🍹",
+            "restaurants": "🍴",
+            "cafes": "🍵",
+            "activities": "🎡",
+            "housing": "🏠",
+        ]
+
+        private static let categoryColors: [String: UIColor] = [
+            "bars":        UIColor(red: 1.00, green: 0.58, blue: 0.00, alpha: 1), // orange
+            "restaurants": UIColor(red: 0.96, green: 0.26, blue: 0.40, alpha: 1), // rose/rouge
+            "cafes":       UIColor(red: 0.72, green: 0.53, blue: 0.38, alpha: 1), // marron/warm
+            "activities":  UIColor(red: 0.35, green: 0.56, blue: 1.00, alpha: 1), // bleu
+            "housing":     UIColor(red: 0.30, green: 0.78, blue: 0.47, alpha: 1), // vert
+        ]
+
+        private static func spotCategoryId(for type: String) -> String {
+            let raw = type.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if raw.contains("restaurant") { return "restaurants" }
+            if raw.contains("cafe") { return "cafes" }
+            if raw.contains("bar") { return "bars" }
+            if raw.contains("activity") { return "activities" }
+            return "housing"
+        }
+
+        /// Pin goutte d'eau (cercle complet + pointe en bas) avec emoji et couleur
+        static func categoryPinImage(emoji: String, color: UIColor, height: CGFloat = 48) -> UIImage {
+            let circleDiameter: CGFloat = height * 0.70
+            let tipHeight: CGFloat = height * 0.30
+            let padding: CGFloat = 4                       // espace pour l'ombre
+            let borderWidth: CGFloat = 3.0
+            let totalW = circleDiameter + padding * 2
+            let totalH = circleDiameter + tipHeight + padding * 2
+            let centerX = totalW / 2
+            let circleCenter = CGPoint(x: centerX, y: padding + circleDiameter / 2)
+            let radius = circleDiameter / 2
+
+            // Angle où le cercle rejoint la pointe (~140° et ~40°)
+            let tipAngle: CGFloat = .pi * 0.38             // ouverture de la pointe
+            let leftAngle: CGFloat = .pi / 2 + tipAngle    // ~130°
+            let rightAngle: CGFloat = .pi / 2 - tipAngle   // ~50°
+            let tipPoint = CGPoint(x: centerX, y: padding + circleDiameter + tipHeight - 2)
+
+            func makeDropPath(r: CGFloat, center: CGPoint, tip: CGPoint) -> UIBezierPath {
+                let path = UIBezierPath()
+                // Arc : du côté droit en bas, autour du haut, jusqu'au côté gauche en bas
+                path.addArc(withCenter: center, radius: r, startAngle: rightAngle, endAngle: leftAngle, clockwise: false)
+                // Lignes vers la pointe
+                path.addLine(to: tip)
+                path.close()
+                return path
+            }
+
+            let renderer = UIGraphicsImageRenderer(size: CGSize(width: totalW, height: totalH))
+            return renderer.image { ctx in
+                let gc = ctx.cgContext
+
+                // Ombre
+                gc.saveGState()
+                gc.setShadow(offset: CGSize(width: 0, height: 2), blur: 5, color: UIColor.black.withAlphaComponent(0.3).cgColor)
+                let outerPath = makeDropPath(r: radius, center: circleCenter, tip: tipPoint)
+                UIColor.white.setFill()
+                outerPath.fill()
+                gc.restoreGState()
+
+                // Intérieur couleur
+                let innerRadius = radius - borderWidth
+                let innerTip = CGPoint(x: centerX, y: tipPoint.y - borderWidth * 1.5)
+                let innerPath = makeDropPath(r: innerRadius, center: circleCenter, tip: innerTip)
+                color.setFill()
+                innerPath.fill()
+
+                // Emoji centré dans le cercle
+                let fontSize: CGFloat = circleDiameter * 0.42
+                let attrs: [NSAttributedString.Key: Any] = [
+                    .font: UIFont.systemFont(ofSize: fontSize),
+                ]
+                let str = emoji as NSString
+                let textSize = str.size(withAttributes: attrs)
+                let textRect = CGRect(
+                    x: circleCenter.x - textSize.width / 2,
+                    y: circleCenter.y - textSize.height / 2,
+                    width: textSize.width,
+                    height: textSize.height
+                )
+                str.draw(in: textRect, withAttributes: attrs)
+            }
+        }
 
         static func redPillImage(size: CGFloat = 18) -> UIImage {
             let whiteRingWidth: CGFloat = 4
@@ -826,7 +918,9 @@ struct ExploreView: View {
         func updateUIView(_ uiView: MapboxMaps.MapView, context: Context) {
             context.coordinator.setupAnnotationManagerIfNeeded(mapView: uiView)
             context.coordinator.onCityTap = onCityTap
+            context.coordinator.onSpotTap = onSpotTap
             context.coordinator.updateCityAnnotations(cities: cities)
+            context.coordinator.updateSpotAnnotations(spots: spots)
 
             let coordinate: CLLocationCoordinate2D
             let zoom: Double
@@ -863,42 +957,83 @@ struct ExploreView: View {
             var lastTarget: CLLocationCoordinate2D? = nil
             var lastZoom: Double? = nil
             var lastCities: [CityWithRecommendations] = []
+            var lastSpots: [HousingSpot] = []
             var onCityTap: ((CityWithRecommendations) -> Void)?
+            var onSpotTap: ((HousingSpot) -> Void)?
             private weak var mapView: MapboxMaps.MapView?
-            private var pointAnnotationManager: MapboxMaps.PointAnnotationManager?
-            private static let annotationImageName = "loopa_red_pill"
-            private var didAddImage = false
+            private var cityAnnotationManager: MapboxMaps.PointAnnotationManager?
+            private var spotAnnotationManager: MapboxMaps.PointAnnotationManager?
+            private static let cityImageName = "loopa_red_pill"
+            private static let spotImagePrefix = "loopa_spot_pin_"
+            private var didAddCityImage = false
+            private var didAddSpotImages = false
 
             func setupAnnotationManagerIfNeeded(mapView: MapboxMaps.MapView) {
                 self.mapView = mapView
-                guard pointAnnotationManager == nil else { return }
-                if !didAddImage {
+                guard cityAnnotationManager == nil else { return }
+                if !didAddCityImage {
                     let img = TripsGlobeView.redPillImage()
-                    try? mapView.mapboxMap.addImage(img, id: Self.annotationImageName, sdf: false)
-                    didAddImage = true
+                    try? mapView.mapboxMap.addImage(img, id: Self.cityImageName, sdf: false)
+                    didAddCityImage = true
                 }
-                pointAnnotationManager = mapView.annotations.makePointAnnotationManager()
-                applyAnnotations()
+                cityAnnotationManager = mapView.annotations.makePointAnnotationManager()
+                spotAnnotationManager = mapView.annotations.makePointAnnotationManager()
+                applyCityAnnotations()
+            }
+
+            private func ensureSpotImagesAdded() {
+                guard let mapView = mapView, !didAddSpotImages else { return }
+                for (catId, emoji) in TripsGlobeView.categoryEmojis {
+                    let color = TripsGlobeView.categoryColors[catId] ?? .systemGray
+                    let img = TripsGlobeView.categoryPinImage(emoji: emoji, color: color)
+                    let id = Self.spotImagePrefix + catId
+                    try? mapView.mapboxMap.addImage(img, id: id, sdf: false)
+                }
+                didAddSpotImages = true
             }
 
             func updateCityAnnotations(cities: [CityWithRecommendations]) {
                 lastCities = cities
-                applyAnnotations()
+                applyCityAnnotations()
             }
 
-            private func applyAnnotations() {
-                guard let manager = pointAnnotationManager else { return }
-                if !didAddImage, let mapView = mapView {
+            func updateSpotAnnotations(spots: [HousingSpot]) {
+                lastSpots = spots
+                applySpotAnnotations()
+            }
+
+            private func applyCityAnnotations() {
+                guard let manager = cityAnnotationManager else { return }
+                if !didAddCityImage, let mapView = mapView {
                     let img = TripsGlobeView.redPillImage()
-                    try? mapView.mapboxMap.addImage(img, id: Self.annotationImageName, sdf: false)
-                    didAddImage = true
+                    try? mapView.mapboxMap.addImage(img, id: Self.cityImageName, sdf: false)
+                    didAddCityImage = true
                 }
                 let img = TripsGlobeView.redPillImage()
                 manager.annotations = lastCities.map { city in
                     var ann = MapboxMaps.PointAnnotation(coordinate: city.coordinate)
-                    ann.image = .init(image: img, name: Self.annotationImageName)
+                    ann.image = .init(image: img, name: Self.cityImageName)
                     ann.tapHandler = { [weak self] _ in
                         self?.onCityTap?(city)
+                        return true
+                    }
+                    return ann
+                }
+            }
+
+            private func applySpotAnnotations() {
+                guard let manager = spotAnnotationManager, let mapView = mapView else { return }
+                ensureSpotImagesAdded()
+                manager.annotations = lastSpots.compactMap { spot in
+                    let catId = TripsGlobeView.spotCategoryId(for: spot.type)
+                    guard let emoji = TripsGlobeView.categoryEmojis[catId] else { return nil }
+                    let color = TripsGlobeView.categoryColors[catId] ?? .systemGray
+                    let imageId = Self.spotImagePrefix + catId
+                    let img = TripsGlobeView.categoryPinImage(emoji: emoji, color: color)
+                    var ann = MapboxMaps.PointAnnotation(coordinate: CLLocationCoordinate2D(latitude: spot.lat, longitude: spot.lng))
+                    ann.image = .init(image: img, name: imageId)
+                    ann.tapHandler = { [weak self] _ in
+                        self?.onSpotTap?(spot)
                         return true
                     }
                     return ann
@@ -943,6 +1078,12 @@ struct ExploreView: View {
             ("housing", "🏠", "Housing"),
         ]
 
+        /// Spots à afficher sur le globe (pins par catégorie) — uniquement quand une ville est sélectionnée
+        private var spotsToShowOnGlobe: [HousingSpot] {
+            guard let city = selectedCity else { return [] }
+            return markerCityFilteredSpots(for: city)
+        }
+
         var body: some View {
             GeometryReader { geometry in
                 ZStack {
@@ -950,6 +1091,7 @@ struct ExploreView: View {
                         targetCoordinate: globeTarget,
                         targetZoom: globeZoom,
                         cities: cities,
+                        spots: spotsToShowOnGlobe,
                         cameraBottomPadding: geometry.size.height / 4,
                         onCityTap: { city in
                             withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
@@ -961,12 +1103,15 @@ struct ExploreView: View {
                                 globeTarget = city.coordinate
                                 sheetState = .partial
                             }
+                        },
+                        onSpotTap: { spot in
+                            selectedSpotForDetail = spot
                         }
                     )
                     .ignoresSafeArea()
 
                     if showBackButton && selectedCity == nil && selectedMarkerCity == nil && sheetState != .full {
-                        VStack {
+                    VStack {
                             HStack {
                                 Button(action: onClose) {
                                     Image(systemName: "chevron.left")
@@ -977,7 +1122,7 @@ struct ExploreView: View {
                                         .shadow(color: .black.opacity(0.1), radius: 8, y: 2)
                                 }
                                 .buttonStyle(.plain)
-                                Spacer()
+                        Spacer()
                             }
                             .padding(.horizontal, 16)
                             .padding(.top, 8)
@@ -990,7 +1135,7 @@ struct ExploreView: View {
                             HStack {
                                 Button(action: backToInitialView) {
                                     Image(systemName: "chevron.left")
-                                        .font(.system(size: 16, weight: .semibold))
+                                    .font(.system(size: 16, weight: .semibold))
                                         .foregroundStyle(.primary)
                                         .frame(width: 36, height: 36)
                                         .background(Color.white.opacity(0.9), in: Circle())
@@ -1030,7 +1175,7 @@ struct ExploreView: View {
                     VStack {
                         if selectedCity == nil && selectedMarkerCity == nil && sheetState != .full {
                             exploreSearchBar
-                                .padding(.horizontal, 20)
+                            .padding(.horizontal, 20)
                                 .padding(.top, max(0, geometry.safeAreaInsets.top - 64))
                             if !tripLocationSearcher.results.isEmpty && isSearchFocused {
                                 exploreSearchResults
@@ -1065,7 +1210,7 @@ struct ExploreView: View {
                     selectedMarkerCity = nil
                 } onExplore: {
                     selectedMarkerCity = nil
-                    selectedCity = city
+                        selectedCity = city
                     globeTarget = city.coordinate
                     globeZoom = 9
                     sheetState = .full
@@ -1125,7 +1270,7 @@ struct ExploreView: View {
 
         private func backToInitialView() {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
-                selectedCity = nil
+                    selectedCity = nil
                 selectedMarkerCity = nil
                 selectedPlaceCategory = nil
                 sheetState = .partial
@@ -1199,9 +1344,9 @@ struct ExploreView: View {
                         .font(.system(size: 16, weight: .medium))
                     }
                 }
-            }
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
+                }
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
 
         private var togglePill: some View {
@@ -1248,7 +1393,7 @@ struct ExploreView: View {
                             let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
                             if trimmed.isEmpty {
                                 tripLocationSearcher.results = []
-                            } else {
+            } else {
                                 tripLocationSearcher.search(query: newValue)
                             }
                         }
@@ -1296,7 +1441,7 @@ struct ExploreView: View {
                             }
                         }
                     }) {
-                        HStack(spacing: 12) {
+        HStack(spacing: 12) {
                             Image(systemName: "mappin.circle.fill")
                                 .font(.system(size: 18, weight: .semibold))
                                 .foregroundStyle(Color.appAccent)
@@ -1307,7 +1452,7 @@ struct ExploreView: View {
                                 if !result.subtitle.isEmpty {
                                     Text(result.subtitle)
                                         .font(.system(size: 12, weight: .medium))
-                                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.secondary)
                                 }
                             }
                             Spacer()
@@ -1340,7 +1485,7 @@ struct ExploreView: View {
                     withTransaction(t) {
                         if selectedCity != nil && value.translation.height < 0 {
                             sheetDrag = 0
-                        } else {
+                            } else {
                             sheetDrag = value.translation.height
                         }
                     }
@@ -1400,7 +1545,7 @@ struct ExploreView: View {
                                 .background(Color.black.opacity(0.06), in: Circle())
                         }
                         .buttonStyle(.plain)
-                        Spacer()
+            Spacer()
                     }
                     .padding(.horizontal, 16)
                     .frame(height: 36 * frac)
@@ -1498,7 +1643,7 @@ struct ExploreView: View {
 
         private func markerCityDetailContent(geometry: GeometryProxy, city: CityWithRecommendations) -> some View {
             VStack(spacing: 12) {
-                Button(action: {
+                            Button(action: {
                     withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
                         selectedMarkerCity = nil
                         selectedCity = city
@@ -1607,8 +1752,8 @@ struct ExploreView: View {
                     }
                 } else {
                     Image(cityAssetName(from: url))
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
                 }
             }
             .frame(width: 140, height: 140)
@@ -1632,7 +1777,7 @@ struct ExploreView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(insight.blurb)
                         .font(.system(size: 13, weight: .regular))
-                        .foregroundStyle(.secondary)
+                                .foregroundStyle(.secondary)
                         .lineLimit(markerBlurbExpanded ? nil : 2)
                         .fixedSize(horizontal: false, vertical: true)
 
@@ -1662,7 +1807,7 @@ struct ExploreView: View {
             Group {
                 if selectedDetent.wrappedValue == markerSheetClosedDetent {
                     markerCitySheetClosedContent(city: city, onClose: onClose, onExplore: onExplore)
-                } else {
+                        } else {
                     markerCitySheetExpandedContent(city: city, onClose: onClose, onExplore: onExplore)
                 }
             }
@@ -1745,7 +1890,7 @@ struct ExploreView: View {
                                     .lineLimit(1)
                                     .minimumScaleFactor(0.7)
                             }
-                            .foregroundStyle(.primary)
+                                                .foregroundStyle(.primary)
                         }
                         .frame(maxWidth: .infinity)
                     }
@@ -1806,8 +1951,8 @@ struct ExploreView: View {
                             .foregroundStyle(.primary)
                             .frame(width: 44, height: 44)
                             .background(Color(.systemGray5), in: Circle())
-                    }
-                    .buttonStyle(.plain)
+                                }
+                                .buttonStyle(.plain)
                     Spacer()
                     Text(city.name)
                         .font(.system(size: 20, weight: .bold))
@@ -1872,7 +2017,7 @@ struct ExploreView: View {
                     }
                 }
 
-                ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
                         ForEach(images, id: \.self) { imageUrl in
                             markerCitySquareImage(url: imageUrl, fallback: Color(.systemGray4))
@@ -1950,7 +2095,7 @@ struct ExploreView: View {
                     .padding(.top, 2)
                     .padding(.bottom, 20)
 
-                Button(action: {
+                    Button(action: {
                         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
                             expandedMarkerCity = nil
                             selectedMarkerCity = nil
@@ -2154,7 +2299,7 @@ struct ExploreView: View {
             VStack(alignment: .leading, spacing: 12) {
                 VStack(spacing: 14) {
                     ForEach(cities) { city in
-                        Button(action: {
+                    Button(action: {
                             withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
                                 selectedCity = city
                                 globeTarget = city.coordinate
@@ -2162,8 +2307,8 @@ struct ExploreView: View {
                             }
                         }) {
                             cityCardView(city: city)
-                        }
-                        .buttonStyle(.plain)
+                    }
+                    .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, 12)
@@ -2201,8 +2346,8 @@ struct ExploreView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
                         ForEach(placeCategories, id: \.id) { cat in
-                            Button(action: {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                     selectedPlaceCategory = selectedPlaceCategory == cat.id ? nil : cat.id
                                 }
                             }) {
@@ -2222,17 +2367,17 @@ struct ExploreView: View {
                                             lineWidth: 2
                                         )
                                 )
-                            }
-                            .buttonStyle(.plain)
-                        }
                     }
-                    .padding(.horizontal, 20)
+                    .buttonStyle(.plain)
                 }
+            }
+                    .padding(.horizontal, 20)
+        }
                 .padding(.top, 10)
                 .padding(.bottom, 2)
-
+    
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
+                HStack(spacing: 12) {
                         ForEach(spots) { spot in
                             recommendedPlaceRow(
                                 spot: spot,
@@ -2301,7 +2446,7 @@ struct ExploreView: View {
                                 AsyncImage(url: URL(string: imageUrl)) { phase in
                                     if let image = phase.image {
                                         image.resizable()
-                                    } else {
+                            } else {
                                         Color(.systemGray5)
                                     }
                                 }
@@ -2367,7 +2512,7 @@ struct ExploreView: View {
         private func fullScreenSheet(geometry: GeometryProxy) -> some View {
             VStack(spacing: 0) {
                 HStack {
-                    Button(action: {
+                            Button(action: {
                         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
                             sheetState = .partial
                         }
@@ -2513,11 +2658,11 @@ struct ExploreView: View {
             let rawName = city.imageUrl
             if rawName.hasPrefix("http://") || rawName.hasPrefix("https://") {
                 AsyncImage(url: URL(string: rawName)) { phase in
-                    if let image = phase.image {
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } else {
+                                    if let image = phase.image {
+                                        image
+                                            .resizable()
+                                            .aspectRatio(contentMode: .fill)
+                                    } else {
                         Rectangle()
                             .fill(fallback)
                     }
@@ -2617,7 +2762,7 @@ struct ExploreView: View {
                 let ratingMatch: Bool
                 if selectedRatingFilters.isEmpty {
                     ratingMatch = true
-                } else {
+                        } else {
                     ratingMatch = selectedRatingFilters.contains { minRating in
                         Int(spot.rating) >= minRating
                     }
@@ -2739,7 +2884,7 @@ struct ExploreView: View {
         }
 
         private var togglePill: some View {
-            Button(action: {
+                            Button(action: {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                     switch sheetState {
                     case .collapsed:
@@ -2803,8 +2948,8 @@ struct ExploreView: View {
                     }
                     .buttonStyle(.plain)
                 }
-            }
-            .padding(.horizontal, 18)
+                }
+                .padding(.horizontal, 18)
             .padding(.vertical, 12)
             .glassEffect(
                 .regular.tint(.black),
@@ -2818,9 +2963,9 @@ struct ExploreView: View {
         }
 
         private var tripSearchResults: some View {
-            VStack(spacing: 0) {
+                        VStack(spacing: 0) {
                 ForEach(tripLocationSearcher.results, id: \.self) { result in
-                    Button(action: {
+                                Button(action: {
                         let title = result.title
                         let subtitle = result.subtitle
                         let destination = subtitle.isEmpty ? title : "\(title), \(subtitle)"
@@ -2834,30 +2979,30 @@ struct ExploreView: View {
                             tripLocationSearcher.results = []
                         }
                         isTripSearchFocused = false
-                    }) {
-                        HStack(spacing: 12) {
+                                }) {
+                                    HStack(spacing: 12) {
                             Image(systemName: "mappin.circle.fill")
                                 .font(.system(size: 18, weight: .semibold))
                                 .foregroundStyle(Color.appAccent)
-                            VStack(alignment: .leading, spacing: 2) {
+                                        VStack(alignment: .leading, spacing: 2) {
                                 Text(result.title)
-                                    .font(.app(size: 15, weight: .medium))
-                                    .foregroundStyle(.primary)
+                                                .font(.app(size: 15, weight: .medium))
+                                                .foregroundStyle(.primary)
                                 if !result.subtitle.isEmpty {
                                     Text(result.subtitle)
                                         .font(.app(size: 12, weight: .medium))
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            Spacer()
-                        }
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                        }
+                                        Spacer()
+                                    }
                         .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                    }
-                    .buttonStyle(.plain)
-
+                                    .padding(.vertical, 12)
+            }
+            .buttonStyle(.plain)
+                                
                     if result != tripLocationSearcher.results.last {
-                        Divider()
+                                    Divider()
                     }
                 }
             }
@@ -2913,8 +3058,8 @@ struct ExploreView: View {
 
                 // Active filter chips (only if filters are applied)
                 if selectedHousingType != "All" || budgetMinValue > 0 || budgetMaxValue < 2500 || !selectedRatingFilters.isEmpty || availabilityFilterNow != nil {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 10) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
                             if selectedHousingType != "All" {
                                 filterChip(text: selectedHousingType == "Room" ? "Room" : "Entire place", onRemove: { selectedHousingType = "All" })
                             }
@@ -3136,8 +3281,8 @@ struct ExploreView: View {
                             HStack(spacing: 0) {
                                 ForEach(housingTypeOptions, id: \.id) { option in
                                     let isSelected = selectedHousingType == option.id
-                                    Button(action: {
-                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                             selectedHousingType = option.id
                                         }
                                     }) {
@@ -3159,8 +3304,8 @@ struct ExploreView: View {
                                                     )
                                             )
                                             .shadow(color: isSelected ? .black.opacity(0.06) : .clear, radius: 2, y: 1)
-                                    }
-                                    .buttonStyle(.plain)
+                    }
+                    .buttonStyle(.plain)
                                     if option.id != housingTypeOptions.last?.id {
                                         Rectangle()
                                             .fill(Color(.systemGray5))
@@ -3227,8 +3372,8 @@ struct ExploreView: View {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 10) {
                                     // All option
-                                    Button(action: {
-                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                             selectedRatingFilters.removeAll()
                                         }
                                     }) {
@@ -3251,13 +3396,13 @@ struct ExploreView: View {
                                                     lineWidth: 1
                                                 )
                                         )
-                                    }
-                                    .buttonStyle(.plain)
+                    }
+                    .buttonStyle(.plain)
                                     
                                     ForEach(1...5, id: \.self) { rating in
                                         let isSelected = selectedRatingFilters.contains(rating)
-                                        Button(action: {
-                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                                 if isSelected {
                                                     selectedRatingFilters.remove(rating)
                                                 } else {
@@ -3289,8 +3434,8 @@ struct ExploreView: View {
                                                         lineWidth: 1
                                                     )
                                             )
-                                        }
-                                        .buttonStyle(.plain)
+                    }
+                    .buttonStyle(.plain)
                                     }
                                 }
                             }
@@ -3320,8 +3465,8 @@ struct ExploreView: View {
                             
                             VStack(spacing: 10) {
                                 // 💃 Now
-                                Button(action: {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                         availabilityFilterNow = true
                                         selectedArrivalDate = nil
                                     }
@@ -3352,12 +3497,12 @@ struct ExploreView: View {
                                                 lineWidth: 1
                                             )
                                     )
-                                }
-                                .buttonStyle(.plain)
+                    }
+                    .buttonStyle(.plain)
                                 
                                 // 🗓️ Later + date picker
-                                Button(action: {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                         availabilityFilterNow = false
                                         if selectedArrivalDate == nil { selectedArrivalDate = Date() }
                                     }
@@ -3403,7 +3548,7 @@ struct ExploreView: View {
                                     )
                                     .datePickerStyle(.graphical)
                                     .tint(Color.appAccent)
-                                    .padding(.horizontal, 4)
+                .padding(.horizontal, 4)
         .padding(.top, 8)
                                 }
                             }
@@ -3710,17 +3855,17 @@ struct ExploreView: View {
         }
 
         private func syncHousingViewport(center: CLLocationCoordinate2D, span: MKCoordinateSpan, animated: Bool) {
-            let nextViewport = MapboxMaps.Viewport.camera(
+        let nextViewport = MapboxMaps.Viewport.camera(
                 center: center,
                 zoom: mapboxZoom(from: span),
-                bearing: 0,
-                pitch: 0
-            )
-            if animated {
+            bearing: 0,
+            pitch: 0
+        )
+        if animated {
                 withViewportAnimation(.default(maxDuration: 0.8)) {
                     housingViewport = nextViewport
-                }
-            } else {
+            }
+        } else {
                 housingViewport = nextViewport
             }
         }
@@ -3811,7 +3956,7 @@ struct ExploreView: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
-                    Button(action: {}) {
+        Button(action: {}) {
                         mapFilterChip(icon: "slider.horizontal.3", text: "Filter", isSelected: false)
                     }
                     .buttonStyle(.plain)
@@ -3845,7 +3990,7 @@ struct ExploreView: View {
     private func mapFilterChip(icon: String? = nil, text: String, isSelected: Bool = false) -> some View {
         HStack(spacing: 6) {
             if let icon = icon {
-                Image(systemName: icon)
+            Image(systemName: icon)
                     .font(.system(size: 13, weight: .medium))
             }
             Text(text)
@@ -3947,7 +4092,7 @@ private struct HousingSearchFlowView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 24)
             }
-            .background(Color.white)
+                .background(Color.white)
             .navigationBarHidden(true)
         }
     }
@@ -3962,10 +4107,10 @@ private struct HousingSearchFlowView: View {
                         .foregroundStyle(.secondary)
                         .frame(width: 34, height: 34)
                         .background(Color.white, in: Circle())
-                }
-                .buttonStyle(.plain)
-            }
-
+        }
+        .buttonStyle(.plain)
+    }
+    
             HStack(alignment: .bottom, spacing: 40) {
                 ForEach(HousingTab.allCases, id: \.self) { tab in
                     Button(action: {
@@ -4094,7 +4239,7 @@ private struct HousingSearchFlowView: View {
                     .font(.app(size: 14, weight: .semibold))
                     .foregroundStyle(.secondary)
                 chipGrid(options: roommatesGenders, selection: $selectedRoommatesGender, allowsMultiple: true)
-            } else {
+                } else {
                 Text("Type of place")
                     .font(.app(size: 14, weight: .semibold))
                     .foregroundStyle(.secondary)
@@ -4147,8 +4292,8 @@ private struct HousingSearchFlowView: View {
             .buttonStyle(.plain)
             .disabled(stepIndex == 2 && !canSearch)
         }
-        .padding(.top, 4)
-    }
+            .padding(.top, 4)
+        }
 
     private var canSearch: Bool {
         isStepComplete(0) && isStepComplete(1) && isStepComplete(2)
@@ -4174,7 +4319,7 @@ private struct HousingSearchFlowView: View {
                 Button(action: {
                     if selection.wrappedValue.contains(option) {
                         selection.wrappedValue.remove(option)
-                    } else {
+                                } else {
                         if allowsMultiple {
                             selection.wrappedValue.insert(option)
                         } else {
@@ -4340,7 +4485,7 @@ private struct CreateHousingListingView: View {
                 if selectedTab == .spots && currentStep == 0 {
                     // First step: full-screen "Create nearby" style (map + type cards + Continue)
                     housingWelcomeStepContent
-                } else {
+            } else {
                     VStack(spacing: 0) {
                         closeButton
 
@@ -4385,7 +4530,7 @@ private struct CreateHousingListingView: View {
                 stepIndicator
             }
         }
-        .padding(.horizontal, 20)
+                    .padding(.horizontal, 20)
         .padding(.top, 40)
         .padding(.bottom, 6)
     }
@@ -4422,7 +4567,7 @@ private struct CreateHousingListingView: View {
                             .multilineTextAlignment(.center)
                         Text("Recommend a place to stay. This will help other travelers to find the perfect place; Thank you!")
                             .font(.app(size: 14, weight: .regular))
-                            .foregroundStyle(.secondary)
+                                .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity)
@@ -4470,7 +4615,7 @@ private struct CreateHousingListingView: View {
                     }
                     .frame(height: 220)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay(
+                .overlay(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
                             .strokeBorder(Color.white.opacity(0.6), lineWidth: 1)
                     )
@@ -4535,7 +4680,7 @@ private struct CreateHousingListingView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.app(size: 15, weight: .semibold))
-                    .foregroundStyle(.primary)
+                        .foregroundStyle(.primary)
                     .lineLimit(1)
                 Text("$\(price)/mo · \(type)")
                     .font(.app(size: 12, weight: .regular))
@@ -4603,7 +4748,7 @@ private struct CreateHousingListingView: View {
 
         formFieldSection(icon: "dollarsign.circle.fill", title: "Price") {
             HStack(spacing: 12) {
-                HStack(spacing: 8) {
+                    HStack(spacing: 8) {
                     Text("$")
                         .font(.app(size: 16, weight: .semibold))
                         .foregroundStyle(.primary)
@@ -4618,7 +4763,7 @@ private struct CreateHousingListingView: View {
 
                 Text("/")
                     .font(.app(size: 16, weight: .medium))
-                    .foregroundStyle(.secondary)
+                            .foregroundStyle(.secondary)
 
                 periodPicker
             }
@@ -4707,7 +4852,7 @@ private struct CreateHousingListingView: View {
                 VStack(spacing: 10) {
                     HStack(spacing: 8) {
                         ForEach(1...5, id: \.self) { star in
-                            Button(action: {
+            Button(action: {
                                 withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
                                     housingRating = star
                                 }
@@ -4737,7 +4882,7 @@ private struct CreateHousingListingView: View {
 
                 HStack(spacing: 14) {
                     ForEach(["Currently living here", "Already left"], id: \.self) { status in
-                        Button(action: {
+        Button(action: {
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                 housingAvailabilityStatus = (housingAvailabilityStatus == status) ? nil : status
                             }
@@ -4835,12 +4980,12 @@ private struct CreateHousingListingView: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
                 .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay(
+            .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .strokeBorder(Color.black.opacity(0.06), lineWidth: 1)
-                )
-            }
-            .buttonStyle(.plain)
+            )
+        }
+        .buttonStyle(.plain)
             .onChange(of: selectedPhotoItems) { _, newItems in
                 Task {
                     selectedImages.removeAll()
@@ -5114,7 +5259,7 @@ private struct CreateHousingListingView: View {
                 HStack(spacing: 10) {
                     Text("\(suggestion.emoji) \(suggestion.title)")
                         .font(.app(size: 13, weight: .semibold))
-                        .foregroundStyle(.primary)
+                    .foregroundStyle(.primary)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .background(Color(.systemGray6), in: Capsule())
@@ -5262,7 +5407,7 @@ private struct CreateHousingListingView: View {
                     Text("Back")
                         .font(.app(size: 14, weight: .semibold))
                 }
-                .foregroundStyle(.primary)
+                            .foregroundStyle(.primary)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 .background(Color.white.opacity(0.7), in: Capsule())
@@ -5273,7 +5418,7 @@ private struct CreateHousingListingView: View {
 
             Spacer()
 
-            Button(action: {
+                    Button(action: {
                 if isLastStep {
                     handleCreate()
                 } else {
@@ -5282,11 +5427,11 @@ private struct CreateHousingListingView: View {
             }) {
                 HStack(spacing: 8) {
                     Text(isLastStep ? "Publish" : "Next")
-                        .font(.app(size: 16, weight: .semibold))
+                            .font(.app(size: 16, weight: .semibold))
                     Image(systemName: isLastStep ? "checkmark" : "arrow.right")
                         .font(.system(size: 14, weight: .semibold))
                 }
-                .foregroundStyle(.white)
+                            .foregroundStyle(.white)
                 .padding(.horizontal, 18)
                 .padding(.vertical, 12)
                 .background(
@@ -5296,8 +5441,8 @@ private struct CreateHousingListingView: View {
         }
         .buttonStyle(.plain)
             .disabled(!canProceedCurrentStep)
-        }
-        .padding(.horizontal, 20)
+                    }
+                    .padding(.horizontal, 20)
         .padding(.vertical, 12)
         .background(Color.white)
         .overlay(
@@ -5478,7 +5623,7 @@ private struct CreateHousingListingView: View {
                     .foregroundStyle(.primary)
                 Image(systemName: "chevron.down")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                        .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
@@ -5531,7 +5676,7 @@ private struct CreateHousingListingView: View {
     }
     
     private func badgeChip(option: String, selection: Binding<Set<String>>) -> some View {
-                Button(action: {
+        Button(action: {
                     if selection.wrappedValue.contains(option) {
                         selection.wrappedValue.remove(option)
                     } else {
@@ -5587,7 +5732,7 @@ private struct CreateHousingListingView: View {
                 .overlay(alignment: .topLeading) {
                     Text("Traveler favorite")
                         .font(.app(size: 12, weight: .semibold))
-                        .foregroundStyle(.primary)
+                            .foregroundStyle(.primary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                         .background(.regularMaterial, in: Capsule())
@@ -5604,7 +5749,7 @@ private struct CreateHousingListingView: View {
                 .overlay(alignment: .bottom) {
                     HStack(spacing: 6) {
                         ForEach(0..<4, id: \.self) { index in
-                            Circle()
+                        Circle()
                                 .fill(index == 0 ? Color.white : Color.white.opacity(0.5))
                                 .frame(width: 6, height: 6)
                         }
@@ -5623,10 +5768,10 @@ private struct CreateHousingListingView: View {
                             .font(.app(size: 12, weight: .medium))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
-                    }
-
-                    Spacer()
-
+                }
+                
+                Spacer()
+                
                     HStack(spacing: 4) {
                         Image(systemName: "star.fill")
                             .font(.system(size: 12, weight: .semibold))
@@ -5647,9 +5792,9 @@ private struct CreateHousingListingView: View {
                         .font(.app(size: 15, weight: .bold))
                         .foregroundStyle(.primary)
                             Text("/\(spot.period)")
-                        .font(.app(size: 13, weight: .medium))
-                                .foregroundStyle(.secondary)
-                        }
+                    .font(.app(size: 13, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
             }
             .padding(14)
             .background(Color.white, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
@@ -5661,7 +5806,7 @@ private struct CreateHousingListingView: View {
         }
         .buttonStyle(.plain)
     }
-    
+
     private func roommateCard(roommate: Roommate) -> some View {
         Button(action: {
             selectedRoommate = roommate
@@ -5880,7 +6025,7 @@ private struct HousingDetailSheet: View {
             .overlay(alignment: .topTrailing) {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(Color.appAccent)
                         .frame(width: 34, height: 34)
                         .background(Color.white, in: Circle())
@@ -6224,7 +6369,7 @@ private struct PhotoGalleryView: View {
 private struct RoommateDetailSheet: View {
     let roommate: Roommate
     let onClose: () -> Void
-    
+
     var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
@@ -6291,13 +6436,13 @@ private struct RoommateDetailSheet: View {
                     HStack(spacing: 6) {
                         Image(systemName: "mappin.circle.fill")
                             .font(.system(size: 14))
-                                .foregroundStyle(.secondary)
+                            .foregroundStyle(.secondary)
                         Text(roommate.location)
                             .font(.app(size: 14, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
                 }
-                
+
                 Spacer()
             }
 
@@ -6306,7 +6451,7 @@ private struct RoommateDetailSheet: View {
     }
 
     private var roommateInfoCards: some View {
-        VStack(spacing: 12) {
+            VStack(spacing: 12) {
             infoCard(
                 title: "Budget",
                 subtitle: "Monthly target",
@@ -6375,7 +6520,7 @@ private struct RoommateDetailSheet: View {
     }
 
     private func infoCard(title: String, subtitle: String, systemImage: String, value: String) -> some View {
-        HStack(spacing: 12) {
+                HStack(spacing: 12) {
             ZStack {
                 Circle()
                     .fill(Color.appAccent.opacity(0.12))
