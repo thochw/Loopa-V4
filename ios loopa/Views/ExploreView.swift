@@ -1059,6 +1059,8 @@ struct ExploreView: View {
         @State private var sheetDrag: CGFloat = 0
         @State private var showCityPicker = false
         @State private var selectedPlaceCategory: String? = nil // "bars" | "restaurants" | "cafes" | "activities" | "housing"
+        enum CityDetailTab: String, CaseIterable { case spots = "Spot"; case housing = "Housing" }
+        @State private var cityDetailTab: CityDetailTab = .spots
         @State private var selectedSpotForDetail: HousingSpot? = nil
         @State private var markerBlurbExpanded: Bool = false
         @State private var markerSheetDrag: CGFloat = 0
@@ -1080,8 +1082,8 @@ struct ExploreView: View {
 
         /// Spots à afficher sur le globe (pins par catégorie) — uniquement quand une ville est sélectionnée
         private var spotsToShowOnGlobe: [HousingSpot] {
-            guard let city = selectedCity else { return [] }
-            return markerCityFilteredSpots(for: city)
+            guard selectedCity != nil else { return [] }
+            return cityDetailFilteredSpots
         }
 
         var body: some View {
@@ -2341,11 +2343,83 @@ struct ExploreView: View {
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
 
+        /// Pills de catégories visibles selon le tab actif
+        private var visiblePlaceCategories: [(id: String, emoji: String, label: String)] {
+            if cityDetailTab == .housing {
+                return placeCategories.filter { $0.id == "housing" }
+            } else {
+                return placeCategories.filter { $0.id != "housing" }
+            }
+        }
+
+        /// Spots filtrés selon le tab actif et la catégorie sélectionnée
+        private var cityDetailFilteredSpots: [HousingSpot] {
+            guard let city = selectedCity else { return [] }
+            let allNearby = markerCityFilteredSpots(for: city)
+            if cityDetailTab == .housing {
+                return allNearby.filter { spot in
+                    let t = spot.type.lowercased()
+                    return t.contains("room") || t.contains("place") || t.contains("housing") || t.contains("entire") || t.contains("private")
+                }
+            } else {
+                // Spots = tout sauf housing
+                let filtered = allNearby.filter { spot in
+                    let t = spot.type.lowercased()
+                    return !(t.contains("room") || t.contains("place") || t.contains("housing") || t.contains("entire") || t.contains("private"))
+                }
+                return filtered.isEmpty ? allNearby : filtered
+            }
+        }
+
         private func cityDetailContent(geometry: GeometryProxy) -> some View {
             VStack(spacing: 8) {
+                // Toggle discret centré + filtre à droite
+                ZStack(alignment: .center) {
+                    HStack(spacing: 4) {
+                        ForEach(CityDetailTab.allCases, id: \.self) { tab in
+                            Button(action: {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    cityDetailTab = tab
+                                    selectedPlaceCategory = nil
+                                }
+                            }) {
+                                Text(tab.rawValue)
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundStyle(cityDetailTab == tab ? .primary : .tertiary)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        cityDetailTab == tab
+                                            ? Color(.systemGray6)
+                                            : Color.clear,
+                                        in: Capsule()
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(2)
+                    .background(Color(.systemGray6).opacity(0.5), in: Capsule())
+
+                    HStack {
+                        Spacer(minLength: 0)
+                        Button(action: { /* TODO: filtres */ }) {
+                            Image(systemName: "line.3.horizontal.decrease.circle")
+                                .font(.system(size: 20, weight: .regular))
+                                .foregroundStyle(.tertiary)
+                                .symbolRenderingMode(.hierarchical)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.trailing, 20)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+
+                // Pills de catégories
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
-                        ForEach(placeCategories, id: \.id) { cat in
+                        ForEach(visiblePlaceCategories, id: \.id) { cat in
                     Button(action: {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                     selectedPlaceCategory = selectedPlaceCategory == cat.id ? nil : cat.id
@@ -2373,12 +2447,13 @@ struct ExploreView: View {
             }
                     .padding(.horizontal, 20)
         }
-                .padding(.top, 10)
+                .padding(.top, 4)
                 .padding(.bottom, 2)
-    
+
+                // Liste de spots
                 ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
-                        ForEach(spots) { spot in
+                        ForEach(cityDetailFilteredSpots) { spot in
                             recommendedPlaceRow(
                                 spot: spot,
                                 cardWidth: min(geometry.size.width - 72, 370)
