@@ -6664,40 +6664,27 @@ private struct HousingDetailSheet: View {
                 .background(Color(.systemGray6).opacity(0.5), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .padding(.horizontal, 20)
 
-                // Galerie images avec overlay
-                ZStack(alignment: .bottom) {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 10) {
-                            ForEach(Array((spot.photos.isEmpty ? [spot.image] : spot.photos).prefix(4).enumerated()), id: \.offset) { idx, url in
-                                Button(action: { selectedPhotoIndex = idx; showPhotoGallery = true }) {
-                                    AsyncImage(url: URL(string: url)) { phase in
-                                        if let img = phase.image {
-                                            img.resizable().aspectRatio(contentMode: .fill)
-                                        } else {
-                                            Color(.systemGray5)
-                                        }
+                // Galerie images
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(Array((spot.photos.isEmpty ? [spot.image] : spot.photos).prefix(4).enumerated()), id: \.offset) { idx, url in
+                            Button(action: { selectedPhotoIndex = idx; showPhotoGallery = true }) {
+                                AsyncImage(url: URL(string: url)) { phase in
+                                    if let img = phase.image {
+                                        img.resizable().aspectRatio(contentMode: .fill)
+                                    } else {
+                                        Color(.systemGray5)
                                     }
-                                    .frame(width: 160, height: 120)
-                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                                 }
-                                .buttonStyle(.plain)
+                                .frame(width: 160, height: 120)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                             }
+                            .buttonStyle(.plain)
                         }
-                        .padding(.horizontal, 20)
-                    }
-                    .frame(height: 120)
-
-                    HStack(spacing: 20) {
-                        Button(action: {}) { Image(systemName: "plus").font(.system(size: 14, weight: .semibold)).foregroundStyle(.white) }
-                        Button(action: {}) { Image(systemName: "star").font(.system(size: 14, weight: .semibold)).foregroundStyle(.white) }
-                        Button(action: {}) { Image(systemName: "hand.thumbsup.fill").font(.system(size: 14, weight: .semibold)).foregroundStyle(.white) }
-                        Button(action: {}) { Image(systemName: "ellipsis").font(.system(size: 14, weight: .semibold)).foregroundStyle(.white) }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                    .background(Color.black.opacity(0.4), in: Capsule())
-                    .padding(.bottom, 12)
                 }
+                .frame(height: 120)
                 .padding(.bottom, 24)
             }
         }
@@ -6715,7 +6702,7 @@ private struct HousingDetailSheet: View {
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
-            .background(Color.blue, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background(Color.appAccent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.plain)
     }
