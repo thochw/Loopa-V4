@@ -1238,7 +1238,10 @@ struct ExploreView: View {
             }
             .ignoresSafeArea(edges: .bottom)
             .sheet(isPresented: $showAddPinSheet) {
-                addPinPlaceholderSheet
+                CreatePlaceView()
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+                    .presentationCornerRadius(24)
             }
             .sheet(item: $selectedSpotForDetail) { spot in
                 HousingDetailSheet(spot: spot, onClose: { selectedSpotForDetail = nil })
@@ -1324,39 +1327,6 @@ struct ExploreView: View {
                 tripLocationSearcher.results = []
             }
             isSearchFocused = false
-        }
-
-        private var addPinPlaceholderSheet: some View {
-            NavigationStack {
-                VStack(spacing: 20) {
-                    Image(systemName: "mappin.circle.fill")
-                        .font(.system(size: 56))
-                        .foregroundStyle(Color.appAccent)
-                    Text("Add a place on the map")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.primary)
-                        .multilineTextAlignment(.center)
-                    Text("Tap on the map to drop a pin, or add details below.")
-                        .font(.system(size: 14, weight: .regular))
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                    Spacer(minLength: 0)
-                }
-                .padding(.top, 40)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(.systemGroupedBackground))
-                .navigationTitle("Add a pin")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Close") {
-                            showAddPinSheet = false
-                        }
-                        .foregroundStyle(Color.appAccent)
-                    }
-                }
-            }
         }
 
         private var cityPickerSheet: some View {
@@ -2491,7 +2461,7 @@ struct ExploreView: View {
                                     .font(.system(size: 13, weight: .semibold))
                             }
                             .foregroundStyle(.primary)
-                            .padding(.horizontal, 14)
+                            .padding(.horizontal, 12)
                             .padding(.vertical, 8)
                             .background(Color.white, in: Capsule())
                             .overlay(
@@ -2505,12 +2475,13 @@ struct ExploreView: View {
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 32)
             }
         }
 
         private func cityDetailContent(geometry: GeometryProxy) -> some View {
-            let contentWidth = geometry.size.width - 40
+            let horizontalPadding: CGFloat = 32
+            let contentWidth = geometry.size.width - horizontalPadding * 2
             let showStickyPills = !visiblePlaceCategories.isEmpty && cityDetailScrollMinY < -52
             return ZStack(alignment: .top) {
                 ScrollView(.vertical, showsIndicators: true) {
@@ -2555,10 +2526,10 @@ struct ExploreView: View {
                                         .foregroundStyle(Color(.systemGray))
                                 }
                                 .buttonStyle(.plain)
-                                .padding(.trailing, 20)
+                                .padding(.trailing, horizontalPadding)
                             }
                         }
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, horizontalPadding)
                         .padding(.top, 8)
 
                         // Pills dans le scroll (Bars, Restaurants, etc.)
@@ -2577,7 +2548,7 @@ struct ExploreView: View {
                                 )
                             }
                         }
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, horizontalPadding)
                         .padding(.top, 4)
                         .padding(.bottom, 20)
                     }
@@ -6606,19 +6577,170 @@ private extension Double {
     }
 }
 
-// MARK: - Housing Detail Sheet
+// MARK: - Housing Detail Sheet (preview en bas → plein écran au drag)
 private struct HousingDetailSheet: View {
     let spot: HousingSpot
     let onClose: () -> Void
-    
+
+    private static let previewDetent = PresentationDetent.fraction(0.48)
+
     @State private var showPhotoGallery = false
     @State private var selectedPhotoIndex = 0
-    
+    @State private var selectedDetent: PresentationDetent = previewDetent
+
     var body: some View {
+        Group {
+            if selectedDetent == Self.previewDetent {
+                spotPreviewContent
+            } else {
+                spotFullContent
+            }
+        }
+        .environment(\.colorScheme, .light)
+        .presentationDetents([Self.previewDetent, .large], selection: $selectedDetent)
+        .presentationDragIndicator(.visible)
+        .presentationCornerRadius(24)
+        .sheet(isPresented: $showPhotoGallery) {
+            PhotoGalleryView(photos: spot.photos.isEmpty ? [spot.image] : spot.photos, selectedIndex: $selectedPhotoIndex)
+        }
+    }
+
+    /// Vue compacte : header, actions, infos clés, galerie avec overlay
+    private var spotPreviewContent: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 20) {
+                // Header : Share | Nom + Catégorie | Close
+                HStack {
+                    Button(action: {}) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(.primary)
+                            .frame(width: 44, height: 44)
+                            .background(Color(.systemGray6), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+
+                    VStack(spacing: 2) {
+                        Text(spot.title)
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundStyle(.primary)
+                        Text(spot.type)
+                            .font(.system(size: 14, weight: .regular))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    Button(action: onClose) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(.primary)
+                            .frame(width: 44, height: 44)
+                            .background(Color(.systemGray6), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+
+                // Boutons d'action : temps trajet | Appeler | Site web
+                HStack(spacing: 12) {
+                    actionButton(icon: "tram.fill", label: "7 min")
+                    actionButton(icon: "phone.fill", label: "Appeler")
+                    actionButton(icon: "safari", label: "Site web")
+                }
+                .padding(.horizontal, 20)
+
+                // Infos clés : Horaires | Notes | Distance
+                HStack(spacing: 16) {
+                    infoBlock(label: "Horaires", value: spot.isAvailableNow ? "Ouvert" : "Fermé", valueColor: spot.isAvailableNow ? .primary : .red)
+                    infoBlock(label: "\(Int(spot.rating * 20)) notes", value: "\(Int(spot.rating * 20)) %", valueColor: .primary, icon: "hand.thumbsup.fill")
+                    infoBlock(label: "Distance", value: "—", valueColor: .primary, icon: "figure.walk")
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(Color(.systemGray6).opacity(0.5), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .padding(.horizontal, 20)
+
+                // Galerie images avec overlay
+                ZStack(alignment: .bottom) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(Array((spot.photos.isEmpty ? [spot.image] : spot.photos).prefix(4).enumerated()), id: \.offset) { idx, url in
+                                Button(action: { selectedPhotoIndex = idx; showPhotoGallery = true }) {
+                                    AsyncImage(url: URL(string: url)) { phase in
+                                        if let img = phase.image {
+                                            img.resizable().aspectRatio(contentMode: .fill)
+                                        } else {
+                                            Color(.systemGray5)
+                                        }
+                                    }
+                                    .frame(width: 160, height: 120)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                    }
+                    .frame(height: 120)
+
+                    HStack(spacing: 20) {
+                        Button(action: {}) { Image(systemName: "plus").font(.system(size: 14, weight: .semibold)).foregroundStyle(.white) }
+                        Button(action: {}) { Image(systemName: "star").font(.system(size: 14, weight: .semibold)).foregroundStyle(.white) }
+                        Button(action: {}) { Image(systemName: "hand.thumbsup.fill").font(.system(size: 14, weight: .semibold)).foregroundStyle(.white) }
+                        Button(action: {}) { Image(systemName: "ellipsis").font(.system(size: 14, weight: .semibold)).foregroundStyle(.white) }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .background(Color.black.opacity(0.4), in: Capsule())
+                    .padding(.bottom, 12)
+                }
+                .padding(.bottom, 24)
+            }
+        }
+        .background(Color(.systemGroupedBackground))
+    }
+
+    private func actionButton(icon: String, label: String) -> some View {
+        Button(action: {}) {
+            VStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .semibold))
+                Text(label)
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(Color.blue, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func infoBlock(label: String, value: String, valueColor: Color, icon: String? = nil) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.secondary)
+            HStack(spacing: 6) {
+                if let icon { Image(systemName: icon).font(.system(size: 12, weight: .semibold)) }
+                Text(value)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(valueColor)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Vue plein écran : hero + contenu détaillé
+    private var spotFullContent: some View {
         GeometryReader { geometry in
             ZStack(alignment: .bottom) {
                 Color.white.ignoresSafeArea()
-                
+
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 0) {
                         heroImageSection(width: geometry.size.width)
@@ -6626,19 +6748,19 @@ private struct HousingDetailSheet: View {
                                 selectedPhotoIndex = 0
                                 showPhotoGallery = true
                             }
-                        
+
                         contentCard
                             .offset(y: -28)
                     }
                 }
                 .ignoresSafeArea(edges: .top)
-                
+
                 bottomBar
             }
             .overlay(alignment: .topTrailing) {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
-                .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(Color.appAccent)
                         .frame(width: 34, height: 34)
                         .background(Color.white, in: Circle())
@@ -6647,14 +6769,7 @@ private struct HousingDetailSheet: View {
                 .padding(.trailing, 20)
                 .padding(.top, 16)
             }
-            .sheet(isPresented: $showPhotoGallery) {
-                PhotoGalleryView(photos: spot.photos.isEmpty ? [spot.image] : spot.photos, selectedIndex: $selectedPhotoIndex)
-            }
         }
-        .environment(\.colorScheme, .light)
-        .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
-        .presentationCornerRadius(24)
     }
     
     private func heroImageSection(width: CGFloat) -> some View {
