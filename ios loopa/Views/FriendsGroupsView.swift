@@ -82,6 +82,7 @@ struct FriendsGroupsView: View {
     @State private var isFollowingUser = false
     @State private var suppressNextViewportSync = false
     @State private var didInitialFriendsRecenter = false
+    @State private var selectedPOI: TappedPOI?
     
     // Search functionality
     @State private var searchText = ""
@@ -130,19 +131,29 @@ struct FriendsGroupsView: View {
     private let minExploreZoom: Double = 3.0
     
     private var exploreMapView: some View {
-        MapboxMaps.Map(viewport: $exploreViewport) {
-            MapboxMaps.Puck2D(bearing: .heading)
-            MapboxMaps.ForEvery(annotations) { item in
-                MapboxMaps.MapViewAnnotation(coordinate: item.coordinate) {
-                        annotationView(for: item)
+        MapboxMaps.MapReader { proxy in
+            MapboxMaps.Map(viewport: $exploreViewport) {
+                MapboxMaps.SymbolLayer(id: "app-poi-explore", source: "composite")
+                    .sourceLayer("poi_label")
+                    .textField(Exp(.get) { "name" })
+                    .textSize(12)
+                    .textColor(MapboxMaps.StyleColor(.darkGray))
+                MapboxMaps.Puck2D(bearing: .heading)
+                MapboxMaps.ForEvery(annotations) { item in
+                    MapboxMaps.MapViewAnnotation(coordinate: item.coordinate) {
+                            annotationView(for: item)
+                        }
                     }
+                MapboxMaps.TapInteraction { context in
+                    handlePOITap(context: context, map: proxy.map)
+                    return false
                 }
-        }
-        .cameraBounds(MapboxMaps.CameraBoundsOptions(maxZoom: 20, minZoom: minExploreZoom))
-        .mapStyle(MapboxMaps.MapStyle.appStyle)
-        .ornamentOptions(MapboxMaps.OrnamentOptions(scaleBar: MapboxMaps.ScaleBarViewOptions(visibility: .hidden)))
-                .ignoresSafeArea()
-                .onAppear {
+            }
+            .cameraBounds(MapboxMaps.CameraBoundsOptions(maxZoom: 20, minZoom: minExploreZoom))
+            .mapStyle(MapboxMaps.MapStyle.appStyle)
+            .ornamentOptions(MapboxMaps.OrnamentOptions(scaleBar: MapboxMaps.ScaleBarViewOptions(visibility: .hidden)))
+            .ignoresSafeArea()
+            .onAppear {
             syncViewport(animated: false)
                     locationManager.requestLocationPermission()
                     locationManager.startUpdatingLocation()
@@ -168,6 +179,23 @@ struct FriendsGroupsView: View {
         }
         .onChange(of: region.span.latitudeDelta) { _, _ in
             syncViewport(animated: false)
+        }
+        }
+        .sheet(item: $selectedPOI) { (poi: TappedPOI) in
+            POIDetailSheetView(poi: poi, onDismiss: { selectedPOI = nil })
+        }
+    }
+    
+    private func handlePOITap(context: MapboxMaps.InteractionContext, map: MapboxMaps.MapboxMap?) {
+        guard let map = map else { return }
+        let options = MapboxMaps.RenderedQueryOptions(layerIds: ["app-poi-explore"], filter: nil)
+        _ = map.queryRenderedFeatures(with: context.point, options: options) { result in
+            guard let features = try? result.get(),
+                  let first = features.first(where: { $0.queriedFeature.sourceLayer == "poi_label" }) ?? features.first,
+                  let poi = TappedPOI.from(queriedFeature: first) else { return }
+            DispatchQueue.main.async {
+                selectedPOI = poi
+            }
         }
     }
     

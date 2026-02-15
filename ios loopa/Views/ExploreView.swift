@@ -43,6 +43,7 @@ struct ExploreView: View {
     )
     @State private var housingSpots: [HousingSpot] = AppData.shared.housingSpots
     @State private var roommates: [Roommate] = AppData.shared.roommates
+    @State private var selectedPOI: TappedPOI? = nil
     @State private var trips: [Trip] = [
         Trip(
             destination: "Bali",
@@ -911,6 +912,7 @@ struct ExploreView: View {
                 atmosphere.spaceColor = .constant(MapboxMaps.StyleColor(UIColor(red: 8/255.0, green: 15/255.0, blue: 42/255.0, alpha: 1))) // bleu nuit intense
                 atmosphere.starIntensity = .constant(0.7) // espace plus vivant
                 try? mapView.mapboxMap.setAtmosphere(atmosphere)
+                context.coordinator.addPOILayerIfNeeded(mapView: mapView)
                 context.coordinator.setupAnnotationManagerIfNeeded(mapView: mapView)
             }.store(in: &context.coordinator.cancelables)
             return mapView
@@ -968,6 +970,25 @@ struct ExploreView: View {
             private static let spotImagePrefix = "loopa_spot_pin_"
             private var didAddCityImage = false
             private var didAddSpotImages = false
+            private var didAddPOILayer = false
+
+            func addPOILayerIfNeeded(mapView: MapboxMaps.MapView) {
+                guard !didAddPOILayer else { return }
+                var layer = MapboxMaps.SymbolLayer(id: "app-poi-globe", source: "composite")
+                layer.sourceLayer = "poi_label"
+                layer.filter = Exp(.match) {
+                    Exp(.get) { "class" }
+                    "commercial"; true
+                    "recreation"; true
+                    "landmark"; true
+                    false
+                }
+                layer.textField = .expression(Exp(.get) { "name" })
+                layer.textSize = .constant(12)
+                layer.textColor = .constant(MapboxMaps.StyleColor(.darkGray))
+                try? mapView.mapboxMap.addLayer(layer)
+                didAddPOILayer = true
+            }
 
             func setupAnnotationManagerIfNeeded(mapView: MapboxMaps.MapView) {
                 self.mapView = mapView
@@ -1086,6 +1107,9 @@ struct ExploreView: View {
         @State private var housingFilterSearchText: String = ""
         @State private var cityDetailAvailabilityNow: Bool? = nil // nil = no filter, true = Now, false = Later
         @State private var showAddPinSheet = false
+        private enum AddPinSheetContent { case place, housing }
+        @State private var addPinSheetContent: AddPinSheetContent = .place
+        @State private var housingListingCoordinate = CLLocationCoordinate2D(latitude: 48.85, longitude: 2.35)
 
         private let placeCategories: [(id: String, emoji: String, label: String)] = [
             ("bars", "🍹", "Bars"),
@@ -1238,10 +1262,36 @@ struct ExploreView: View {
             }
             .ignoresSafeArea(edges: .bottom)
             .sheet(isPresented: $showAddPinSheet) {
-                CreatePlaceView()
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
-                    .presentationCornerRadius(24)
+                Group {
+                    switch addPinSheetContent {
+                    case .place:
+                        CreatePlaceView(
+                            onSelectHousing: {
+                                housingListingCoordinate = selectedCity?.coordinate ?? CLLocationCoordinate2D(latitude: 48.85, longitude: 2.35)
+                                var t = Transaction()
+                                t.disablesAnimations = true
+                                withTransaction(t) { addPinSheetContent = .housing }
+                            }
+                        )
+                    case .housing:
+                        CreateHousingListingView(
+                            activeTab: .constant(HousingTab.spots),
+                            coordinate: housingListingCoordinate,
+                            onCreateSpot: { _ in
+                                showAddPinSheet = false
+                                addPinSheetContent = .place
+                            },
+                            onCreateRoommate: { _ in },
+                            onClose: {
+                                showAddPinSheet = false
+                                addPinSheetContent = .place
+                            }
+                        )
+                    }
+                }
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .presentationCornerRadius(24)
             }
             .sheet(item: $selectedSpotForDetail) { spot in
                 HousingDetailSheet(spot: spot, onClose: { selectedSpotForDetail = nil })
@@ -3300,6 +3350,7 @@ struct ExploreView: View {
         @State private var sheetDrag: CGFloat = 0   // real-time drag offset for Liquid Glass-smooth tracking
         @State private var showFilterSheet = false
         @State private var selectedSpotForDetail: HousingSpot? = nil
+        @State private var selectedPOI: TappedPOI? = nil
         
         // Filter states
         @State private var selectedHousingType: String = "All" // "All" | "Room" | "Entire place"
@@ -4503,40 +4554,52 @@ struct ExploreView: View {
 
     private var housingMapContent: some View {
         ZStack(alignment: .top) {
-            MapboxMaps.Map(initialViewport: MapboxMaps.Viewport.camera(center: mapRegion.center, zoom: mapboxZoom(from: mapRegion.span), bearing: 0, pitch: 0)) {
-                MapboxMaps.ForEvery(mapItems) { item in
-                    MapboxMaps.MapViewAnnotation(coordinate: item.coordinate) {
-                        Button(action: {
-                            if let spot = item.spot {
-                                selectedHousingSpot = spot
-                                selectedRoommate = nil
-                            } else if let roommate = item.roommate {
-                                selectedRoommate = roommate
-                                selectedHousingSpot = nil
-                            }
-                        }) {
-                    VStack(spacing: 4) {
-                        Image(systemName: item.icon)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: 26, height: 26)
-                            .background(Color.appAccent, in: Circle())
-                        Text(item.title)
-                                    .font(.app(size: 10, weight: .semibold))
-                            .foregroundStyle(.primary)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
-                            .background(Color.white, in: Capsule())
+            MapboxMaps.MapReader { proxy in
+                MapboxMaps.Map(initialViewport: MapboxMaps.Viewport.camera(center: mapRegion.center, zoom: mapboxZoom(from: mapRegion.span), bearing: 0, pitch: 0)) {
+                    // POI layer: tous les POI (commercial, recreation, landmark, etc.) – pas de filtre pour ne rien exclure
+                    MapboxMaps.SymbolLayer(id: "app-poi-commercial-recreation-landmark", source: "composite")
+                        .sourceLayer("poi_label")
+                        .textField(Exp(.get) { "name" })
+                        .textSize(12)
+                        .textColor(MapboxMaps.StyleColor(.darkGray))
+                    MapboxMaps.ForEvery(mapItems) { item in
+                        MapboxMaps.MapViewAnnotation(coordinate: item.coordinate) {
+                            Button(action: {
+                                if let spot = item.spot {
+                                    selectedHousingSpot = spot
+                                    selectedRoommate = nil
+                                } else if let roommate = item.roommate {
+                                    selectedRoommate = roommate
+                                    selectedHousingSpot = nil
+                                }
+                            }) {
+                        VStack(spacing: 4) {
+                            Image(systemName: item.icon)
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 26, height: 26)
+                                .background(Color.appAccent, in: Circle())
+                            Text(item.title)
+                                        .font(.app(size: 10, weight: .semibold))
+                                .foregroundStyle(.primary)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                                .background(Color.white, in: Capsule())
+                        }
+                    }
+                            .buttonStyle(.plain)
+                }
+                    }
+                    MapboxMaps.TapInteraction { context in
+                        handlePOITap(context: context, map: proxy.map)
+                        return false
                     }
                 }
-                        .buttonStyle(.plain)
+                .mapStyle(MapboxMaps.MapStyle.appStyle)
+                .ornamentOptions(MapboxMaps.OrnamentOptions(scaleBar: MapboxMaps.ScaleBarViewOptions(visibility: .hidden)))
+                .ignoresSafeArea(edges: .bottom)
+                .id(activeTab)
             }
-                }
-            }
-            .mapStyle(MapboxMaps.MapStyle.appStyle)
-            .ornamentOptions(MapboxMaps.OrnamentOptions(scaleBar: MapboxMaps.ScaleBarViewOptions(visibility: .hidden)))
-            .ignoresSafeArea(edges: .bottom)
-            .id(activeTab)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
@@ -4560,6 +4623,9 @@ struct ExploreView: View {
                 .padding(.top, 12)
             }
         }
+        .sheet(item: $selectedPOI) { (poi: TappedPOI) in
+            POIDetailSheetView(poi: poi, onDismiss: { selectedPOI = nil })
+        }
     }
 
     private var mapFilters: [String] {
@@ -4568,6 +4634,19 @@ struct ExploreView: View {
             return ["Studio", "Private room", "Entire place"]
         case .roommates:
             return ["Pet friendly", "Quiet", "Social"]
+        }
+    }
+    
+    private func handlePOITap(context: MapboxMaps.InteractionContext, map: MapboxMaps.MapboxMap?) {
+        guard let map = map else { return }
+        let options = MapboxMaps.RenderedQueryOptions(layerIds: ["app-poi-commercial-recreation-landmark"], filter: nil)
+        _ = map.queryRenderedFeatures(with: context.point, options: options) { result in
+            guard let features = try? result.get(),
+                  let first = features.first(where: { $0.queriedFeature.sourceLayer == "poi_label" }) ?? features.first,
+                  let poi = TappedPOI.from(queriedFeature: first) else { return }
+            DispatchQueue.main.async {
+                selectedPOI = poi
+            }
         }
     }
 
@@ -5161,7 +5240,13 @@ private struct CreateHousingListingView: View {
 
                     // Mapbox map with blur/fade at edges + user location (blue circle)
                     ZStack(alignment: .center) {
-                        MapboxMaps.Map(initialViewport: MapboxMaps.Viewport.camera(center: housingWelcomeRegion.center, zoom: 12, bearing: 0, pitch: 0))
+                        MapboxMaps.Map(initialViewport: MapboxMaps.Viewport.camera(center: housingWelcomeRegion.center, zoom: 12, bearing: 0, pitch: 0)) {
+                            MapboxMaps.SymbolLayer(id: "app-poi-welcome", source: "composite")
+                                .sourceLayer("poi_label")
+                                .textField(Exp(.get) { "name" })
+                                .textSize(12)
+                                .textColor(MapboxMaps.StyleColor(.darkGray))
+                        }
                             .mapStyle(MapboxMaps.MapStyle.appStyle)
                             .ornamentOptions(MapboxMaps.OrnamentOptions(scaleBar: MapboxMaps.ScaleBarViewOptions(visibility: .hidden)))
                             .frame(height: 220)

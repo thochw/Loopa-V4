@@ -31,6 +31,8 @@ struct CreatePlaceView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var locationManager = LocationManager()
     @StateObject private var searchCompleter = SearchCompleter()
+    /// Callback when user chooses "Housing spot" → opens the housing recommendation flow (different from place flow).
+    var onSelectHousing: (() -> Void)? = nil
     
     enum Step: Int, CaseIterable {
         case category = 0
@@ -69,6 +71,8 @@ struct CreatePlaceView: View {
     @State private var selectedPhotos: [PhotosPickerItem] = []
     @State private var loadedImages: [UIImage] = []
     @State private var comment: String = ""
+    /// Note optionnelle quand une catégorie (lieu) est sélectionnée (style "Ajouter à la liste").
+    @State private var categoryNote: String = ""
     
     enum PlaceCategory: String, CaseIterable {
         case food = "Food"
@@ -118,18 +122,19 @@ struct CreatePlaceView: View {
                 // Navigation buttons
                 navigationButtons
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color(.systemBackground))
             .navigationTitle(currentStep.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .medium))
                     }
                     .foregroundStyle(.secondary)
                 }
             }
-            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+            .toolbarBackground(Color(.systemBackground), for: .navigationBar)
             .onChange(of: locationSearchText) { oldValue, newValue in
                 if !newValue.isEmpty {
                     searchForLocationSuggestions(query: newValue)
@@ -186,80 +191,126 @@ struct CreatePlaceView: View {
         }
     }
     
-    // MARK: - Step 1: Category
+    /// Teal utilisé pour le bouton principal (style "Ajouter à la liste").
+    private static let tealButton = Color(hex: "008080")
+    /// Bleu clair pour boutons secondaires (Nouveau tag, etc.).
+    private static let lightBlueButton = Color(hex: "E0F7FA")
+
+    // MARK: - Step 1: Category (style liste type "Ajouter à la liste")
     private var categoryStep: some View {
-        VStack(spacing: 20) {
+        VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Choose Category")
-                    .font(.app(size: 18, weight: .bold))
+                    .font(.app(size: 20, weight: .bold))
                     .foregroundStyle(.primary)
                 
-                Text("Select a category for this place")
+                Text("Select a category for this place.")
                     .font(.app(size: 15, weight: .regular))
                     .foregroundStyle(.secondary)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
             
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                ForEach(PlaceCategory.allCases, id: \.self) { category in
-                    categoryButton(category: category)
+            // Liste des catégories (style liste avec emoji + indicateur à droite)
+            VStack(spacing: 0) {
+                ForEach(Array(PlaceCategory.allCases.enumerated()), id: \.element) { index, category in
+                    categoryRow(category: category)
+                    if index < PlaceCategory.allCases.count - 1 {
+                        Divider().padding(.leading, 58)
+                    }
+                }
+                Divider().padding(.leading, 58)
+                housingSpotRow
+            }
+            .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            
+            // Quand une catégorie lieu est sélectionnée : note + Nouveau tag
+            if selectedCategory != nil {
+                VStack(alignment: .leading, spacing: 12) {
+                    TextField("Vous souhaitez vous souvenir de quelque chose concernant ce lieu ?", text: $categoryNote, axis: .vertical)
+                        .lineLimit(3...6)
+                        .font(.app(size: 15, weight: .regular))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                        .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    
+                    Button(action: { /* TODO: Nouveau tag */ }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 14, weight: .semibold))
+                            Text("Nouveau tag")
+                                .font(.app(size: 15, weight: .medium))
+                        }
+                        .foregroundStyle(.primary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                        .background(Self.lightBlueButton, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
     }
     
-    private func categoryButton(category: PlaceCategory) -> some View {
+    private func categoryRow(category: PlaceCategory) -> some View {
         Button(action: {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                selectedCategory = category
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selectedCategory = selectedCategory == category ? nil : category
             }
         }) {
-            ZStack(alignment: .topTrailing) {
-                VStack(spacing: 12) {
-                    Text(category.emoji)
-                        .font(.app(size: 48))
-                    
+            HStack(spacing: 14) {
+                Text(category.emoji)
+                    .font(.system(size: 28))
+                VStack(alignment: .leading, spacing: 2) {
                     Text(category.rawValue)
                         .font(.app(size: 16, weight: .semibold))
                         .foregroundStyle(.primary)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 24)
-                .background(
-                    Color(.systemBackground),
-                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(
-                            selectedCategory == category ? Color.appAccent : Color(.systemGray5),
-                            lineWidth: selectedCategory == category ? 2 : 1
-                        )
-                )
-                .shadow(
-                    color: selectedCategory == category ? Color.appAccent.opacity(0.2) : .black.opacity(0.05),
-                    radius: selectedCategory == category ? 8 : 4,
-                    y: selectedCategory == category ? 4 : 2
-                )
-                
-                // Selection dot
-                if selectedCategory == category {
-                    Circle()
-                        .fill(Color.appAccent)
-                        .frame(width: 24, height: 24)
-                        .overlay(
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(.white)
-                        )
-                        .offset(x: -8, y: 8)
-                        .transition(.scale.combined(with: .opacity))
+                Spacer()
+                ZStack {
+                    if selectedCategory == category {
+                        Circle()
+                            .fill(Self.tealButton)
+                            .frame(width: 24, height: 24)
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(.white)
+                    } else {
+                        Circle()
+                            .strokeBorder(Color(.systemGray4), lineWidth: 2)
+                            .frame(width: 24, height: 24)
+                    }
                 }
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
         }
         .buttonStyle(.plain)
     }
     
+    private var housingSpotRow: some View {
+        Button(action: {
+            onSelectHousing?()
+        }) {
+            HStack(spacing: 14) {
+                Text("🏠")
+                    .font(.system(size: 28))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Housing spot")
+                        .font(.app(size: 16, weight: .semibold))
+                        .foregroundStyle(.primary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Step 2: Location
     private var locationStep: some View {
         VStack(spacing: 20) {
@@ -692,7 +743,9 @@ struct CreatePlaceView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(
-                        canProceedToNextStep ? Color.appAccent : Color(.systemGray4),
+                        canProceedToNextStep
+                            ? (currentStep == .category ? Self.tealButton : Color.appAccent)
+                            : Color(.systemGray4),
                         in: RoundedRectangle(cornerRadius: 16, style: .continuous)
                     )
             }
