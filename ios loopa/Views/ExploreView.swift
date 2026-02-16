@@ -1894,36 +1894,32 @@ struct ExploreView: View {
 
         private let markerSheetClosedDetent = PresentationDetent.fraction(0.43)
 
-        /// Marker city sheet — contenu différent selon fermé ou ouvert
+        /// Marker city sheet — un seul contenu scrollable, le déplier révèle le reste
         private func markerCitySheetContent(
             city: CityWithRecommendations,
             selectedDetent: Binding<PresentationDetent>,
             onClose: @escaping () -> Void,
             onExplore: @escaping () -> Void
         ) -> some View {
-            Group {
-                if selectedDetent.wrappedValue == markerSheetClosedDetent {
-                    markerCitySheetClosedContent(city: city, onClose: onClose, onExplore: onExplore)
-                        } else {
-                    markerCitySheetExpandedContent(city: city, onClose: onClose, onExplore: onExplore)
-                }
-            }
-            .background(Color(.systemGroupedBackground))
-            .presentationDetents([markerSheetClosedDetent, .large], selection: selectedDetent)
-            .presentationDragIndicator(.visible)
+            markerCitySheetUnifiedContent(city: city, onClose: onClose, onExplore: onExplore)
+                .background(Color.white)
+                .presentationDetents([markerSheetClosedDetent, .large], selection: selectedDetent)
+                .presentationDragIndicator(.visible)
+                .presentationCornerRadius(24)
         }
 
-        /// Contenu quand la sheet est fermée (detent 0.43)
-        private func markerCitySheetClosedContent(
+        /// Contenu unifié : tout dans un ScrollView, déplier la sheet révèle naturellement Information, Guides, etc.
+        private func markerCitySheetUnifiedContent(
             city: CityWithRecommendations,
             onClose: @escaping () -> Void,
             onExplore: @escaping () -> Void
         ) -> some View {
             let facts = markerCityFacts(for: city)
             let images = markerCityImageUrls(for: city)
+            let guides = Array((nearbySpots(for: city).isEmpty ? spots : nearbySpots(for: city)).prefix(4))
 
             return VStack(spacing: 0) {
-                // Header: Share | Titre | Close
+                // Header fixe
                 HStack {
                     Button(action: {}) {
                         Image(systemName: "square.and.arrow.up")
@@ -1935,13 +1931,10 @@ struct ExploreView: View {
                     .buttonStyle(.plain)
 
                     Spacer()
-
                     Text(city.name)
                         .font(.system(size: 20, weight: .bold))
                         .foregroundStyle(.primary)
-
                     Spacer()
-
                     Button(action: onClose) {
                         Image(systemName: "xmark")
                             .font(.system(size: 14, weight: .bold))
@@ -1952,67 +1945,86 @@ struct ExploreView: View {
                     .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 12)
-                .padding(.bottom, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 12)
 
-                // CTA Explore this city
-                Button(action: onExplore) {
-                    HStack(spacing: 8) {
-                        Text("Explore this city")
-                            .font(.system(size: 16, weight: .semibold))
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 14, weight: .semibold))
-                    }
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color.appAccent, in: Capsule())
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 16)
-
-                // Lieux enregistrés (Restaurants, Housing, Bars, Activities) – centrés, annotations en noir
-                HStack(spacing: 12) {
-                    ForEach(Array(facts.enumerated()), id: \.offset) { _, fact in
-                        VStack(alignment: .center, spacing: 4) {
-                            Text(fact.label)
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(.black)
-                            HStack(spacing: 6) {
-                                Text(fact.emoji)
-                                    .font(.system(size: 16))
-                                Text(fact.value)
+                // Tout le contenu dans un seul ScrollView — déplier révèle le reste
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 24) {
+                        Button(action: onExplore) {
+                            HStack(spacing: 8) {
+                                Text("Explore this city")
+                                    .font(.system(size: 16, weight: .semibold))
+                                Image(systemName: "arrow.right")
                                     .font(.system(size: 14, weight: .semibold))
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.7)
                             }
-                                                .foregroundStyle(.primary)
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Color.appAccent, in: Capsule())
                         }
-                        .frame(maxWidth: .infinity)
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 16)
+                        .buttonStyle(.plain)
 
-                // Galerie images (sous les annotations, photos plus grandes)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(images, id: \.self) { imageUrl in
-                            markerCitySheetImageThumb(url: imageUrl)
-                                .frame(width: 200, height: 150)
-                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        HStack(spacing: 12) {
+                            ForEach(Array(facts.enumerated()), id: \.offset) { _, fact in
+                                VStack(alignment: .center, spacing: 4) {
+                                    Text(fact.label)
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(.black)
+                                    HStack(spacing: 6) {
+                                        Text(fact.emoji)
+                                            .font(.system(size: 16))
+                                        Text(fact.value)
+                                            .font(.system(size: 15, weight: .semibold))
+                                            .lineLimit(1)
+                                            .minimumScaleFactor(0.7)
+                                    }
+                                    .foregroundStyle(.primary)
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                        }
+
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 12) {
+                                ForEach(images, id: \.self) { imageUrl in
+                                    markerCitySheetImageThumb(url: imageUrl)
+                                        .frame(width: 200, height: 150)
+                                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                }
+                            }
+                        }
+                        .frame(height: 150)
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Information")
+                                .font(.system(size: 20, weight: .bold))
+                            Text(markerCityLongDescription(for: city))
+                                .font(.system(size: 15, weight: .regular))
+                                .foregroundStyle(.primary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            if let wikiURL = markerCityWikipediaURL(for: city) {
+                                Link("More on Wikipedia", destination: wikiURL)
+                                    .font(.system(size: 14, weight: .medium))
+                            }
+                        }
+
+                        if !guides.isEmpty {
+                            Text("Guides")
+                                .font(.system(size: 20, weight: .bold))
+                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
+                                ForEach(guides) { spot in
+                                    markerCityGuideCard(spot: spot)
+                                }
+                            }
                         }
                     }
                     .padding(.horizontal, 20)
+                    .padding(.bottom, 40)
                 }
-                .frame(height: 150)
-                .padding(.bottom, 16)
-
-                Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity)
-            .padding(.top, 28)
+            .padding(.top, 12)
         }
 
         private func markerCitySheetImageThumb(url: String) -> some View {
@@ -2032,121 +2044,6 @@ struct ExploreView: View {
                         .aspectRatio(contentMode: .fill)
                 }
             }
-        }
-
-        /// Contenu quand la sheet est ouverte (detent large)
-        private func markerCitySheetExpandedContent(
-            city: CityWithRecommendations,
-            onClose: @escaping () -> Void,
-            onExplore: @escaping () -> Void
-        ) -> some View {
-            VStack(spacing: 0) {
-                HStack {
-                    Button(action: {}) {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(.primary)
-                            .frame(width: 44, height: 44)
-                            .background(Color(.systemGray5), in: Circle())
-                                }
-                                .buttonStyle(.plain)
-                    Spacer()
-                    Text(city.name)
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(.primary)
-                    Spacer()
-                    Button(action: onClose) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(.primary)
-                            .frame(width: 44, height: 44)
-                            .background(Color(.systemGray5), in: Circle())
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
-                .padding(.bottom, 16)
-
-                ScrollView(.vertical, showsIndicators: false) {
-                    markerCityExpandedInlineContent(city: city, onExplore: onExplore)
-                }
-            }
-        }
-
-        private func markerCityExpandedInlineContent(city: CityWithRecommendations, onExplore: @escaping () -> Void) -> some View {
-            let facts = markerCityFacts(for: city)
-            let images = markerCityImageUrls(for: city)
-            let guides = Array((nearbySpots(for: city).isEmpty ? spots : nearbySpots(for: city)).prefix(4))
-
-            return VStack(alignment: .leading, spacing: 24) {
-                Button(action: onExplore) {
-                    HStack(spacing: 8) {
-                        Text("Explore this city")
-                            .font(.system(size: 16, weight: .semibold))
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 14, weight: .semibold))
-                    }
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color.appAccent, in: Capsule())
-                }
-                .buttonStyle(.plain)
-
-                HStack(spacing: 12) {
-                    ForEach(Array(facts.enumerated()), id: \.offset) { _, fact in
-                        VStack(alignment: .center, spacing: 4) {
-                            Text(fact.label)
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(.black)
-                            HStack(spacing: 6) {
-                                Text(fact.emoji)
-                                    .font(.system(size: 16))
-                                Text(fact.value)
-                                    .font(.system(size: 15, weight: .semibold))
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.7)
-                            }
-                            .foregroundStyle(.primary)
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                }
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(images, id: \.self) { imageUrl in
-                            markerCitySquareImage(url: imageUrl, fallback: Color(.systemGray4))
-                        }
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Information")
-                        .font(.system(size: 20, weight: .bold))
-                    Text(markerCityLongDescription(for: city))
-                        .font(.system(size: 15, weight: .regular))
-                        .foregroundStyle(.primary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if let wikiURL = markerCityWikipediaURL(for: city) {
-                        Link("More on Wikipedia", destination: wikiURL)
-                            .font(.system(size: 14, weight: .medium))
-                    }
-                }
-
-                if !guides.isEmpty {
-                    Text("Guides")
-                        .font(.system(size: 20, weight: .bold))
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
-                        ForEach(guides) { spot in
-                            markerCityGuideCard(spot: spot)
-                        }
-                    }
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 40)
         }
 
         private func markerCityExpandedSheet(city: CityWithRecommendations) -> some View {
