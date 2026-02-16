@@ -82,7 +82,7 @@ struct CreatePlaceView: View {
         
         var emoji: String {
             switch self {
-            case .food: return "🥪"
+            case .food: return "🍕"
             case .cafes: return "🍵"
             case .bars: return "🍹"
             case .activities: return "🎡"
@@ -191,11 +191,6 @@ struct CreatePlaceView: View {
         }
     }
     
-    /// Teal utilisé pour le bouton principal (style "Ajouter à la liste").
-    private static let tealButton = Color(hex: "008080")
-    /// Bleu clair pour boutons secondaires (Nouveau tag, etc.).
-    private static let lightBlueButton = Color(hex: "E0F7FA")
-
     // MARK: - Step 1: Category (style liste type "Ajouter à la liste")
     private var categoryStep: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -240,11 +235,11 @@ struct CreatePlaceView: View {
                             Text("Nouveau tag")
                                 .font(.app(size: 15, weight: .medium))
                         }
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(Color.appAccent)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 12)
-                        .background(Self.lightBlueButton, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .background(Color.appAccent.opacity(0.15), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
@@ -270,7 +265,7 @@ struct CreatePlaceView: View {
                 ZStack {
                     if selectedCategory == category {
                         Circle()
-                            .fill(Self.tealButton)
+                            .fill(Color.appAccent)
                             .frame(width: 24, height: 24)
                         Image(systemName: "checkmark")
                             .font(.system(size: 12, weight: .bold))
@@ -284,6 +279,7 @@ struct CreatePlaceView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
@@ -744,7 +740,7 @@ struct CreatePlaceView: View {
                     .padding(.vertical, 16)
                     .background(
                         canProceedToNextStep
-                            ? (currentStep == .category ? Self.tealButton : Color.appAccent)
+                            ? Color.appAccent
                             : Color(.systemGray4),
                         in: RoundedRectangle(cornerRadius: 16, style: .continuous)
                     )

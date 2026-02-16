@@ -774,7 +774,7 @@ struct ExploreView: View {
         }
     }
 
-    /// Vue globe terrestre pour la map Trips. Pastilles rouges = villes. Petits pins jaunes avec emoji = spots par catégorie (🍹🍴🍵🎡🏠).
+    /// Vue globe terrestre pour la map Trips. Pastilles rouges = villes. Petits pins jaunes avec emoji = spots par catégorie (🍹🍕🍵🎡🏠).
     private struct TripsGlobeView: UIViewRepresentable {
         static let styleURL = "mapbox://styles/thochw/cmkbqgty5004901rxgct4a0z6"
         var targetCoordinate: CLLocationCoordinate2D?
@@ -791,7 +791,7 @@ struct ExploreView: View {
         /// Catégories, emojis et couleurs pour les pins
         private static let categoryEmojis: [String: String] = [
             "bars": "🍹",
-            "restaurants": "🍴",
+            "restaurants": "🍕",
             "cafes": "🍵",
             "activities": "🎡",
             "housing": "🏠",
@@ -1113,7 +1113,7 @@ struct ExploreView: View {
 
         private let placeCategories: [(id: String, emoji: String, label: String)] = [
             ("bars", "🍹", "Bars"),
-            ("restaurants", "🍴", "Restaurants"),
+            ("restaurants", "🍕", "Restaurants"),
             ("cafes", "🍵", "Cafes"),
             ("activities", "🎡", "Activities"),
             ("housing", "🏠", "Housing"),
@@ -2332,7 +2332,7 @@ struct ExploreView: View {
             let bars = counts["bars", default: 0]
             let activites = counts["activities", default: 0]
             return [
-                ("🍴", "Restaurants", "\(restaurants)"),
+                ("🍕", "Restaurants", "\(restaurants)"),
                 ("🏠", "Housing", "\(logements)"),
                 ("🍹", "Bars", "\(bars)"),
                 ("🎯", "Activities", "\(activites)"),
