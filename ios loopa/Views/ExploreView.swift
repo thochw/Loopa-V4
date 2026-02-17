@@ -1097,6 +1097,11 @@ struct ExploreView: View {
         @State private var showCityDetailFilterSheet = false
         // Spot filters
         @State private var spotMinRecommendations: Int = 1
+        @State private var spotSortBy: String = "pertinence" // "pertinence" | "distance"
+        @State private var spotPriceMin: Int = 1
+        @State private var spotPriceMax: Int = 100
+        @State private var spotMinRating: Double? = nil // nil | 3.5 | 4.0 | 4.5
+        @State private var spotMinReviews: Int? = nil // nil | 300 | 500 | 1000
         // Housing filters
         @State private var cityDetailBudgetMin: Int = 0
         @State private var cityDetailBudgetMax: Int = 2500
@@ -2614,23 +2619,6 @@ struct ExploreView: View {
                 Group {
                     if cityDetailTab == .spots {
                         spotFilterContent
-                            .navigationTitle("Filters")
-                            .navigationBarTitleDisplayMode(.inline)
-                            .toolbar {
-                                ToolbarItem(placement: .cancellationAction) {
-                                    Button("Cancel") {
-                                        showCityDetailFilterSheet = false
-                                    }
-                                    .foregroundStyle(Color.appAccent)
-                                }
-                                ToolbarItem(placement: .confirmationAction) {
-                                    Button("Show \(cityDetailFilteredSpots.count) results") {
-                                        showCityDetailFilterSheet = false
-                                    }
-                                    .font(.system(size: 15, weight: .semibold))
-                                    .foregroundStyle(Color.appAccent)
-                                }
-                            }
                     } else {
                         housingFilterContent
                             .navigationBarHidden(true)
@@ -2640,48 +2628,156 @@ struct ExploreView: View {
         }
 
         private var spotFilterContent: some View {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack(spacing: 8) {
-                            Text("👥")
-                                .font(.system(size: 22))
-                            Text("Number of recommendations")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundStyle(.primary)
+            let spotPriceMinDouble = Binding(
+                get: { Double(spotPriceMin) },
+                set: { spotPriceMin = Int(min(100, max(1, $0))) }
+            )
+            let spotPriceMaxDouble = Binding(
+                get: { Double(spotPriceMax) },
+                set: { spotPriceMax = Int(min(100, max(1, $0))) }
+            )
+            return VStack(spacing: 0) {
+                // Header: Filtres + close X (rose sur fond blanc)
+                HStack {
+                    Text("Filtres")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Button(action: { showCityDetailFilterSheet = false }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Color.appAccent)
+                            .frame(width: 36, height: 36)
+                            .background(Color.white, in: Circle())
+                            .overlay(Circle().strokeBorder(Color(.systemGray5), lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        // Trier par
+                        spotFilterSection(title: "Trier par") {
+                            spotFilterSegment(options: [("pertinence", "Pertinence"), ("distance", "Distance")], selection: $spotSortBy)
                         }
-                        Text("Show only spots recommended by at least this many people.")
-                            .font(.system(size: 14, weight: .regular))
-                            .foregroundStyle(.secondary)
-                        HStack(spacing: 10) {
-                            ForEach([1, 2, 3], id: \.self) { count in
-                                let label = count == 3 ? "3+" : "\(count)"
-                                let isSelected = spotMinRecommendations == count
-                                Button(action: {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                        spotMinRecommendations = count
-                                    }
-                                }) {
-                                    Text("\(label)")
-                                        .font(.system(size: 15, weight: .semibold))
-                                        .foregroundStyle(isSelected ? .white : .primary)
-                                        .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 12)
-                                        .background(
-                                            isSelected ? Color.appAccent : Color(.systemGray6),
-                                            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        )
-                                }
-                                .buttonStyle(.plain)
+
+                        // Prix par personne
+                        spotFilterSection(title: "Prix par personne") {
+                            VStack(spacing: 12) {
+                                Text("\(spotPriceMin) $CA–\(spotPriceMax >= 100 ? "100 ou plus" : "\(spotPriceMax)") $CA")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundStyle(.primary)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 8)
+                                    .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                BudgetRangeSliderView(minValue: spotPriceMinDouble, maxValue: spotPriceMaxDouble, range: 1...100, step: 5)
+                                    .frame(height: 44)
+                                    .tint(Color.appAccent)
                             }
                         }
+
+                        // Note - minimum
+                        spotFilterSection(title: "Note", subtitle: "minimum") {
+                            spotFilterSegment(options: [("all", "Toutes"), ("3.5", "3,5 ⭐"), ("4.0", "4,0 ⭐"), ("4.5", "4,5 ⭐")], selection: Binding(
+                                get: { spotMinRating.map { "\($0)" } ?? "all" },
+                                set: { spotMinRating = $0 == "all" ? nil : Double($0) }
+                            ))
+                        }
+
+                        // Nombre d'avis
+                        spotFilterSection(title: "Nombre d'avis") {
+                            spotFilterSegment(options: [("all", "Tous"), ("300", "300+"), ("500", "500+"), ("1000", "1000+")], selection: Binding(
+                                get: { spotMinReviews.map { "\($0)" } ?? "all" },
+                                set: { spotMinReviews = $0 == "all" ? nil : Int($0) }
+                            ))
+                        }
                     }
-                    .padding(16)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(.systemGray6).opacity(0.5), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .padding(20)
+                }
+
+                // Effacer + Appliquer
+                HStack(spacing: 12) {
+                    Button("Effacer") {
+                        spotSortBy = "pertinence"
+                        spotPriceMin = 1
+                        spotPriceMax = 100
+                        spotMinRating = nil
+                        spotMinReviews = nil
+                    }
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color.appAccent)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .buttonStyle(.plain)
+
+                    Button("Appliquer") {
+                        showCityDetailFilterSheet = false
+                    }
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(Color(hex: "222222"), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .buttonStyle(.plain)
                 }
                 .padding(20)
+                .background(Color(.systemBackground))
             }
+            .background(Color(.systemBackground))
+        }
+
+        private func spotFilterSection<Content: View>(title: String, subtitle: String? = nil, @ViewBuilder content: () -> Content) -> some View {
+            VStack(alignment: .leading, spacing: 12) {
+                if let sub = subtitle {
+                    (Text(title) + Text(" - ") + Text(sub).font(.system(size: 14, weight: .regular)).foregroundStyle(.secondary))
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(.primary)
+                } else {
+                    Text(title)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(.primary)
+                }
+                content()
+            }
+        }
+
+        private func spotFilterSegment(options: [(String, String)], selection: Binding<String>) -> some View {
+            HStack(spacing: 0) {
+                ForEach(options, id: \.0) { value, label in
+                    let isSelected = selection.wrappedValue == value
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            selection.wrappedValue = value
+                        }
+                    }) {
+                        Text(label)
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(.primary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(
+                                isSelected ? Color.white : Color.clear,
+                                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .strokeBorder(isSelected ? Color(hex: "222222") : Color.clear, lineWidth: 2)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    if value != options.last?.0 {
+                        Rectangle()
+                            .fill(Color(.systemGray5))
+                            .frame(width: 1)
+                            .padding(.vertical, 8)
+                    }
+                }
+            }
+            .padding(4)
+            .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
 
         private var housingFilterContent: some View {
@@ -2699,9 +2795,10 @@ struct ExploreView: View {
                     Button(action: { showCityDetailFilterSheet = false }) {
                         Image(systemName: "xmark")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Color.appAccent)
                             .frame(width: 36, height: 36)
-                            .background(Color.appAccent, in: Circle())
+                            .background(Color.white, in: Circle())
+                            .overlay(Circle().strokeBorder(Color(.systemGray5), lineWidth: 1))
                     }
                     .buttonStyle(.plain)
 
@@ -2737,14 +2834,9 @@ struct ExploreView: View {
                     VStack(alignment: .leading, spacing: 24) {
                         // Type of housing — selected = black outline, white background
                         VStack(alignment: .leading, spacing: 12) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "house.fill")
-                                    .font(.system(size: 18))
-                                    .foregroundStyle(.primary)
-                                Text("Type of housing")
-                                    .font(.system(size: 16, weight: .bold))
-                                    .foregroundStyle(.primary)
-                            }
+                            Text("Type of housing")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundStyle(.primary)
                             Text("What kind of place are you looking for?")
                                 .font(.system(size: 14, weight: .regular))
                                 .foregroundStyle(.secondary)
@@ -2786,14 +2878,9 @@ struct ExploreView: View {
 
                         // Monthly budget — slider + min/max pills
                         VStack(alignment: .leading, spacing: 12) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "dollarsign.circle.fill")
-                                    .font(.system(size: 18))
-                                    .foregroundStyle(.primary)
-                                Text("Monthly budget")
-                                    .font(.system(size: 16, weight: .bold))
-                                    .foregroundStyle(.primary)
-                            }
+                            Text("Monthly budget")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundStyle(.primary)
                             Text("Select your budget range.")
                                 .font(.system(size: 14, weight: .regular))
                                 .foregroundStyle(.secondary)
@@ -2823,14 +2910,9 @@ struct ExploreView: View {
 
                         // Minimum rating — All (red) + 1+ à 5+ avec étoiles
                         VStack(alignment: .leading, spacing: 12) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "star.fill")
-                                    .font(.system(size: 18))
-                                    .foregroundStyle(.yellow)
-                                Text("Minimum rating")
-                                    .font(.system(size: 16, weight: .bold))
-                                    .foregroundStyle(.primary)
-                            }
+                            Text("Minimum rating")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundStyle(.primary)
                             Text("Only show highly-rated places.")
                                 .font(.system(size: 14, weight: .regular))
                                 .foregroundStyle(.secondary)
@@ -2896,14 +2978,9 @@ struct ExploreView: View {
 
                         // Availability — When do you need the place? (Now / Later)
                         VStack(alignment: .leading, spacing: 12) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "calendar")
-                                    .font(.system(size: 18))
-                                    .foregroundStyle(.primary)
-                                Text("Availability")
-                                    .font(.system(size: 16, weight: .bold))
-                                    .foregroundStyle(.primary)
-                            }
+                            Text("Availability")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundStyle(.primary)
                             Text("When do you need the place?")
                                 .font(.system(size: 14, weight: .regular))
                                 .foregroundStyle(.secondary)
@@ -2914,8 +2991,6 @@ struct ExploreView: View {
                                     }
                                 }) {
                                     HStack(spacing: 12) {
-                                        Text("💃")
-                                            .font(.system(size: 22))
                                         Text("Now")
                                             .font(.system(size: 16, weight: .medium))
                                             .foregroundStyle(.primary)
