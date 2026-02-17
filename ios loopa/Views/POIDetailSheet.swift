@@ -19,6 +19,17 @@ struct TappedPOI: Identifiable {
     var notes: String
     var photoURLs: [String] // URLs ou identifiants pour afficher des images
     
+    /// Créé depuis TapInteraction(.standardPoi) – Mapbox Standard style.
+    static func from(standardPoi: MapboxMaps.StandardPoiFeature, coordinate: CLLocationCoordinate2D) -> TappedPOI {
+        TappedPOI(
+            name: standardPoi.name ?? "POI",
+            address: nil,
+            coordinate: coordinate,
+            notes: "",
+            photoURLs: []
+        )
+    }
+    
     static func from(queriedFeature: MapboxMaps.QueriedRenderedFeature) -> TappedPOI? {
         let q = queriedFeature.queriedFeature
         guard q.sourceLayer == "poi_label" else { return nil }

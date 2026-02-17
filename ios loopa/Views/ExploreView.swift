@@ -355,7 +355,7 @@ struct ExploreView: View {
         }
         .padding(12)
         .background(Color(.systemGray6).opacity(0.6), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .onTapGesture {
+                .onTapGesture {
             selectedHousingSpot = spot
             selectedRoommate = nil
         }
@@ -476,7 +476,7 @@ struct ExploreView: View {
                         Text("✈️ New trip")
                             .font(.app(size: 24, weight: .bold))
                             .foregroundStyle(.primary)
-                        Spacer()
+                    Spacer()
                         Button(action: onClose) {
                             Image(systemName: "xmark")
                                 .font(.system(size: 14, weight: .semibold))
@@ -514,7 +514,7 @@ struct ExploreView: View {
                             .padding(.horizontal, 14)
                             .padding(.vertical, 12)
                             .background(Color.appAccent.opacity(0.1), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        } else {
+                            } else {
                             // Search field
                             HStack(spacing: 10) {
                                 Image(systemName: "magnifyingglass")
@@ -1244,7 +1244,7 @@ struct ExploreView: View {
                             HStack {
                                 Spacer()
                                 Button(action: { showAddPinSheet = true }) {
-                                    Image(systemName: "plus")
+                            Image(systemName: "plus")
                                         .font(.system(size: 22, weight: .semibold))
                                         .foregroundStyle(.white)
                                         .frame(width: 48, height: 48)
@@ -1412,7 +1412,7 @@ struct ExploreView: View {
                                             .font(.system(size: 13, weight: .medium))
                                             .foregroundStyle(.secondary)
                                     }
-                                    Spacer()
+                        Spacer()
                                     Image(systemName: "chevron.right")
                                         .font(.system(size: 14, weight: .semibold))
                                         .foregroundStyle(.tertiary)
@@ -1447,7 +1447,7 @@ struct ExploreView: View {
         }
 
         private var togglePill: some View {
-            Button(action: {
+                            Button(action: {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                     switch sheetState {
                     case .collapsed: sheetState = .partial
@@ -1474,8 +1474,8 @@ struct ExploreView: View {
         private var exploreSearchBar: some View {
             HStack(spacing: 12) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.black)
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundStyle(.black)
                 ZStack(alignment: .leading) {
                     if searchText.isEmpty {
                         Text("Search for a place")
@@ -1519,7 +1519,7 @@ struct ExploreView: View {
         private var exploreSearchResults: some View {
             VStack(spacing: 0) {
                 ForEach(tripLocationSearcher.results, id: \.self) { result in
-                    Button(action: {
+                            Button(action: {
                         let title = result.title
                         let subtitle = result.subtitle
                         let query = subtitle.isEmpty ? title : "\(title), \(subtitle)"
@@ -1686,7 +1686,7 @@ struct ExploreView: View {
                             .padding(.bottom, geometry.safeAreaInsets.bottom + 56)
                     }
                     .scrollDisabled(sheetState == .collapsed) // Allow scroll when sheet is open (partial or full)
-                } else {
+                                    } else {
                     cityDetailContent(geometry: geometry)
                         .padding(.bottom, 14)
                 }
@@ -1747,21 +1747,21 @@ struct ExploreView: View {
                         globeTarget = city.coordinate
                         globeZoom = 9
                         sheetState = .full
-                    }
-                }) {
-                    HStack(spacing: 8) {
+                            }
+                        }) {
+                            HStack(spacing: 8) {
                         Text("Explore this city")
-                            .font(.system(size: 16, weight: .semibold))
+                                    .font(.system(size: 16, weight: .semibold))
                         Image(systemName: "arrow.right")
                             .font(.system(size: 14, weight: .semibold))
-                    }
-                    .foregroundStyle(.white)
+                            }
+                            .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                     .background(Color.appAccent, in: Capsule())
                 }
                 .buttonStyle(.plain)
-                .padding(.horizontal, 20)
+                            .padding(.horizontal, 20)
                 .padding(.top, 4)
             }
         }
@@ -1904,9 +1904,9 @@ struct ExploreView: View {
             markerCitySheetUnifiedContent(city: city, onClose: onClose, onExplore: onExplore)
                 .background(Color.white)
                 .presentationDetents([markerSheetClosedDetent, .large], selection: selectedDetent)
-                .presentationDragIndicator(.visible)
-                .presentationCornerRadius(24)
-        }
+                    .presentationDragIndicator(.visible)
+                    .presentationCornerRadius(24)
+            }
 
         /// Contenu unifié : tout dans un ScrollView, déplier la sheet révèle naturellement Information, Guides, etc.
         private func markerCitySheetUnifiedContent(
@@ -1943,8 +1943,8 @@ struct ExploreView: View {
                             .background(Color(.systemGray5), in: Circle())
                     }
                     .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 20)
+        }
+        .padding(.horizontal, 20)
                 .padding(.top, 8)
                 .padding(.bottom, 12)
 
@@ -1965,7 +1965,7 @@ struct ExploreView: View {
                         }
                         .buttonStyle(.plain)
 
-                        HStack(spacing: 12) {
+        HStack(spacing: 12) {
                             ForEach(Array(facts.enumerated()), id: \.offset) { _, fact in
                                 VStack(alignment: .center, spacing: 4) {
                                     Text(fact.label)
@@ -2001,7 +2001,7 @@ struct ExploreView: View {
                                 .font(.system(size: 20, weight: .bold))
                             Text(markerCityLongDescription(for: city))
                                 .font(.system(size: 15, weight: .regular))
-                                .foregroundStyle(.primary)
+                        .foregroundStyle(.primary)
                                 .fixedSize(horizontal: false, vertical: true)
                             if let wikiURL = markerCityWikipediaURL(for: city) {
                                 Link("More on Wikipedia", destination: wikiURL)
@@ -2033,7 +2033,7 @@ struct ExploreView: View {
                     AsyncImage(url: URL(string: url)) { phase in
                         if let image = phase.image {
                             image.resizable().aspectRatio(contentMode: .fill)
-                        } else {
+                            } else {
                             Color(.systemGray4)
                                 .overlay(ProgressView())
                         }
@@ -2068,8 +2068,8 @@ struct ExploreView: View {
                     }
                     .buttonStyle(.plain)
 
-                    Spacer()
-
+            Spacer()
+            
                     Button(action: { expandedMarkerCity = nil }) {
                         Image(systemName: "xmark")
                             .font(.system(size: 18, weight: .semibold))
@@ -2089,7 +2089,7 @@ struct ExploreView: View {
                     .padding(.top, 2)
                     .padding(.bottom, 20)
 
-                    Button(action: {
+                            Button(action: {
                         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
                             expandedMarkerCity = nil
                             selectedMarkerCity = nil
@@ -2180,9 +2180,9 @@ struct ExploreView: View {
         private func markerCityGuideCard(spot: HousingSpot) -> some View {
             VStack(alignment: .leading, spacing: 8) {
                 AsyncImage(url: URL(string: spot.image)) { phase in
-                    if let image = phase.image {
+                        if let image = phase.image {
                         image.resizable().aspectRatio(contentMode: .fill)
-                    } else {
+                        } else {
                         Color(.systemGray5)
                     }
                 }
@@ -2353,7 +2353,7 @@ struct ExploreView: View {
                     let t = spot.type.lowercased()
                     return t.contains("room") || t.contains("place") || t.contains("housing") || t.contains("entire") || t.contains("private")
                 }
-            } else {
+                        } else {
                 let filtered = allNearby.filter { spot in
                     let t = spot.type.lowercased()
                     return !(t.contains("room") || t.contains("place") || t.contains("housing") || t.contains("entire") || t.contains("private"))
@@ -2396,8 +2396,8 @@ struct ExploreView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(visiblePlaceCategories, id: \.id) { cat in
-                        Button(action: {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            Button(action: {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                 selectedPlaceCategory = selectedPlaceCategory == cat.id ? nil : cat.id
                             }
                         }) {
@@ -2437,7 +2437,7 @@ struct ExploreView: View {
                         ZStack(alignment: .center) {
                             HStack(spacing: 0) {
                                 ForEach(CityDetailTab.allCases, id: \.self) { tab in
-                                    Button(action: {
+            Button(action: {
                                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                                             cityDetailTab = tab
                                             selectedPlaceCategory = nil
@@ -2571,7 +2571,7 @@ struct ExploreView: View {
 
                     Text(spot.title)
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(.primary)
+                                                .foregroundStyle(.primary)
                         .lineLimit(1)
 
                     HStack(spacing: 8) {
@@ -2592,7 +2592,7 @@ struct ExploreView: View {
 
                         Text("Recommended by \(peopleCount)+")
                             .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(.secondary)
+                                                    .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
                 }
@@ -2666,7 +2666,7 @@ struct ExploreView: View {
                                         .font(.system(size: 15, weight: .semibold))
                                         .foregroundStyle(isSelected ? .white : .primary)
                                         .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 12)
+                                    .padding(.vertical, 12)
                                         .background(
                                             isSelected ? Color.appAccent : Color(.systemGray6),
                                             in: RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -2834,10 +2834,10 @@ struct ExploreView: View {
                             Text("Only show highly-rated places.")
                                 .font(.system(size: 14, weight: .regular))
                                 .foregroundStyle(.secondary)
-                            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 10) {
-                                    Button(action: {
-                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                             cityDetailMinRating = nil
                                         }
                                     }) {
@@ -2857,12 +2857,12 @@ struct ExploreView: View {
                                             RoundedRectangle(cornerRadius: 14, style: .continuous)
                                                 .strokeBorder(cityDetailMinRating == nil ? Color.clear : Color(.systemGray5), lineWidth: 1)
                                         )
-                                    }
-                                    .buttonStyle(.plain)
+                    }
+                    .buttonStyle(.plain)
                                     ForEach(1...5, id: \.self) { rating in
                                         let isSelected = cityDetailMinRating == rating
-                                        Button(action: {
-                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                                 cityDetailMinRating = rating
                                             }
                                         }) {
@@ -2887,8 +2887,8 @@ struct ExploreView: View {
                                                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                                                     .strokeBorder(isSelected ? Color.clear : Color(.systemGray5), lineWidth: 1)
                                             )
-                                        }
-                                        .buttonStyle(.plain)
+                    }
+                    .buttonStyle(.plain)
                                     }
                                 }
                             }
@@ -2908,8 +2908,8 @@ struct ExploreView: View {
                                 .font(.system(size: 14, weight: .regular))
                                 .foregroundStyle(.secondary)
                             VStack(spacing: 10) {
-                                Button(action: {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                         cityDetailAvailabilityNow = true
                                     }
                                 }) {
@@ -2929,10 +2929,10 @@ struct ExploreView: View {
                                         RoundedRectangle(cornerRadius: 12, style: .continuous)
                                             .strokeBorder(cityDetailAvailabilityNow == true ? Color.appAccent : Color(.systemGray4), lineWidth: cityDetailAvailabilityNow == true ? 2 : 1)
                                     )
-                                }
-                                .buttonStyle(.plain)
-                                Button(action: {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    }
+                    .buttonStyle(.plain)
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                         cityDetailAvailabilityNow = false
                                         if cityDetailAvailableFrom == nil {
                                             cityDetailAvailableFrom = Date()
@@ -2956,8 +2956,8 @@ struct ExploreView: View {
                                         RoundedRectangle(cornerRadius: 12, style: .continuous)
                                             .strokeBorder(cityDetailAvailabilityNow == false ? Color.appAccent : Color(.systemGray4), lineWidth: cityDetailAvailabilityNow == false ? 2 : 1)
                                     )
-                                }
-                                .buttonStyle(.plain)
+                    }
+                    .buttonStyle(.plain)
 
                                 // Calendrier quand "Later" est sélectionné
                                 if cityDetailAvailabilityNow == false {
@@ -2988,7 +2988,7 @@ struct ExploreView: View {
                         .frame(height: 1)
                     Button(action: { showCityDetailFilterSheet = false }) {
                         HStack(spacing: 8) {
-                            Image(systemName: "magnifyingglass")
+                    Image(systemName: "magnifyingglass")
                                 .font(.system(size: 17, weight: .semibold))
                             Text("Show \(cityDetailFilteredSpots.count) results")
                                 .font(.system(size: 17, weight: .semibold))
@@ -4453,12 +4453,6 @@ struct ExploreView: View {
         ZStack(alignment: .top) {
             MapboxMaps.MapReader { proxy in
                 MapboxMaps.Map(initialViewport: MapboxMaps.Viewport.camera(center: mapRegion.center, zoom: mapboxZoom(from: mapRegion.span), bearing: 0, pitch: 0)) {
-                    // POI layer: tous les POI (commercial, recreation, landmark, etc.) – pas de filtre pour ne rien exclure
-                    MapboxMaps.SymbolLayer(id: "app-poi-commercial-recreation-landmark", source: "composite")
-                        .sourceLayer("poi_label")
-                        .textField(Exp(.get) { "name" })
-                        .textSize(12)
-                        .textColor(MapboxMaps.StyleColor(.darkGray))
                     MapboxMaps.ForEvery(mapItems) { item in
                         MapboxMaps.MapViewAnnotation(coordinate: item.coordinate) {
                             Button(action: {
@@ -4487,12 +4481,13 @@ struct ExploreView: View {
                             .buttonStyle(.plain)
                 }
                     }
-                    MapboxMaps.TapInteraction { context in
-                        handlePOITap(context: context, map: proxy.map)
-                        return false
+                    MapboxMaps.TapInteraction(.standardPoi) { poi, context in
+                        let tapped = TappedPOI.from(standardPoi: poi, coordinate: context.coordinate)
+                        selectedPOI = tapped
+                        return true
                     }
                 }
-                .mapStyle(MapboxMaps.MapStyle.appStyle)
+                .mapStyle(.standard(showPointOfInterestLabels: true))
                 .ornamentOptions(MapboxMaps.OrnamentOptions(scaleBar: MapboxMaps.ScaleBarViewOptions(visibility: .hidden)))
                 .ignoresSafeArea(edges: .bottom)
                 .id(activeTab)
@@ -4534,19 +4529,6 @@ struct ExploreView: View {
         }
     }
     
-    private func handlePOITap(context: MapboxMaps.InteractionContext, map: MapboxMaps.MapboxMap?) {
-        guard let map = map else { return }
-        let options = MapboxMaps.RenderedQueryOptions(layerIds: ["app-poi-commercial-recreation-landmark"], filter: nil)
-        _ = map.queryRenderedFeatures(with: context.point, options: options) { result in
-            guard let features = try? result.get(),
-                  let first = features.first(where: { $0.queriedFeature.sourceLayer == "poi_label" }) ?? features.first,
-                  let poi = TappedPOI.from(queriedFeature: first) else { return }
-            DispatchQueue.main.async {
-                selectedPOI = poi
-            }
-        }
-    }
-
     private func mapFilterChip(icon: String? = nil, text: String, isSelected: Bool = false) -> some View {
         HStack(spacing: 6) {
             if let icon = icon {
@@ -6508,7 +6490,7 @@ private struct BudgetRangeSliderView: View {
                     .offset(x: thumbSize / 2 + minX)
                 
                 // Min thumb
-                Circle()
+            Circle()
                     .fill(Color.white)
                     .frame(width: thumbSize, height: thumbSize)
                     .overlay(Circle().strokeBorder(Color(.systemGray4), lineWidth: 1))
@@ -6574,7 +6556,7 @@ private struct HousingDetailSheet: View {
         Group {
             if selectedDetent == Self.previewDetent {
                 spotPreviewContent
-            } else {
+        } else {
                 spotFullContent
             }
         }
@@ -6917,8 +6899,8 @@ private struct HousingDetailSheet: View {
                     .font(.app(size: 15, weight: .semibold))
                     .foregroundStyle(.black)
                 Text("Highly rated for comfort, cleanliness, and location.")
-                    .font(.app(size: 13, weight: .regular))
-                    .foregroundStyle(.secondary)
+                            .font(.app(size: 13, weight: .regular))
+                            .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
@@ -6967,7 +6949,7 @@ private struct HousingDetailSheet: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Availability")
                     .font(.app(size: 12, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                        .foregroundStyle(.secondary)
                 HStack(spacing: 6) {
                     Circle()
                         .fill(spot.isAvailableNow ? Color.green : Color.orange)
@@ -6992,10 +6974,10 @@ private struct HousingDetailSheet: View {
                 .padding(.horizontal, 18)
                 .padding(.vertical, 12)
                 .background(Color.appAccent, in: Capsule())
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 20)
+            .padding(.horizontal, 20)
         .padding(.vertical, 16)
         .background(Color.white)
             .overlay(

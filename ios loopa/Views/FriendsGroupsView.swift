@@ -133,24 +133,29 @@ struct FriendsGroupsView: View {
     private var exploreMapView: some View {
         MapboxMaps.MapReader { proxy in
             MapboxMaps.Map(viewport: $exploreViewport) {
-                MapboxMaps.SymbolLayer(id: "app-poi-explore", source: "composite")
-                    .sourceLayer("poi_label")
-                    .textField(Exp(.get) { "name" })
-                    .textSize(12)
-                    .textColor(MapboxMaps.StyleColor(.darkGray))
                 MapboxMaps.Puck2D(bearing: .heading)
                 MapboxMaps.ForEvery(annotations) { item in
                     MapboxMaps.MapViewAnnotation(coordinate: item.coordinate) {
                             annotationView(for: item)
                         }
                     }
+                MapboxMaps.TapInteraction(.standardPoi) { poi, context in
+                    let tapped = TappedPOI.from(standardPoi: poi, coordinate: context.coordinate)
+                    selectedPOI = tapped
+                    return true
+                }
                 MapboxMaps.TapInteraction { context in
-                    handlePOITap(context: context, map: proxy.map)
-                    return false
+                    isFollowingUser = false
+                    if sheetState == .full {
+                        withAnimation(.interpolatingSpring(stiffness: 200, damping: 24)) {
+                            sheetState = .partial
+                        }
+                    }
+                    return true
                 }
             }
             .cameraBounds(MapboxMaps.CameraBoundsOptions(maxZoom: 20, minZoom: minExploreZoom))
-            .mapStyle(MapboxMaps.MapStyle.appStyle)
+            .mapStyle(.standard(showPointOfInterestLabels: true))
             .ornamentOptions(MapboxMaps.OrnamentOptions(scaleBar: MapboxMaps.ScaleBarViewOptions(visibility: .hidden)))
             .ignoresSafeArea()
             .onAppear {
@@ -186,32 +191,12 @@ struct FriendsGroupsView: View {
         }
     }
     
-    private func handlePOITap(context: MapboxMaps.InteractionContext, map: MapboxMaps.MapboxMap?) {
-        guard let map = map else { return }
-        let options = MapboxMaps.RenderedQueryOptions(layerIds: ["app-poi-explore"], filter: nil)
-        _ = map.queryRenderedFeatures(with: context.point, options: options) { result in
-            guard let features = try? result.get(),
-                  let first = features.first(where: { $0.queriedFeature.sourceLayer == "poi_label" }) ?? features.first,
-                  let poi = TappedPOI.from(queriedFeature: first) else { return }
-            DispatchQueue.main.async {
-                selectedPOI = poi
-            }
-        }
-    }
     
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Map (Mapbox)
+                // Map (Mapbox) – pas de onTapGesture ici pour permettre TapInteraction(.standardPoi)
                 exploreMapView
-                .onTapGesture {
-                    isFollowingUser = false
-                    if sheetState == .full {
-                        withAnimation(.interpolatingSpring(stiffness: 200, damping: 24)) {
-                            sheetState = .partial
-                        }
-                    }
-                }
                 .onChange(of: isSheetOpen) { _, isOpen in
                     guard variant == .travelers else { return }
                     if isFollowingUser {

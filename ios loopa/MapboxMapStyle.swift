@@ -12,6 +12,8 @@ import MapboxMaps
 /// Les couches POI (commercial, recreation, landmark) sont ajoutées dans chaque carte ; le style doit être basé sur Mapbox Streets (source "composite" / layer "poi_label").
 extension MapboxMaps.MapStyle {
     static let appStyle = MapboxMaps.MapStyle(uri: MapboxMaps.StyleURI(rawValue: "mapbox://styles/thochw/cmkbqgty5004901rxgct4a0z6")!)
+    /// Mapbox Standard – requis pour TapInteraction(.standardPoi) et POIs cliquables.
+    static let standardStyle = MapboxMaps.MapStyle(uri: .standard)
 }
 
 /// Convertit un `MKCoordinateSpan` en niveau de zoom Mapbox (approximatif).

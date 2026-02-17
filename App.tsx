@@ -15,9 +15,19 @@ declare global {
   }
 }
 
-// Mapbox Token
-const MAPBOX_TOKEN = 'pk.eyJ1IjoidGhvY2h3IiwiYSI6ImNta2JxM2JtdDA3azczZG9sZmtmbG81YmsifQ.7l6MvwnRDjpJPw0j2zgiIQ';
+// Mapbox Token (remplace par ta clé dans .env ou ici en local)
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN ?? 'YOUR_MAPBOX_PUBLIC_TOKEN';
+// Style Mapbox (Streets-based pour queryRenderedFeatures sur POI)
 const MAPBOX_STYLE = 'mapbox://styles/thochw/cmkbqgty5004901rxgct4a0z6';
+
+interface POIFeatureData {
+  name: string;
+  class?: string;
+  group?: string;
+  maki?: string;
+  coordinates: [number, number];
+  address?: string;
+}
 
 // --- Reusable UI Components ---
 
@@ -455,18 +465,21 @@ const ExploreScreen: React.FC<ExploreScreenProps> = ({ variant, onProfileClick, 
   const startY = useRef(0);
   const sheetRef = useRef<HTMLDivElement>(null);
   
+  // POI sélectionné (clic sur un POI de la carte)
+  const [selectedPOI, setSelectedPOI] = useState<POIFeatureData | null>(null);
+  const onPOIClickRef = useRef<((data: POIFeatureData) => void) | null>(null);
+  onPOIClickRef.current = (data) => setSelectedPOI(data);
+  
   // Mapbox Refs
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
-  // Store both the mapbox marker instance AND the react root for proper cleanup
   const markersRef = useRef<{marker: any, root: ReactDOM.Root}[]>([]);
 
-  // Initialize Map
+  // Initialize Map avec style Standard (featureset POI)
   useEffect(() => {
     if (!mapContainer.current) return;
-    if (mapRef.current) return; // Initialize only once
+    if (mapRef.current) return;
 
-    // Ensure mapboxgl is available
     const mapboxgl = window.mapboxgl;
     if (!mapboxgl) return;
 
@@ -475,7 +488,7 @@ const ExploreScreen: React.FC<ExploreScreenProps> = ({ variant, onProfileClick, 
     const map = new mapboxgl.Map({
       container: mapContainer.current,
       style: MAPBOX_STYLE,
-      center: [-73.5673, 45.5017], // Montreal
+      center: [-73.5673, 45.5017],
       zoom: 13.5,
       attributionControl: false,
       logoPosition: 'bottom-left'
@@ -483,7 +496,46 @@ const ExploreScreen: React.FC<ExploreScreenProps> = ({ variant, onProfileClick, 
 
     mapRef.current = map;
 
+    // Clic sur un POI : addInteraction (Standard) OU fallback queryRenderedFeatures
+    const handlePOIClick = (e: { lngLat: { lng: number; lat: number }; point: { x: number; y: number } }) => {
+      const mapInstance = mapRef.current;
+      if (!mapInstance) return;
+      const point = e.point || (e as any).point;
+      const lngLat = e.lngLat || (e as any).lngLat;
+      if (!point || !lngLat) return;
+      // queryRenderedFeatures : récupère les features sous le clic (tous styles Mapbox)
+      const allFeatures = mapInstance.queryRenderedFeatures(point);
+      const poiFeature = allFeatures.find((f: any) => {
+        const p = f?.properties;
+        const name = p?.name ?? p?.name_en ?? p?.name_int;
+        const isPOILayer = f?.layer?.id && /poi|place|label/.test(String(f.layer.id));
+        return name && (isPOILayer || f?.geometry);
+      });
+      if (poiFeature) {
+        const props = poiFeature.properties || {};
+        let coords: [number, number] = [lngLat.lng, lngLat.lat];
+        const geom = (poiFeature as any).geometry;
+        if (geom?.coordinates) {
+          const c = Array.isArray(geom.coordinates[0]) ? geom.coordinates[0] : geom.coordinates;
+          if (Array.isArray(c) && c.length >= 2) coords = [c[0], c[1]];
+        }
+        onPOIClickRef.current?.({
+          name: (props.name as string) || 'Lieu',
+          class: props.class as string | undefined,
+          group: props.group as string | undefined,
+          maki: props.maki as string | undefined,
+          coordinates: coords
+        });
+        return;
+      }
+      // Fallback : utiliser les coordonnées du clic si on a cliqué sur la carte (pas de POI)
+      // On n'ouvre pas la sheet pour un clic vide
+    };
+
+    map.on('click', handlePOIClick);
+
     return () => {
+      map.off('click', handlePOIClick);
       map.remove();
       mapRef.current = null;
     };
@@ -563,6 +615,23 @@ const ExploreScreen: React.FC<ExploreScreenProps> = ({ variant, onProfileClick, 
 
   }, [variant, mapRef.current]);
 
+  // Récupérer l'adresse via Mapbox Geocoding (reverse) quand un POI est sélectionné
+  useEffect(() => {
+    if (!selectedPOI?.coordinates) return;
+    const [lng, lat] = selectedPOI.coordinates;
+    fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&limit=1`
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        const place = data?.features?.[0];
+        if (place?.place_name) {
+          setSelectedPOI((prev) => prev ? { ...prev, address: place.place_name } : null);
+        }
+      })
+      .catch(() => {});
+  }, [selectedPOI?.coordinates]);
+
   // Bottom Sheet Logic (Existing)
   useEffect(() => {
     setIsSheetOpen(true);
@@ -613,6 +682,63 @@ const ExploreScreen: React.FC<ExploreScreenProps> = ({ variant, onProfileClick, 
     <div className="relative w-full h-full bg-gray-100 overflow-hidden flex flex-col">
       {/* Mapbox Container */}
       <div ref={mapContainer} className="absolute inset-0 z-0" />
+
+      {/* POI Detail Sheet (clic sur un POI de la carte) */}
+      {selectedPOI && (
+        <div className="absolute inset-0 z-50 flex flex-col justify-end pointer-events-auto">
+          <div 
+            className="absolute inset-0 bg-black/30"
+            onClick={() => setSelectedPOI(null)}
+          />
+          <div 
+            className="relative bg-white rounded-t-3xl shadow-2xl max-h-[70vh] overflow-y-auto safe-bottom"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white flex justify-between items-center px-5 py-4 border-b border-gray-100 z-10">
+              <h2 className="text-xl font-bold text-gray-900">{selectedPOI.name}</h2>
+              <button 
+                onClick={() => setSelectedPOI(null)}
+                className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center"
+              >
+                <X size={20} className="text-gray-600" />
+              </button>
+            </div>
+            <div className="p-5 space-y-5">
+              {selectedPOI.class && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Catégorie</p>
+                  <p className="text-gray-800">{selectedPOI.class.replace(/_/g, ' ')}</p>
+                </div>
+              )}
+              {selectedPOI.address && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Adresse</p>
+                  <p className="text-gray-800">{selectedPOI.address}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Photos</p>
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="w-24 h-24 rounded-xl bg-gray-200 flex-shrink-0 flex items-center justify-center">
+                      <ImageIcon size={24} className="text-gray-400" />
+                    </div>
+                  ))}
+                  <p className="text-gray-400 text-sm self-center">En attente d'intégration</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Avis</p>
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Star size={18} className="text-amber-400 fill-amber-400" />
+                  <span>—</span>
+                  <span className="text-sm">En attente d'intégration</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* --- Header Layer --- */}
       <div className="relative z-20 pt-12 px-4 pb-2 flex flex-col pointer-events-none">
