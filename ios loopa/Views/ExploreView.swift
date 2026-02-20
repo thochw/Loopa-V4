@@ -6616,259 +6616,198 @@ private extension Double {
     }
 }
 
-// MARK: - Spot Detail Sheet (duplicate of list bottom sheet, single spot only)
+// MARK: - Spot Detail Sheet (style Red Carpet / maquette)
 private struct HousingDetailSheet: View {
     let spot: HousingSpot
     let onClose: () -> Void
 
-    private static let previewDetent = PresentationDetent.fraction(0.40)
+    @State private var isBookmarked = false
 
-    private static let placeCategories: [(id: String, emoji: String, label: String)] = [
-        ("bars", "🍹", "Bars"),
-        ("restaurants", "🍕", "Restaurants"),
-        ("cafes", "🍵", "Cafes"),
-        ("activities", "🎡", "Activities"),
-        ("housing", "🏠", "Housing"),
-    ]
-
-    enum SpotDetailTab: String, CaseIterable { case spots = "Spot"; case housing = "Housing" }
-
-    @State private var cityDetailTab: SpotDetailTab
-    @State private var selectedPlaceCategory: String? = nil
-
-    init(spot: HousingSpot, onClose: @escaping () -> Void) {
-        self.spot = spot
-        self.onClose = onClose
-        let t = spot.type.lowercased()
-        let isHousing = t.contains("room") || t.contains("place") || t.contains("housing") || t.contains("entire") || t.contains("private")
-        _cityDetailTab = State(initialValue: isHousing ? .housing : .spots)
-    }
-    @Namespace private var segmentNamespace
-
-    private var visiblePlaceCategories: [(id: String, emoji: String, label: String)] {
-        if cityDetailTab == .housing { return [] }
-        return Self.placeCategories.filter { $0.id != "housing" }
+    private var meta: (label: String, icon: String, tint: Color) {
+        spotDetailRecommendationCategory(for: spot.type)
     }
 
-    private var filteredSpot: HousingSpot? {
-        let t = spot.type.lowercased()
-        let isHousing = t.contains("room") || t.contains("place") || t.contains("housing") || t.contains("entire") || t.contains("private")
-        if cityDetailTab == .housing {
-            return isHousing ? spot : nil
-        }
-        let matchesTab = !isHousing
-        guard matchesTab else { return nil }
-        guard let cat = selectedPlaceCategory else { return spot }
-        switch cat {
-        case "bars": return t.contains("bar") ? spot : nil
-        case "restaurants": return t.contains("restaurant") ? spot : nil
-        case "cafes": return t.contains("cafe") ? spot : nil
-        case "activities": return t.contains("activity") ? spot : nil
-        default: return spot
-        }
+    private var imageUrls: [String] {
+        [spot.image] + spot.photos
+    }
+
+    private var priceText: String {
+        "\(spot.price) \(spot.currency)"
+    }
+
+    private var reviewCount: Int {
+        max(1, Int(spot.rating * 20))
     }
 
     var body: some View {
-        GeometryReader { geo in
-            let sheetWidth = min(geo.size.width - 28, 560)
-            let horizontalPadding: CGFloat = 32
-            let contentWidth = sheetWidth - horizontalPadding * 2
-
-            ScrollView(.vertical, showsIndicators: true) {
-                VStack(alignment: .leading, spacing: 12) {
-                    ZStack(alignment: .center) {
-                        HStack(spacing: 0) {
-                            ForEach(SpotDetailTab.allCases, id: \.self) { tab in
-                                Button(action: {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                        cityDetailTab = tab
-                                        selectedPlaceCategory = nil
-                                    }
-                                }) {
-                                    Text(tab.rawValue)
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .foregroundStyle(cityDetailTab == tab ? .white : Color(.systemGray))
-                                        .padding(.horizontal, 14)
-                                        .padding(.vertical, 6)
-                                        .background(
-                                            Group {
-                                                if cityDetailTab == tab {
-                                                    Capsule()
-                                                        .fill(Color.appAccent)
-                                                        .matchedGeometryEffect(id: "segment", in: segmentNamespace)
-                                                }
-                                            }
-                                        )
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .padding(2)
-                        .background(Color(.systemGray5).opacity(0.5), in: Capsule())
-                        .overlay(Capsule().strokeBorder(Color.black.opacity(0.08), lineWidth: 1))
-
-                        HStack {
-                            Spacer(minLength: 0)
-                            Button(action: onClose) {
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundStyle(Color(.systemGray))
-                            }
-                            .buttonStyle(.plain)
-                            .padding(.trailing, horizontalPadding)
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 0) {
+                // Image + overlay (close, carousel indicator)
+                ZStack(alignment: .topTrailing) {
+                    AsyncImage(url: URL(string: spot.image)) { phase in
+                        if let image = phase.image {
+                            image.resizable().aspectRatio(contentMode: .fill)
+                        } else {
+                            Color(.systemGray5)
                         }
                     }
-                    .padding(.horizontal, horizontalPadding)
-                    .padding(.top, 8)
+                    .frame(height: 220)
+                    .frame(maxWidth: .infinity)
+                    .clipped()
 
-                    if !visiblePlaceCategories.isEmpty {
-                        spotDetailPillsView
-                            .padding(.top, 4)
-                            .padding(.bottom, 0)
-                    }
-
-                    VStack(spacing: 10) {
-                        if let s = filteredSpot {
-                            spotDetailCardRow(spot: s, cardWidth: contentWidth)
+                    VStack(alignment: .trailing, spacing: 8) {
+                        Button(action: onClose) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(Color(.systemGray))
+                                .frame(width: 32, height: 32)
+                                .background(Color.white.opacity(0.9), in: Circle())
                         }
+                        .buttonStyle(.plain)
+
+                        Text("1/\(imageUrls.count)")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.black.opacity(0.5), in: Capsule())
                     }
-                    .padding(.horizontal, horizontalPadding)
-                    .padding(.top, 4)
-                    .padding(.bottom, 20)
+                    .padding(16)
                 }
-            }
-            .frame(width: sheetWidth)
-            .frame(maxWidth: .infinity, alignment: .center)
-            .background(Color.white)
-        }
-        .ignoresSafeArea(edges: [.top, .bottom])
-        .environment(\.colorScheme, .light)
-        .presentationDetents([Self.previewDetent])
-        .presentationDragIndicator(.visible)
-        .presentationCornerRadius(28)
-    }
 
-    private var spotDetailPillsView: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(visiblePlaceCategories, id: \.id) { cat in
-                    Button(action: {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            selectedPlaceCategory = selectedPlaceCategory == cat.id ? nil : cat.id
+                VStack(alignment: .leading, spacing: 16) {
+                    // Category + Bookmark
+                    HStack {
+                        HStack(spacing: 6) {
+                            Image(systemName: meta.icon)
+                                .font(.system(size: 12, weight: .semibold))
+                            Text(meta.label.uppercased())
+                                .font(.system(size: 12, weight: .bold))
                         }
-                    }) {
-                        HStack(spacing: 5) {
-                            Text(cat.emoji)
-                                .font(.system(size: 13))
-                            Text(cat.label)
-                                .font(.system(size: 13, weight: .semibold))
-                        }
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(meta.tint)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
-                        .background(Color.white, in: Capsule())
-                        .overlay(
-                            Capsule()
-                                .strokeBorder(
-                                    selectedPlaceCategory == cat.id ? Color.appAccent : Color.clear,
-                                    lineWidth: 2
-                                )
-                        )
+                        .background(meta.tint.opacity(0.15), in: Capsule())
+                        .overlay(Capsule().strokeBorder(meta.tint.opacity(0.5), lineWidth: 1))
+
+                        Spacer()
+
+                        Button(action: { isBookmarked.toggle() }) {
+                            Image(systemName: isBookmarked ? "bookmark.fill" : "bookmark")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundStyle(Color(.systemGray))
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    // Title
+                    Text(spot.title)
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(.primary)
+
+                    // Rating, avis, price
+                    HStack(spacing: 12) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 14))
+                                .foregroundStyle(.yellow)
+                            Text(String(format: "%.1f", spot.rating))
+                                .font(.system(size: 15, weight: .semibold))
+                        }
+                        Text("\(reviewCount) avis")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(.secondary)
+                        Text(priceText)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Color.appAccent)
+                    }
+
+                    // Availability
+                    Text(spot.isAvailableNow ? "Disponible" : "Non disponible")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(spot.isAvailableNow ? .white : .primary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(spot.isAvailableNow ? Color.green : Color(.systemGray5), in: Capsule())
+
+                    // Tagline
+                    if !spot.description.isEmpty {
+                        Text(spot.description)
+                            .font(.system(size: 15, weight: .regular))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    // Itinéraire button
+                    Button(action: {
+                        let coord = CLLocationCoordinate2D(latitude: spot.lat, longitude: spot.lng)
+                        let mapItem = MKMapItem(placemark: MKPlacemark(coordinate: coord))
+                        mapItem.name = spot.title
+                        mapItem.openInMaps(launchOptions: nil)
+                    }) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+                                .font(.system(size: 18))
+                            Text("Itinéraire")
+                                .font(.system(size: 17, weight: .semibold))
+                        }
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color.appAccent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                     .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 32)
-        }
-    }
 
-    private func spotDetailCardRow(spot: HousingSpot, cardWidth: CGFloat) -> some View {
-        let meta = spotDetailRecommendationCategory(for: spot.type)
-        let recommenders = spotDetailRecommenderUrls(for: spot)
-        let peopleCount = max(Int(spot.rating * 50), recommenders.count)
+                    // À propos
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("À propos")
+                            .font(.system(size: 18, weight: .bold))
+                        Text(spot.description.isEmpty ? "Aucune description." : spot.description)
+                            .font(.system(size: 15, weight: .regular))
+                            .foregroundStyle(.secondary)
+                    }
 
-        return HStack(spacing: 12) {
-            AsyncImage(url: URL(string: spot.image)) { phase in
-                if let image = phase.image {
-                    image.resizable().aspectRatio(contentMode: .fill)
-                } else {
-                    Color(.systemGray5)
-                }
-            }
-            .frame(width: 86, height: 86)
-            .clipShape(Circle())
-            .overlay(
-                Circle()
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: [meta.tint.opacity(0.95), Color.appAccent.opacity(0.85)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 3
-                    )
-            )
+                    // Recommended by
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Recommended by")
+                            .font(.system(size: 18, weight: .bold))
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
-                    Image(systemName: meta.icon)
-                        .font(.system(size: 10, weight: .bold))
-                    Text(meta.label.uppercased())
-                        .font(.app(size: 11, weight: .bold))
-                        .lineLimit(1)
-                }
-                .foregroundStyle(meta.tint.opacity(0.95))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(meta.tint.opacity(0.18), in: Capsule())
-
-                Text(spot.title)
-                    .font(.app(size: 15, weight: .bold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-
-                HStack(spacing: 8) {
-                    HStack(spacing: -6) {
-                        ForEach(Array(recommenders.prefix(3).enumerated()), id: \.offset) { _, imageUrl in
-                            AsyncImage(url: URL(string: imageUrl)) { phase in
+                        HStack(spacing: 12) {
+                            AsyncImage(url: URL(string: spot.recommenderImg)) { phase in
                                 if let image = phase.image {
-                                    image.resizable()
+                                    image.resizable().aspectRatio(contentMode: .fill)
                                 } else {
                                     Color(.systemGray5)
                                 }
                             }
-                            .frame(width: 24, height: 24)
+                            .frame(width: 44, height: 44)
                             .clipShape(Circle())
-                            .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Recommended by: \(spot.recommender)")
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundStyle(.primary)
+                                HStack(spacing: 6) {
+                                    Image(systemName: "checkmark.seal.fill")
+                                        .font(.system(size: 14))
+                                        .foregroundStyle(.green)
+                                    Text("Verified member")
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+
+                            Spacer()
                         }
                     }
-
-                    Text("Recommended by \(peopleCount)+")
-                        .font(.app(size: 12, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
                 }
+                .padding(20)
             }
-
-            Spacer(minLength: 0)
         }
-        .padding(12)
-        .frame(width: cardWidth, alignment: .leading)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.black.opacity(0.04), lineWidth: 1)
-        )
-    }
-
-    private func spotDetailRecommenderUrls(for s: HousingSpot) -> [String] {
-        var unique: [String] = []
-        let avatarImages = AppData.shared.users.map(\.image)
-        let candidates = [s.recommenderImg] + avatarImages
-        for url in candidates where !url.isEmpty {
-            if !unique.contains(url) { unique.append(url) }
-        }
-        return unique
+        .background(Color(.systemBackground))
+        .environment(\.colorScheme, .light)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .presentationCornerRadius(28)
     }
 }
 
