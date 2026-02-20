@@ -46,7 +46,7 @@ struct FriendsGroupsView: View {
     let onAddGroupClick: (CreateType?) -> Void
     let onJoinGroupChat: (Explore) -> Void
     
-    enum SheetState { case partial, full }
+    enum SheetState { case collapsed, partial, full }
     @State private var sheetState: SheetState = .partial
     @State private var sheetDrag: CGFloat = 0
     @State private var isSheetOpen = true
@@ -146,7 +146,7 @@ struct FriendsGroupsView: View {
                 }
                 MapboxMaps.TapInteraction { context in
                     isFollowingUser = false
-                    if sheetState == .full {
+                    if sheetState == .full || sheetState == .collapsed {
                         withAnimation(.interpolatingSpring(stiffness: 200, damping: 24)) {
                             sheetState = .partial
                         }
@@ -318,11 +318,11 @@ struct FriendsGroupsView: View {
                         }
                         .padding(.trailing, 20)
                         .frame(maxWidth: .infinity, alignment: .trailing)
-                        .padding(.bottom, geometry.size.height * 0.58 + 16)
+                        .padding(.bottom, sheetState == .collapsed ? 240 : geometry.size.height * 0.58 + 16)
                     }
                 }
 
-                // FABs — visible only in partial sheet state
+                // FABs — visible when sheet is partial or collapsed
                 if variant == .travelers && sheetState != .full {
                     VStack {
                         Spacer()
@@ -364,7 +364,7 @@ struct FriendsGroupsView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .trailing)
                         .padding(.trailing, 20)
-                        .padding(.bottom, geometry.size.height * 0.58 + 16)
+                        .padding(.bottom, sheetState == .collapsed ? 240 : geometry.size.height * 0.58 + 16)
                     }
                 }
             }
@@ -1065,20 +1065,117 @@ struct FriendsGroupsView: View {
         let topPad = 10 + frac * (geometry.safeAreaInsets.top - 2)
 
         return VStack(spacing: 0) {
-            // Drag handle — top padding interpolates with sheet position
+            if sheetState == .collapsed {
+                collapsedSearchBar(geometry: geometry)
+            } else {
+                sheetFullContent(geometry: geometry, frac: frac, topPad: topPad)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .background {
+            if sheetState != .collapsed {
+                Rectangle().fill(.regularMaterial)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .shadow(color: .black.opacity(sheetState == .collapsed ? 0 : 0.15), radius: 20, y: -6)
+        .contentShape(Rectangle())
+        .highPriorityGesture(
+            DragGesture(minimumDistance: 6, coordinateSpace: .global)
+                .onChanged { value in
+                    var t = Transaction()
+                    t.animation = nil
+                    withTransaction(t) {
+                        sheetDrag = value.translation.height
+                    }
+                }
+                .onEnded { value in
+                    let velocity = value.predictedEndTranslation.height - value.translation.height
+                    let speed = abs(velocity)
+                    let oldState = sheetState
+                    var newState = sheetState
+
+                    if value.translation.height < -50 || velocity < -500 {
+                        switch sheetState {
+                        case .collapsed: newState = .partial
+                        case .partial: newState = .full
+                        case .full: break
+                        }
+                    } else if value.translation.height > 50 || velocity > 500 {
+                        switch sheetState {
+                        case .full: newState = .partial
+                        case .partial: newState = .collapsed
+                        case .collapsed: break
+                        }
+                    }
+
+                    let stiffness: Double = speed > 800 ? 280 : 200
+                    let damping: Double = speed > 800 ? 28 : 24
+
+                    withAnimation(.interpolatingSpring(stiffness: stiffness, damping: damping)) {
+                        sheetDrag = 0
+                        sheetState = newState
+                    }
+
+                    if newState != oldState {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    }
+                }
+        )
+    }
+
+    private func collapsedSearchBar(geometry: GeometryProxy) -> some View {
+        Button(action: {
+            withAnimation(.interpolatingSpring(stiffness: 200, damping: 24)) {
+                sheetState = .partial
+            }
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        }) {
+            VStack(spacing: 6) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color.white.opacity(0.4))
+                    .frame(width: 24, height: 3)
+
+                HStack(spacing: 10) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(Color.white.opacity(0.9))
+
+                    Text(variant == .travelers ? "\(data.users.count) people near you" : "Search")
+                        .font(.app(size: 14, weight: .medium))
+                        .foregroundStyle(Color.white.opacity(0.85))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+
+                    Spacer()
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+            }
+            .frame(maxWidth: .infinity)
+            .background(Capsule().fill(Color.black.opacity(0.6)))
+            .shadow(color: .black.opacity(0.2), radius: 8, y: 3)
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 24)
+    }
+
+    private func sheetFullContent(geometry: GeometryProxy, frac: CGFloat, topPad: CGFloat) -> some View {
+        VStack(spacing: 0) {
             RoundedRectangle(cornerRadius: 2.5)
                 .fill(Color(.systemGray3))
                 .frame(width: 36, height: 5)
                 .padding(.top, topPad)
                 .padding(.bottom, 4)
 
-            // Removed in-sheet "Cities" title and search bar for Friends (travelers) bottom sheet.
-
-            // Close button — fades in/out progressively
             HStack {
                 Button(action: {
                     withAnimation(.interpolatingSpring(stiffness: 200, damping: 24)) {
-                        sheetState = .partial
+                        switch sheetState {
+                        case .full: sheetState = .partial
+                        case .partial: sheetState = .collapsed
+                        case .collapsed: break
+                        }
                     }
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 }) {
@@ -1115,46 +1212,6 @@ struct FriendsGroupsView: View {
             }
             .scrollDisabled(sheetState != .full)
         }
-        .frame(maxWidth: .infinity)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .shadow(color: .black.opacity(0.15), radius: 20, y: -6)
-        .contentShape(Rectangle())
-        .highPriorityGesture(
-            DragGesture(minimumDistance: 6, coordinateSpace: .global)
-                .onChanged { value in
-                    var t = Transaction()
-                    t.animation = nil
-                    withTransaction(t) {
-                        sheetDrag = value.translation.height
-                    }
-                }
-                .onEnded { value in
-                    let velocity = value.predictedEndTranslation.height - value.translation.height
-                    let speed = abs(velocity)
-
-                    let oldState = sheetState
-                    var newState = sheetState
-
-                    if value.translation.height < -50 || velocity < -500 {
-                        newState = .full
-                    } else if (value.translation.height > 50 || velocity > 500) && sheetState == .full {
-                        newState = .partial
-                    }
-
-                    let stiffness: Double = speed > 800 ? 280 : 200
-                    let damping: Double = speed > 800 ? 28 : 24
-
-                    withAnimation(.interpolatingSpring(stiffness: stiffness, damping: damping)) {
-                        sheetDrag = 0
-                        sheetState = newState
-                    }
-
-                    if newState != oldState {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    }
-                }
-        )
     }
     
     private func sheetHeight(for screenHeight: CGFloat) -> CGFloat {
@@ -1170,16 +1227,24 @@ struct FriendsGroupsView: View {
 
     /// Offset-based sheet positioning with rubber-banding (matches Explore tab)
     private func exploreSheetOffsetY(geometry: GeometryProxy) -> CGFloat {
+        let collapsedH: CGFloat = 60
         let partialH = geometry.size.height * 0.38
+        let collapsedY = geometry.size.height - collapsedH
         let partialY = geometry.size.height - partialH
         let fullY: CGFloat = -geometry.safeAreaInsets.top
-        let baseY: CGFloat = sheetState == .full ? fullY : partialY
+        
+        let baseY: CGFloat
+        switch sheetState {
+        case .full: baseY = fullY
+        case .partial: baseY = partialY
+        case .collapsed: baseY = collapsedY
+        }
         let rawY = baseY + sheetDrag
 
         if rawY < fullY {
             return fullY - (fullY - rawY) * 0.15       // rubber-band top
-        } else if rawY > partialY {
-            return partialY + (rawY - partialY) * 0.15 // rubber-band bottom
+        } else if rawY > collapsedY {
+            return collapsedY + (rawY - collapsedY) * 0.15 // rubber-band bottom
         }
         return rawY
     }
@@ -1459,21 +1524,25 @@ struct FriendsGroupsView: View {
     private func groupAnnotation(group: Explore) -> some View {
         HStack(spacing: 0) {
             AsyncImage(url: URL(string: group.image)) { image in
-                image.resizable()
+                image.resizable().aspectRatio(contentMode: .fill)
             } placeholder: {
                 Color.gray.opacity(0.3)
             }
-            .frame(width: 48, height: 48)
+            .frame(width: 54, height: 54)
             .clipShape(Circle())
-            .background(Circle().fill(Color.white).padding(2))
-            
+            .overlay(Circle().stroke(Color.white, lineWidth: 3))
+            .shadow(color: .black.opacity(0.25), radius: 8, y: 4)
+
             Text(group.title)
-                .font(.app(size: 10, weight: .bold))
+                .font(.app(size: 11, weight: .bold))
                 .foregroundStyle(.black)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
-                .padding(.horizontal, 8)
-                .offset(x: -4)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Color.white.opacity(0.5), lineWidth: 1))
+                .offset(x: -6)
         }
         .onTapGesture {
             handleGroupTap(group)
@@ -1481,16 +1550,20 @@ struct FriendsGroupsView: View {
     }
     
     private func userAnnotation(user: User) -> some View {
-        ZStack {
+        ZStack(alignment: .topTrailing) {
             userImageView(user)
-            .frame(width: 48, height: 48)
-            .clipShape(Circle())
-            .overlay(Circle().stroke(Color.white, lineWidth: 2))
-            
+                .aspectRatio(contentMode: .fill)
+                .frame(width: 54, height: 54)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(Color.white, lineWidth: 3))
+                .shadow(color: .black.opacity(0.25), radius: 8, y: 4)
+
+            // Online indicator
             Circle()
                 .fill(Color.green)
-                .frame(width: 12, height: 12)
-                .offset(x: 16, y: -16)
+                .frame(width: 14, height: 14)
+                .overlay(Circle().stroke(Color.white, lineWidth: 2.5))
+                .offset(x: 2, y: -2)
         }
         .onTapGesture {
             onProfileClick(user)
