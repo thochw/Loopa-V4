@@ -6616,15 +6616,25 @@ private extension Double {
     }
 }
 
-// MARK: - Spot Detail Sheet (style Red Carpet / maquette)
+// MARK: - Spot Detail Sheet (page complète dépliée, style voilà)
 private struct HousingDetailSheet: View {
     let spot: HousingSpot
     let onClose: () -> Void
 
-    @State private var isBookmarked = false
+    @State private var selectedImageIndex = 0
 
     private var meta: (label: String, icon: String, tint: Color) {
         spotDetailRecommendationCategory(for: spot.type)
+    }
+
+    private var categoryLabel: String {
+        let t = spot.type.lowercased()
+        if t.contains("restaurant") { return "RESTAURANT" }
+        if t.contains("bar") { return "BAR" }
+        if t.contains("cafe") { return "CAFE" }
+        if t.contains("activity") || t.contains("activité") { return "ACTIVITY" }
+        if t.contains("room") || t.contains("place") || t.contains("housing") { return "HOUSING" }
+        return meta.label.uppercased()
     }
 
     private var imageUrls: [String] {
@@ -6636,171 +6646,146 @@ private struct HousingDetailSheet: View {
     }
 
     private var reviewCount: Int {
-        max(1, Int(spot.rating * 20))
+        max(1, Int(spot.rating * 2000))
     }
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
-                // Image + overlay (close, carousel indicator)
+                // Image carousel
                 ZStack(alignment: .topTrailing) {
-                    AsyncImage(url: URL(string: spot.image)) { phase in
-                        if let image = phase.image {
-                            image.resizable().aspectRatio(contentMode: .fill)
-                        } else {
-                            Color(.systemGray5)
-                        }
-                    }
-                    .frame(height: 220)
-                    .frame(maxWidth: .infinity)
-                    .clipped()
-
-                    VStack(alignment: .trailing, spacing: 8) {
-                        Button(action: onClose) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(Color(.systemGray))
-                                .frame(width: 32, height: 32)
-                                .background(Color.white.opacity(0.9), in: Circle())
-                        }
-                        .buttonStyle(.plain)
-
-                        Text("1/\(imageUrls.count)")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color.black.opacity(0.5), in: Capsule())
-                    }
-                    .padding(16)
-                }
-
-                VStack(alignment: .leading, spacing: 16) {
-                    // Category + Bookmark
-                    HStack {
-                        HStack(spacing: 6) {
-                            Image(systemName: meta.icon)
-                                .font(.system(size: 12, weight: .semibold))
-                            Text(meta.label.uppercased())
-                                .font(.system(size: 12, weight: .bold))
-                        }
-                        .foregroundStyle(meta.tint)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(meta.tint.opacity(0.15), in: Capsule())
-                        .overlay(Capsule().strokeBorder(meta.tint.opacity(0.5), lineWidth: 1))
-
-                        Spacer()
-
-                        Button(action: { isBookmarked.toggle() }) {
-                            Image(systemName: isBookmarked ? "bookmark.fill" : "bookmark")
-                                .font(.system(size: 18, weight: .medium))
-                                .foregroundStyle(Color(.systemGray))
-                        }
-                        .buttonStyle(.plain)
-                    }
-
-                    // Title
-                    Text(spot.title)
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(.primary)
-
-                    // Rating, avis, price
-                    HStack(spacing: 12) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "star.fill")
-                                .font(.system(size: 14))
-                                .foregroundStyle(.yellow)
-                            Text(String(format: "%.1f", spot.rating))
-                                .font(.system(size: 15, weight: .semibold))
-                        }
-                        Text("\(reviewCount) avis")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(.secondary)
-                        Text(priceText)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(Color.appAccent)
-                    }
-
-                    // Availability
-                    Text(spot.isAvailableNow ? "Disponible" : "Non disponible")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(spot.isAvailableNow ? .white : .primary)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(spot.isAvailableNow ? Color.green : Color(.systemGray5), in: Capsule())
-
-                    // Tagline
-                    if !spot.description.isEmpty {
-                        Text(spot.description)
-                            .font(.system(size: 15, weight: .regular))
-                            .foregroundStyle(.secondary)
-                    }
-
-                    // Itinéraire button
-                    Button(action: {
-                        let coord = CLLocationCoordinate2D(latitude: spot.lat, longitude: spot.lng)
-                        let mapItem = MKMapItem(placemark: MKPlacemark(coordinate: coord))
-                        mapItem.name = spot.title
-                        mapItem.openInMaps(launchOptions: nil)
-                    }) {
-                        HStack(spacing: 10) {
-                            Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
-                                .font(.system(size: 18))
-                            Text("Itinéraire")
-                                .font(.system(size: 17, weight: .semibold))
-                        }
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(Color.appAccent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-
-                    // À propos
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("À propos")
-                            .font(.system(size: 18, weight: .bold))
-                        Text(spot.description.isEmpty ? "Aucune description." : spot.description)
-                            .font(.system(size: 15, weight: .regular))
-                            .foregroundStyle(.secondary)
-                    }
-
-                    // Recommended by
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Recommended by")
-                            .font(.system(size: 18, weight: .bold))
-
-                        HStack(spacing: 12) {
-                            AsyncImage(url: URL(string: spot.recommenderImg)) { phase in
+                    TabView(selection: $selectedImageIndex) {
+                        ForEach(Array(imageUrls.enumerated()), id: \.offset) { index, url in
+                            AsyncImage(url: URL(string: url)) { phase in
                                 if let image = phase.image {
                                     image.resizable().aspectRatio(contentMode: .fill)
                                 } else {
                                     Color(.systemGray5)
                                 }
                             }
-                            .frame(width: 44, height: 44)
-                            .clipShape(Circle())
-
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Recommended by: \(spot.recommender)")
-                                    .font(.system(size: 15, weight: .medium))
-                                    .foregroundStyle(.primary)
-                                HStack(spacing: 6) {
-                                    Image(systemName: "checkmark.seal.fill")
-                                        .font(.system(size: 14))
-                                        .foregroundStyle(.green)
-                                    Text("Verified member")
-                                        .font(.system(size: 13, weight: .medium))
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-
-                            Spacer()
+                            .frame(height: 280)
+                            .frame(maxWidth: .infinity)
+                            .clipped()
+                            .tag(index)
                         }
                     }
+                    .tabViewStyle(.page(indexDisplayMode: .automatic))
+                    .frame(height: 280)
+
+                    HStack {
+                        Spacer()
+                        Button(action: {}) {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundStyle(.white)
+                                .frame(width: 44, height: 44)
+                                .background(Color.black, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                        Button(action: onClose) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 36, height: 36)
+                                .background(Color.black, in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(16)
                 }
-                .padding(20)
+
+                // Contenu plein écran
+                VStack(alignment: .leading, spacing: 20) {
+                    // Badge + Titre + Rating
+                    HStack(spacing: 8) {
+                        HStack(spacing: 6) {
+                            Image(systemName: meta.icon)
+                                .font(.system(size: 14, weight: .medium))
+                            Text(categoryLabel)
+                                .font(.system(size: 12, weight: .bold))
+                        }
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(categoryBadgeColor, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    }
+
+                    Text(spot.title)
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(.primary)
+
+                    HStack(spacing: 4) {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(.yellow)
+                        Text(String(format: "%.1f", spot.rating))
+                            .font(.system(size: 15, weight: .medium))
+                        Text("(\(reviewCount) reviews)")
+                            .font(.system(size: 14, weight: .regular))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    // Price • OUVERT • Horaires
+                    HStack(spacing: 6) {
+                        Text(priceText)
+                            .font(.system(size: 15, weight: .medium))
+                        Text("•")
+                            .foregroundStyle(.secondary)
+                        Text(spot.isAvailableNow ? "OPEN" : "CLOSED")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(spot.isAvailableNow ? .white : .secondary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(spot.isAvailableNow ? Color.green : Color.clear, in: Capsule())
+                        Text("•")
+                            .foregroundStyle(.secondary)
+                        Text("Closes at 22:00")
+                            .font(.system(size: 14, weight: .regular))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Divider()
+                        .padding(.vertical, 4)
+
+                    // Adresse, Téléphone, Horaires
+                    VStack(alignment: .leading, spacing: 12) {
+                        if let addr = spot.address, !addr.isEmpty {
+                            detailRow(icon: "mappin.circle.fill", text: addr)
+                        }
+                        if let phone = spot.contact, !phone.isEmpty {
+                            detailRow(icon: "phone.fill", text: phone)
+                        }
+                        detailRow(icon: "clock.fill", text: "Sat • 08:00–22:00", showChevron: true)
+                    }
+
+                    // Avis
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 6) {
+                            Text("Google Reviews")
+                                .font(.system(size: 17, weight: .bold))
+                            Image(systemName: "info.circle")
+                                .font(.system(size: 14))
+                                .foregroundStyle(.secondary)
+                        }
+
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 12) {
+                                spotReviewCard(rating: spot.rating, date: "01/28/2026", text: "A must-see when visiting. The place is worth the trip.", author: spot.recommender, authorImage: spot.recommenderImg)
+                                spotReviewCard(rating: 4, date: "01/15/2026", text: "A real recommendation, authentic vibe and warm welcome.", author: "Local", authorImage: nil)
+                            }
+                            .padding(.horizontal, 4)
+                        }
+                    }
+
+                    // Description
+                    Text(spot.description.isEmpty ? "No description available." : spot.description)
+                        .font(.system(size: 15, weight: .regular))
+                        .foregroundStyle(.primary)
+                        .lineSpacing(5)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(24)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .background(Color(.systemBackground))
@@ -6808,6 +6793,69 @@ private struct HousingDetailSheet: View {
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(28)
+    }
+
+    private func detailRow(icon: String, text: String, showChevron: Bool = false) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 18))
+                .foregroundStyle(Color.appAccent)
+                .frame(width: 24, alignment: .center)
+            Text(text)
+                .font(.system(size: 15, weight: .regular))
+                .foregroundStyle(.primary)
+            if showChevron {
+                Spacer()
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func spotReviewCard(rating: Double, date: String, text: String, author: String, authorImage: String?) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                ForEach(0..<5, id: \.self) { i in
+                    Image(systemName: Double(i) < rating ? "star.fill" : "star")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.yellow)
+                }
+                Text(date)
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundStyle(.secondary)
+            }
+            Text(text)
+                .font(.system(size: 14, weight: .regular))
+                .foregroundStyle(.primary)
+                .lineLimit(3)
+            HStack(spacing: 8) {
+                if let url = authorImage, !url.isEmpty {
+                    AsyncImage(url: URL(string: url)) { phase in
+                        if let img = phase.image { img.resizable() }
+                        else { Color(.systemGray5) }
+                    }
+                    .frame(width: 28, height: 28)
+                    .clipShape(Circle())
+                } else {
+                    Circle()
+                        .fill(Color.green.opacity(0.3))
+                        .frame(width: 28, height: 28)
+                        .overlay(Text(String(author.prefix(1))).font(.system(size: 12, weight: .bold)).foregroundStyle(.green))
+                }
+                Text(author)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.primary)
+            }
+        }
+        .padding(14)
+        .frame(width: 260, alignment: .leading)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.black.opacity(0.06), lineWidth: 1))
+    }
+
+    private var categoryBadgeColor: Color {
+        meta.tint.opacity(0.25)
     }
 }
 
